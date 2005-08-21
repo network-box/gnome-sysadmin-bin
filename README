@@ -1,0 +1,30 @@
+GNOME sysadmin utility scripts
+------------------------------
+
+These scripts all live in /home/admin/bin.
+
+ * create-auth
+     Sets up the keys based upon groups passed in
+
+ * create-auth-button.sh
+     calls create-auth with the correct groups for button.gnome.org
+
+ * create-auth-container.sh
+     calls create-auth with the correct groups for container.gnome.org
+
+ * create-auth-menubar.sh
+     calls create-auth with the correct groups for menubar.gnome.org
+
+ * create-auth-window.sh
+     calls create-auth with the correct groups for window.gnome.org
+
+ * new-cvs-user
+     puts up a newt dialog to assist in creating a new CVS user
+
+ * update-pserver-pword
+     outputs a CVS password file
+
+ * gen-token
+     generates a unique token that can be sent to authenticate an SSH
+     key change request
+
