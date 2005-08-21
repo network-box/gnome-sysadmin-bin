@@ -1,0 +1,28 @@
+#!/usr/bin/python
+import ldap
+import os
+
+# set the ldap_password variable
+execfile ("/home/admin/secret/ldap")
+
+#connect
+try:
+    l = ldap.open (ldap_server)
+    l.simple_bind ("cn=Manager,dc=gnome,dc=org", ldap_password)
+except ldap.LDAPError, e:
+    print e
+
+# Do a search for all people with a pserver password enabled
+try:
+    result_data = l.search_s ("ou=people,dc=gnome,dc=org",
+                              ldap.SCOPE_SUBTREE,
+                              "(&(objectClass=cvsUser)(pserverEnabled=TRUE)(uid=*)(pserverPassword=*))",
+                              ["uid", "pserverPassword"])
+except ldap.LDAPError, e:
+    print e
+
+for result in result_data:
+    person = result[1]
+    # We know that all records have a uid and pserverPassword from the query
+    # We shouldn't get a KeyError here
+    print "%s:%s:gnomecvs" % (person['uid'][0], person['pserverPassword'][0])

@@ -1,0 +1,231 @@
+#!/usr/bin/python
+import ldap
+import grp
+import os
+import tempfile
+import sys
+import popen2
+import md5
+
+def get_md5sum_hash():
+    dir = "/etc/sshd/users/"
+    user_md5sums = {}
+    file_list = os.listdir (dir)
+    for file in file_list:
+        path = os.path.join(dir, file, "authorized_keys")
+        if os.path.isfile (path):
+            f = open (path)
+            str = f.read ()
+            f.close ()
+            m = md5.new (str)
+            user_md5sums [file] = m.hexdigest ()
+    return user_md5sums
+
+GNOMECVS=0
+## first you must open a connection to the server
+try:
+    l = ldap.open("ldap-back")
+    l.simple_bind("cn=Manager,dc=gnome,dc=org")
+except ldap.LDAPError, e:
+    print e
+
+
+def get_uids_from_group(group):
+    filter = "(cn=%s)" % group
+    try:
+        ldap_result_id = l.search ("ou=groups,dc=gnome,dc=org",
+                                   ldap.SCOPE_SUBTREE, filter, None)
+        while 1:
+            result_type, group_data = l.result(ldap_result_id, 0)
+            if (group_data == []):
+                break
+            else:
+                group_info = group_data[0][1]
+                return group_info['memberUid']
+    except ldap.LDAPError, e:
+        print e
+
+    return {}
+
+def get_uids_from_wheel():
+    wheelinfo = grp.getgrnam ('wheel')
+    people = wheelinfo[3]
+    return filter (lambda x: x != 'root', people)
+    
+def get_uids_from_sysadmin():
+    wheelinfo = grp.getgrnam ('sysadmin')
+    people = wheelinfo[3]
+    return filter (lambda x: x != 'root', people)
+    
+
+def create_user_from_uid(uid):
+    filter = "(&(uid=%s)(authorizedKey=*))" % uid
+    try:
+        ldap_result_id = l.search ("ou=people,dc=gnome,dc=org",
+                                   ldap.SCOPE_SUBTREE, filter, None)
+        unused, person_data = l.result(ldap_result_id, 0)
+    except ldap.LDAPError, e:
+        return None
+        
+    if person_data == []:
+        return None
+    person_info = person_data[0][1]
+    user_data = {}
+    user_data['uid'] = uid
+    key_list = person_info ['authorizedKey']
+    key_list.sort ()
+    user_data['authorizedKey'] = key_list
+    user_data['uidNumber'] = person_info['uidNumber'][0]
+    user_data['gidNumber'] = person_info['gidNumber'][0]
+    user_data['cvsOnly'] = 0
+
+    return user_data
+
+def build_user_hash(group_list):
+    user_hash = {}
+    user_list = []
+    gnomecvs_hash = {}
+    global GNOMECVS
+    
+    # get a list of all the users.  Keep them in a hashtable to avoid duplicates
+    for uid in get_uids_from_wheel ():
+        user_hash[uid] = 1
+    for uid in get_uids_from_sysadmin ():
+        user_hash[uid] = 1
+    for group in group_list:
+        for uid in get_uids_from_group (group):
+            user_hash[uid] = 1
+    if GNOMECVS:
+        for uid in get_uids_from_group ('gnomecvs'):
+            try:
+                user_hash[uid]
+            except KeyError:
+                gnomecvs_hash[uid] = 1
+
+    # look up their keys (if we have them)
+    for uid in user_hash.iterkeys():
+        user_data = create_user_from_uid(uid)
+        if user_data != None:
+            user_list.append (user_data)
+    for uid in gnomecvs_hash.iterkeys():
+        user_data = create_user_from_uid(uid)
+        if user_data != None:
+            user_data['cvsOnly'] = 1
+            user_list.append (user_data)
+
+    return user_list
+
+# we don't expect any errors with this so we let any that occur go up
+# to the top so that cron mails them out.
+def remove_directory (dir):
+    assert os.path.isdir (dir)
+    file_list = os.listdir (dir)
+
+    for file in file_list:
+        path = os.path.join(dir, file)
+        if os.path.isfile (path):
+            os.remove (path)
+        elif os.path.isdir (path):
+            remove_directory (path)
+    os.rmdir (dir)
+
+def create_directory_structure (list):
+    base_directory_name = tempfile.mktemp ('-sshd')
+    sshd_directory_name = base_directory_name + "/sshd"
+    users_directory_name = sshd_directory_name + "/users"
+    os.mkdir (base_directory_name, 0700)
+
+    try:
+        os.mkdir (sshd_directory_name, 0711)
+        os.mkdir (users_directory_name, 0711)
+
+        # make a users dir
+        for user in user_list:
+            user_dir_name = users_directory_name + "/" + user['uid']
+            authorized_keys_file = user_dir_name + "/authorized_keys"
+            os.mkdir (user_dir_name, 0700)
+            os.chown (user_dir_name, int(user['uidNumber']), int (user['gidNumber']))
+            file = open (authorized_keys_file, "w")
+            for key in user['authorizedKey']:
+                if user['cvsOnly']:
+                    file.write ("command=\"/usr/bin/cvs server\",no-pty,no-port-forwarding ")
+                file.write (key)
+                file.write ("\n")
+            file.close()
+            os.chmod (authorized_keys_file, 0700)
+            os.chown (authorized_keys_file, int (user['uidNumber']), int (user['gidNumber']))
+
+        # We special case root
+        if os.path.isfile ("/root/.ssh/authorized_keys"):
+            user_dir_name = users_directory_name + "/root"
+            authorized_keys_file = user_dir_name + "/authorized_keys"
+            os.mkdir (user_dir_name, 0700)
+            os.chown (user_dir_name, 0, 0)
+            os.system ("/bin/cp /root/.ssh/authorized_keys " + authorized_keys_file)
+            
+    except Exception, e:
+        remove_directory (base_directory_name)
+        raise
+    return base_directory_name
+
+
+
+def print_comparison (initial_user_hash, post_user_hash):
+    removed_users = []
+    new_users = []
+    changed_users = []
+    # go through the list of initial
+    for user, hash in initial_user_hash.iteritems():
+        try:
+            post_hash = post_user_hash [user]
+            if post_hash != hash:
+                changed_users.append (user)
+            del post_user_hash [user]
+        except KeyError:
+            removed_users.append (user)
+    for user in post_user_hash.iterkeys():
+        new_users.append (user)
+
+    def print_user_list (description, user_list):
+        if not user_list:
+            return
+
+        user_len = len (user_list)
+        if user_len == 1:
+            print description + " %d user:" % user_len
+        else:
+            print description + " %d users:" % user_len
+        for user in user_list:
+            print "\t%s" % user
+        print
+    print_user_list ("Added", (new_users))
+    print_user_list ("Removed", (removed_users))
+    print_user_list ("Changed", (changed_users))
+
+if __name__ == '__main__':
+    group_list = sys.argv[1:]
+    if '--gnomecvs' in group_list:
+        GNOMECVS=1
+        group_list = filter (lambda x: x != '--gnomecvs', group_list)
+
+    user_list = build_user_hash (group_list)
+    base_directory_name = create_directory_structure (user_list)
+
+    initial_user_hash = get_md5sum_hash ()
+    status = os.system ("rsync -av --delete %s/sshd/ /etc/sshd/ > /dev/null 2>&1" % base_directory_name)
+    if status != 0:
+        print ("Error in rsync of files:")
+        if p.fromchild:
+            for line in p.fromchild.readlines():
+                print line
+        if p.childerr:
+            for line in p.childerr.readlines():
+                print line
+        try:
+            remove_directory (base_directory_name)
+        except IOError, e:
+            print "Unable to remove directory %s\n%s" % (base_directory_name, str(e))
+        sys.exit (status)
+    post_user_hash = get_md5sum_hash ()
+    remove_directory (base_directory_name)
+    print_comparison (initial_user_hash, post_user_hash)
