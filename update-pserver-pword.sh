@@ -4,7 +4,9 @@ LIVEFILE=/cvs/gnome/CVSROOT/passwd
 TMPFILE=/tmp/cvspword.$$
 PATCHFILE=/tmp/cvspword.diff.$$
 
-echo "anoncvs::gnomecvs" >$TMPFILE
+# Owen say this isn't safe until cvs pserver is running as 'nobody'
+#echo "anoncvs::gnomecvs" >$TMPFILE
+:>$TMPFILE
 /home/admin/bin/update-pserver-pword >>$TMPFILE
 
 # Check for differences
