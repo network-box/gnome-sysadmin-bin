@@ -1,5 +1,6 @@
 2005-08-21  Ross Golder  <ross@golder.org>
 
+	* run-cvs-pserver.sh: Bring into CVS.
 	* update-pserver-pword.sh: Revert 'anoncvs' user :) At least we
 	know CVS works.
 	* update-pserver-pword.sh: Include 'anoncvs' user.
