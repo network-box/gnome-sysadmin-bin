@@ -4,7 +4,8 @@ LIVEFILE=/cvs/gnome/CVSROOT/passwd
 TMPFILE=/tmp/cvspword.$$
 PATCHFILE=/tmp/cvspword.diff.$$
 
-/home/admin/bin/update-pserver-pword >$TMPFILE
+echo "anoncvs::gnomecvs" >$TMPFILE
+/home/admin/bin/update-pserver-pword >>$TMPFILE
 
 # Check for differences
 diff $LIVEFILE $TMPFILE > $PATCHFILE
