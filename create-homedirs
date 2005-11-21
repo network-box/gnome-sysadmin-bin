@@ -1,0 +1,49 @@
+#!/usr/bin/python
+import ldap
+import grp
+import os
+import sys
+
+## first you must open a connection to the server
+try:
+    l = ldap.open("ldap-back")
+    l.simple_bind("cn=Manager,dc=gnome,dc=org")
+except ldap.LDAPError, e:
+    print e
+
+
+def get_uids_from_group(group):
+    filter = "(cn=%s)" % group
+    try:
+        ldap_result_id = l.search ("ou=groups,dc=gnome,dc=org",
+                                   ldap.SCOPE_SUBTREE, filter, None)
+        while 1:
+            result_type, group_data = l.result(ldap_result_id, 0)
+            if (group_data == []):
+                break
+            else:
+                group_info = group_data[0][1]
+                return group_info['memberUid']
+    except ldap.LDAPError, e:
+        print e
+
+    return {}
+
+
+def create_home_directory (uid):
+	if os.path.isdir ("/home/users/%s" % uid):
+		return
+	
+	os.system ("/bin/cp -a /etc/skel /home/users/%s" % uid)
+	os.system ("/bin/chown -R %s:%s %s" % (uid, uid, uid))
+	print "Created home directory for '%s'" % uid
+
+	return
+
+
+if __name__ == '__main__':
+	# Get our list of ftpadmin members
+    user_list = get_uids_from_group ("ftpadmin")
+    for user in user_list:
+    	create_home_directory (user)
+
