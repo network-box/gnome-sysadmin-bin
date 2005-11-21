@@ -35,7 +35,7 @@ def create_home_directory (uid):
 		return
 	
 	os.system ("/bin/cp -a /etc/skel /home/users/%s" % uid)
-	os.system ("/bin/chown -R %s:%s %s" % (uid, uid, uid))
+	os.system ("/bin/chown -R %s:%s /home/users/%s" % (uid, uid, uid))
 	print "Created home directory for '%s'" % uid
 
 	return
