@@ -1,3 +1,11 @@
+2006-08-30  Ross Golder  <ross@golder.org>
+
+	* README: Add reminder to commit and ChangeLog changes.
+	* create-auth-label.sh: Added.
+	* create-auth-window.sh: Remove bugzilla groups (moved to box)
+	* create-auth: Add useful comment for subversion migration.
+	* create-homedirs: Add autocreation for 'gnomeweb' users.
+
 2005-08-21  Ross Golder  <ross@golder.org>
 
 	* run-cvs-pserver.sh: Bring into CVS.

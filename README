@@ -6,17 +6,8 @@ These scripts all live in /home/admin/bin.
  * create-auth
      Sets up the keys based upon groups passed in
 
- * create-auth-button.sh
-     calls create-auth with the correct groups for button.gnome.org
-
- * create-auth-container.sh
-     calls create-auth with the correct groups for container.gnome.org
-
- * create-auth-menubar.sh
-     calls create-auth with the correct groups for menubar.gnome.org
-
- * create-auth-window.sh
-     calls create-auth with the correct groups for window.gnome.org
+ * create-auth-<machinename>.sh
+     calls create-auth with the correct groups relevant to that machine
 
  * new-cvs-user
      puts up a newt dialog to assist in creating a new CVS user
@@ -27,4 +18,8 @@ These scripts all live in /home/admin/bin.
  * gen-token
      generates a unique token that can be sent to authenticate an SSH
      key change request
+
+Please remember to add a brief ChangeLog entry and commit any changes, so we
+get auto-notification and an audit history of the change sent to the sysadmin
+list.
 
