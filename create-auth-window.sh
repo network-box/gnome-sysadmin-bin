@@ -1,2 +1,2 @@
 #!/bin/sh
-/home/admin/bin/create-auth bugsro bugzilla ftpadmin gnomeweb halloween webusers 
+/home/admin/bin/create-auth ftpadmin gnomeweb webusers 
