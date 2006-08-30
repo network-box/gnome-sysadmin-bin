@@ -1,9 +1,22 @@
 2006-08-30  Ross Golder  <ross@golder.org>
 
 	* README: Add reminder to commit and ChangeLog changes.
-	* create-auth-label.sh: Added.
+
+2006-07-15  Ross Golder  <ross@golder.org>
+
+	* create-auth: Add useful comment for future subversion migration.
+
+2006-06-10  Jonathan Blandford  <jrb@redhat.com>
+
+	* create-auth-box.sh: Added.
 	* create-auth-window.sh: Remove bugzilla groups (moved to box)
-	* create-auth: Add useful comment for subversion migration.
+
+2006-05-27  Jonathan Blandford  <jrb@redhat.com>
+
+	* create-auth-label.sh: Added.
+
+2006-01-12  Ross Golder  <ross@golder.org>
+
 	* create-homedirs: Add autocreation for 'gnomeweb' users.
 
 2005-08-21  Ross Golder  <ross@golder.org>
