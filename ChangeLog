@@ -1,5 +1,9 @@
 2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
 
+	* copy-db.py: MySQL backup script used on button.
+
+2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
+
 	Add some scripts used for gnomeweb / updating 'web' modules from SVN.
 
 	* gnomeweb/: 
