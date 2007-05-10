@@ -1,2 +1,2 @@
 #!/bin/sh
-/home/admin/bin/create-auth gcvsadm --gnomecvs
+/home/admin/bin/create-auth

@@ -215,6 +215,7 @@ if __name__ == '__main__':
     initial_user_hash = get_md5sum_hash ()
     status = os.system ("rsync -av --delete %s/sshd/ /etc/sshd/ > /dev/null 2>&1" % base_directory_name)
     if status != 0:
+	print "rsync -av --delete %s/sshd/ /etc/sshd/ > /dev/null 2>&1" % base_directory_name
         print ("Error in rsync of files:")
         if p.fromchild:
             for line in p.fromchild.readlines():

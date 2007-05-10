@@ -1,3 +1,14 @@
+2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
+
+	Merge changes made locally.
+
+	* create-auth: On error, show the command that failed to run.
+	* create-auth-container.sh: Do not allow people with the gcvsadm to
+	log in anymore (as GNOME uses SVN now).
+	* create-auth-window.sh: Allow accounts people to login.
+	* create-homedirs: Create home directories for people in the accounts
+	group.
+
 2006-08-30  Ross Golder  <ross@golder.org>
 
 	* README: Add reminder to commit and ChangeLog changes.

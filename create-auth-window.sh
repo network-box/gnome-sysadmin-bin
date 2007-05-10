@@ -1,2 +1,2 @@
 #!/bin/sh
-/home/admin/bin/create-auth ftpadmin gnomeweb webusers 
+/home/admin/bin/create-auth accounts ftpadmin gnomeweb webusers
