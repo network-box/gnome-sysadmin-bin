@@ -1,5 +1,13 @@
 2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
 
+	Add some scripts used for gnomeweb / updating 'web' modules from SVN.
+
+	* gnomeweb/: 
+	* gnomeweb/set_buildflag.py: Updates the buildflag timestamp.
+	* gnomeweb/update_sites.py: Updates a site (usually run via cron).
+
+2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
+
 	Merge changes made on socket.
 
 	* create-auth: Give 'CVS' people access to svnserve.
