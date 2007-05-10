@@ -1,5 +1,15 @@
 2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
 
+	Merge changes made on socket.
+
+	* create-auth: Give 'CVS' people access to svnserve.
+	* create-auth-socket.sh: Script used on socket.
+	* create-homedirs: Create homedirs for SVN users otherwise 'svn'
+	complains.
+	* create-repository: Script to setup a new SVN repository.
+
+2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
+
 	Merge changes made locally.
 
 	* create-auth: On error, show the command that failed to run.

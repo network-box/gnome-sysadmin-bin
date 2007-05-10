@@ -48,7 +48,11 @@ def get_uids_from_group(group):
     return {}
 
 def get_uids_from_wheel():
-    wheelinfo = grp.getgrnam ('wheel')
+    try:
+        wheelinfo = grp.getgrnam ('wheel')
+    except KeyError:
+        wheelinfo = grp.getgrnam ('admin')
+
     people = wheelinfo[3]
     return filter (lambda x: x != 'root', people)
     
@@ -148,8 +152,8 @@ def create_directory_structure (list):
             file = open (authorized_keys_file, "w")
             for key in user['authorizedKey']:
                 if user['cvsOnly']:
-                    file.write ("command=\"/usr/bin/cvs server\",no-pty,no-port-forwarding ")
-                    #file.write ("command=\"/usr/bin/svnserve -t\",no-pty,no-port-forwarding ")
+                    #file.write ("command=\"/usr/bin/cvs server\",no-pty,no-port-forwarding ")
+                    file.write ("command=\"/usr/bin/svnserve -t\",no-pty,no-port-forwarding ")
                 file.write (key)
                 file.write ("\n")
             file.close()
