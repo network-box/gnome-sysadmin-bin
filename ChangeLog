@@ -1,3 +1,13 @@
+2007-05-17  Olav Vitters  <olav@bkor.dhs.org>
+
+	Add RT3 overview scripts had have been sitting in the homedir of
+	gpastore. Also ensure that the accounts queue actually has a good
+	overview of all ticket numbers.
+
+	* rt3:
+	* rt3/rt-membership.py:
+	* rt3/rt.py:
+
 2007-05-10  Olav Vitters  <olav@bkor.dhs.org>
 
 	* copy-db.py: MySQL backup script used on button.
