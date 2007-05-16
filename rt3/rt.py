@@ -22,10 +22,10 @@ stalledc = cursor.fetchone ()[0]
 cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=3 AND (Status="resolved" OR Status="rejected") AND LastUpdated > ADDDATE(CURRENT_DATE, INTERVAL -7 DAY)')
 last = cursor.fetchone ()[0]
 
-cursor.execute('SELECT id, Status FROM Tickets WHERE Type="ticket" AND Queue=3 AND Status IN ("new" "open", "stalled")')
+cursor.execute('SELECT id, Status FROM Tickets WHERE Type="ticket" AND Queue=3 AND Status IN ("new", "open", "stalled")')
 tickets = cursor.fetchall()
 
-table = '<table><tr><th>Ticket</th><th>State</th></tr>%s</table>' % ''.join(['<tr><td>%s</td><td>%s</td></tr>' % a, b for a, b in tickets])
+table = '<table><tr><th>Ticket</th><th>State</th></tr>%s</table>' % ''.join(['<tr><td>%s</td><td>%s</td></tr>' % row for row in tickets])
 
 OUTPUT = '/home/users/gpastore/public_html/stats/accounts.html'
 
