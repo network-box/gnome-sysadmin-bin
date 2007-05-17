@@ -1,8 +1,10 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import os
 import MySQLdb
 import email
+import codecs
 
 QUEUES = {
     'accounts': {
@@ -39,7 +41,7 @@ def write_stat_file(cursor, queue):
     for row in cursor.fetchall():
         tickets[row[0]] = {'Status': row[1]}
 
-    cursor.execute("SELECT MAX(Transactions.id) AS TID, Tickets.id AS TID from Tickets INNER JOIN Transactions ON Tickets.id = Transactions.ObjectId where ObjectType = 'RT::Ticket' AND Transactions.Type = 'Comment' and Tickets.Status = 'stalled' GROUP BY Tickets.id;")
+    cursor.execute("SELECT MAX(Transactions.id) AS TID, Tickets.id AS TID from Tickets INNER JOIN Transactions ON Tickets.id = Transactions.ObjectId WHERE Tickets.Queue=%s AND ObjectType = 'RT::Ticket' AND Transactions.Type = 'Comment' and Tickets.Status = 'stalled' GROUP BY Tickets.id" % qnr)
     trans = dict(cursor.fetchall())
 
     tid = trans.keys()
@@ -53,14 +55,14 @@ def write_stat_file(cursor, queue):
         ticket = trans[int(tid)]
 
         msg = email.message_from_string(header)
-        tickets[ticket]['CC'] = msg['RT-Send-CC'].replace('@', ' ').replace('.', '·')
+        tickets[ticket]['CC'] = msg['RT-Send-CC'].replace('@', ' ').replace('.', u'·')
 
 
-    table = '<table border=1><tr><th>Ticket</th><th>State</th><th>Waiting for</th></tr>%s</table>' % ''.join(['<tr><td><a href="http://www.gnome.org/rt3/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], tickets[ticket].get('CC', '')) for ticket in sorted(tickets)])
+    table = u'<table border=1><tr><th>Ticket</th><th>State</th><th>Waiting for</th></tr>%s</table>' % u''.join([u'<tr><td><a href="http://www.gnome.org/rt3/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], tickets[ticket].get('CC', '')) for ticket in sorted(tickets)])
 
-    output = open (OUTPUT, 'w')
+    output = codecs.open (OUTPUT, 'w', 'utf-8')
 
-    output.write ('''<?xml version="1.0" encoding="UTF-8"?>
+    s = u'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
 <head>
@@ -79,7 +81,9 @@ def write_stat_file(cursor, queue):
 </p>
 %s
 </body>
-</html>''' % (qinfo['title'], qinfo['desc'], newc, openc, stalledc, last, table))
+</html>''' % (qinfo['title'], qinfo['desc'], newc, openc, stalledc, last, table)
+    s.encode("utf-8")
+    output.write(s)
 
     output.close ()
 
