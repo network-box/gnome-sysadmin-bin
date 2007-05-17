@@ -1,5 +1,11 @@
 2007-05-17  Olav Vitters  <olav@bkor.dhs.org>
 
+	* rt3/rt.py: Show overview of all open tickets. Per ticket, show the
+	current status and for stalled tickets show who was last cc'ed in the
+	latest comment (AKA: who is the accounts team waiting upon).
+
+2007-05-17  Olav Vitters  <olav@bkor.dhs.org>
+
 	Add RT3 overview scripts had have been sitting in the homedir of
 	gpastore. Also ensure that the accounts queue actually has a good
 	overview of all ticket numbers.
