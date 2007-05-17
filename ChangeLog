@@ -1,5 +1,9 @@
 2007-05-17  Olav Vitters  <olav@bkor.dhs.org>
 
+	* rt3/rt.py: Use database parameters.
+
+2007-05-17  Olav Vitters  <olav@bkor.dhs.org>
+
 	* rt3/rt.py: Butcher it to make it support UTF8.
 
 2007-05-17  Olav Vitters  <olav@bkor.dhs.org>

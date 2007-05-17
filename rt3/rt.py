@@ -24,24 +24,24 @@ def write_stat_file(cursor, queue):
     qnr = qinfo['nr']
     OUTPUT = '/usr/local/www/rt3stats/%s.html' % queue
 
-    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status="new"' % qnr)
+    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status="new"', qnr)
     newc = cursor.fetchone ()[0]
 
-    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status="open"' % qnr)
+    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status="open"', qnr)
     openc = cursor.fetchone ()[0]
 
-    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status="stalled"' % qnr)
+    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status="stalled"', qnr)
     stalledc = cursor.fetchone ()[0]
 
-    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND (Status="resolved" OR Status="rejected") AND LastUpdated > ADDDATE(CURRENT_DATE, INTERVAL -7 DAY)' % qnr)
+    cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND (Status="resolved" OR Status="rejected") AND LastUpdated > ADDDATE(CURRENT_DATE, INTERVAL -7 DAY)', qnr)
     last = cursor.fetchone ()[0]
 
-    cursor.execute('SELECT id, Status FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status IN ("new", "open", "stalled") ORDER BY id' % qnr)
+    cursor.execute('SELECT id, Status FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status IN ("new", "open", "stalled") ORDER BY id', qnr)
     tickets = {}
     for row in cursor.fetchall():
         tickets[row[0]] = {'Status': row[1]}
 
-    cursor.execute("SELECT MAX(Transactions.id) AS TID, Tickets.id AS TID from Tickets INNER JOIN Transactions ON Tickets.id = Transactions.ObjectId WHERE Tickets.Queue=%s AND ObjectType = 'RT::Ticket' AND Transactions.Type = 'Comment' and Tickets.Status = 'stalled' GROUP BY Tickets.id" % qnr)
+    cursor.execute("SELECT MAX(Transactions.id) AS TID, Tickets.id AS TID from Tickets INNER JOIN Transactions ON Tickets.id = Transactions.ObjectId WHERE Tickets.Queue=%s AND ObjectType = 'RT::Ticket' AND Transactions.Type = 'Comment' and Tickets.Status = 'stalled' GROUP BY Tickets.id", qnr)
     trans = dict(cursor.fetchall())
 
     tid = trans.keys()
