@@ -1,3 +1,9 @@
+2007-06-07  Guilherme de S. Pastore  <gpastore@gnome.org>
+
+	* debian-update-notifier.sh: new simple script to be run daily on
+	  the Debian(-based) machines to notify gnome-sysadmin of available
+	  updated.
+
 2007-05-17  Olav Vitters  <olav@bkor.dhs.org>
 
 	* rt3/rt.py: Use database parameters.
