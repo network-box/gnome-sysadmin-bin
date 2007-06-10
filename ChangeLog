@@ -1,3 +1,8 @@
+2007-06-10  Olav Vitters  <olav@bkor.dhs.org>
+
+	* create-auth-fixed.sh: Add script for machine 'fixed'; allow
+	buildmaster and buildslave people to login.
+
 2007-06-07  Guilherme de S. Pastore  <gpastore@gnome.org>
 
 	* debian-update-notifier.sh: new simple script to be run daily on
