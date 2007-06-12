@@ -4,5 +4,6 @@ aptitude update > /dev/null
 
 t=`aptitude -F %p search ~U`
 if [[ "$t" =~ '[[:alpha:]]' ]]; then
-        echo $t
+    echo "Updates available for the following package(s) are available:"
+    echo $t
 fi

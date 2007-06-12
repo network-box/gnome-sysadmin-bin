@@ -1,3 +1,7 @@
+2007-06-11  Guilherme de S. Pastore  <gpastore@gnome.org>
+
+	* debian-update-notifier.sh: minor improvements to the script output.
+
 2007-06-10  Olav Vitters  <olav@bkor.dhs.org>
 
 	* create-auth-fixed.sh: Add script for machine 'fixed'; allow
