@@ -13,6 +13,7 @@ import os.path
 import getopt
 import ConfigParser
 import subprocess
+import fcntl
 
 import xml.dom.minidom # to parse svn xml output
 
@@ -92,42 +93,36 @@ for module in cfg.sections():
 	# Compare timestamps
 	if verbose:
 		print "Checking '" + module + "'..."
-	build_flag = timestamp_dir + "/" + module + ".buildflag"
-	built_flag = timestamp_dir + "/" + module + ".built"
+	build_flag = os.path.join(timestamp_dir, module + ".buildflag")
+	built_flag = os.path.join(timestamp_dir, module + ".built")
+        lock_file  = os.path.join(timestamp_dir, module + '.lock')
 
 	# If the buildflag hasn't been set, ignore this module for now
 	if not os.access(build_flag, os.F_OK):
-		continue;
+		continue
 
 	# Only need to compare if built flag exists
 	if os.access(built_flag, os.F_OK):
+                t_built = os.stat(built_flag)
 		t_build = os.stat(build_flag)
-		t_built = os.stat(built_flag)
 		if t_build.st_mtime <= t_built.st_mtime:
 			# No need to build
 			continue
 
-        # Check for an already running update, or register our PID for
-        # this one
-        fp1 = open(build_flag, 'r')
-        line = fp1.readline().strip()
+        # Ensure only one copy will be running
+        fpl = open(lock_file, 'w')
         try:
-                running_pid = int(line)
-        except ValueError:
-                running_pid = 0
-        fp1.close()
-        if running_pid > 0 and os.path.exists("/proc/%d" % running_pid):
-                # Already running
-                if verbose:
-                        print "Already running (PID: %s)" % running_pid
-                continue
-        flagfile = open(build_flag, "w")
-        flagfile.write("%d" % os.getpid())
-        flagfile.close()
+            fcntl.flock(fpl, fcntl.LOCK_EX | LOCK_NB)
+        except IOError:
+            if verbose:
+                print "Already running"
+            continue
+        fpl.write("%d" % os.getpid())
+        fpl.flush()
         if verbose:
-                print "Wrote PID to flag file (PID: %d)" % os.getpid()
+                print "Wrote PID to lock file (PID: %d)" % os.getpid()
 
-	# Otherwise, let's run a svn checkout/update
+	# Run a svn checkout/update
 	retval = 0
 	if not os.path.exists(moduleroot):
 		# Path does not exist.. so check it out of SVN
@@ -140,14 +135,16 @@ for module in cfg.sections():
 		retval = os.spawnlp(os.P_WAIT, 'svn', 'svn', 'update', '-q', '--non-interactive', moduleroot)
 	if retval != 0:
 		print "Updating the '" + module + "' site failed"
+                fpl.close()
 		continue
 
 	# Remember to update the timestamp later
 	updated.append(module)
 
 	# We're done if there isn't a post-update hook to run
-	hook_file = hookscripts_dir + "/" + module
+	hook_file = os.path.join(hookscripts_dir, module)
 	if not os.access(hook_file, os.X_OK):
+                fpl.close()
 		continue
 
 	# Run the hook script and save the stdout+stderr in a logfile
@@ -183,15 +180,13 @@ for module in cfg.sections():
 	else:
 		os.remove(logfile_name)
 
-
-
-for module in updated:
-	# If the update was successful, set the built flag
-	built_flag = timestamp_dir + "/" + module + ".built"
-	flagfile = open(built_flag, 'w')
-	flagfile.close()
+        # Update atime, utime
+        # This ensures the website will update again in case the build_flag file timestamp was updated during the execution of this script
+        os.utime(built_flag, (t_build, t_build))
 	if verbose:
 		print "Built flag set."
+
+
 if verbose:
 	print "Done"
 
