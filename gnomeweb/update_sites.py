@@ -112,7 +112,7 @@ for module in cfg.sections():
         # Ensure only one copy will be running
         fpl = open(lock_file, 'w')
         try:
-            fcntl.flock(fpl, fcntl.LOCK_EX | LOCK_NB)
+            fcntl.flock(fpl, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except IOError:
             if verbose:
                 print "Already running"
@@ -182,7 +182,7 @@ for module in cfg.sections():
 
         # Update atime, utime
         # This ensures the website will update again in case the build_flag file timestamp was updated during the execution of this script
-        os.utime(built_flag, (t_build, t_build))
+        os.utime(built_flag, (t_build.st_mtime, t_build.st_mtime))
 	if verbose:
 		print "Built flag set."
 

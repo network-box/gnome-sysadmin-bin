@@ -1,5 +1,9 @@
 2007-08-20  Olav Vitters  <olav@bkor.dhs.org>
 
+	* gnomeweb/update_sites.py: Fix errors in previous patch.
+
+2007-08-20  Olav Vitters  <olav@bkor.dhs.org>
+
 	* gnomeweb/update_sites.py: Avoid concurrent runs when the website in
 	SVN was updated multiple times (e.g. website update when
 	update_sites.py was already running).
