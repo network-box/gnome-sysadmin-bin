@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# vim: set ts=4 sw=4:
+
+if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
+	if [ "$SSH_ORIGINAL_COMMAND" != "svnserve -t"  ]; then
+		case "$SSH_ORIGINAL_COMMAND" in
+			"new-svn-repos "*)
+				# This matches a subpattern, could match for instance:
+				# new-svn-repos abc-743294732#^*&#
+				REPOS="`expr "$SSH_ORIGINAL_COMMAND" : 'new-svn-repos \([a-z][a-z][a-z][-a-z]*\)'`"
+				if [ $? -ne 0 ]; then
+					exit 1
+				fi
+				if [ "new-svn-repos $REPOS" != "$SSH_ORIGINAL_COMMAND" ]; then
+					echo 'ERROR: Those chars are not valid SVN repos characters!' >&2
+					exit 1
+				fi
+				sudo -u gnomecvs /home/admin/bin/create-repository "$REPOS"
+				exit
+		esac
+	fi
+fi
+
+exec /usr/bin/svnserve -t
+
