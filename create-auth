@@ -153,7 +153,7 @@ def create_directory_structure (list):
             for key in user['authorizedKey']:
                 if user['cvsOnly']:
                     #file.write ("command=\"/usr/bin/cvs server\",no-pty,no-port-forwarding ")
-                    file.write ("command=\"/usr/bin/svnserve -t\",no-pty,no-port-forwarding ")
+                    file.write ("command=\"/home/admin/bin/run-svn-or-special-cmd\",no-pty,no-port-forwarding ")
                 file.write (key)
                 file.write ("\n")
             file.close()

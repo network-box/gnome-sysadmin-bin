@@ -1,5 +1,12 @@
 2007-09-22  Olav Vitters  <olav@bkor.dhs.org>
 
+	* create-auth: For gnomecvs users, execute
+	  /home/admin/bin/run-svn-or-special-cmd
+	instead of
+	  /usr/bin/svnserve -t
+
+2007-09-22  Olav Vitters  <olav@bkor.dhs.org>
+
 	* run-svn-or-special-cmd: Either runs svnserve -t, or a special
 	command. The only special command it currently knows about is
 	new-svn-repos. This special command only accepts ^[-a-z]+$ as argument
