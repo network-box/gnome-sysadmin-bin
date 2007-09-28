@@ -18,10 +18,12 @@ if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
 				fi
 				sudo -u gnomecvs /home/admin/bin/create-repository "$REPOS"
 				exit
+				;;
 			"mango")
 				cat "/var/local/mango/`whoami`" 2> /dev/null
 				echo > "/var/local/mango/`whoami`" 2> /dev/null
 				exit
+				;;
 		esac
 	fi
 fi
