@@ -1,3 +1,8 @@
+2007-09-29  Olav Vitters  <olav@bkor.dhs.org>
+
+	* run-svn-or-special-cmd: Add special command 'mango'. Needed for
+	Mango instructions.
+
 2007-09-22  Olav Vitters  <olav@bkor.dhs.org>
 
 	* create-auth: For gnomecvs users, execute
