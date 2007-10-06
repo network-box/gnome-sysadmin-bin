@@ -1,3 +1,8 @@
+2007-10-06  Olav Vitters  <olav@bkor.dhs.org>
+
+	* create-auth-torrent.sh: Torrent now finally uses LDAP, so add
+	create-auth file to setup users.
+
 2007-09-29  Olav Vitters  <olav@bkor.dhs.org>
 
 	* run-svn-or-special-cmd: Add special command 'mango'. Needed for
