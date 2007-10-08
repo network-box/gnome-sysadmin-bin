@@ -144,6 +144,7 @@ for module in cfg.sections():
 	# We're done if there isn't a post-update hook to run
 	hook_file = os.path.join(hookscripts_dir, module)
 	if not os.access(hook_file, os.X_OK):
+                os.utime(built_flag, (t_build.st_mtime, t_build.st_mtime))
                 fpl.close()
 		continue
 
