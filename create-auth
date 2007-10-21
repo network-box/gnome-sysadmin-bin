@@ -28,6 +28,7 @@ try:
     l.simple_bind("cn=Manager,dc=gnome,dc=org")
 except ldap.LDAPError, e:
     print e
+    sys.exit(1)
 
 
 def get_uids_from_group(group):
