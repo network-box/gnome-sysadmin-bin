@@ -6,6 +6,7 @@ import glob
 import subprocess
 import ldap
 import ldap.modlist
+from string import Template
 try: import readline
 except: pass
 
@@ -22,6 +23,23 @@ def getpass(prompt = "Password: "):
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return passwd
 
+def is_executable(prog):
+    if sys.platform == "win32":
+        return True
+    info = os.stat(prog)
+    return (info.st_uid == os.getuid() and (info.st_mode & 0100) or
+            info.st_gid == os.getgid() and (info.st_mode & 0010) or
+            info.st_mode & 0001)
+
+def find_program(prog):
+    path = os.environ.get("PATH", "").split(os.pathsep)
+
+    for directory in path:
+        program = os.path.join(directory, prog)
+        if os.path.exists(program) and is_executable(program):
+            return program
+    return ""
+
 
 class Mango(object):
 
@@ -32,10 +50,94 @@ class Mango(object):
     UID_TO_MAIL = {}
     MAINTAINERS = {}
     UID_TO_PW = {}
-    MODULE_TO_UID = {}
 
     INVALID = {}
     ONCE_VALID = {}
+
+    EMAIL_TEMPLATE = Template("""Hello $cn,
+
+There is a new way to get accounts setup asap. This using a system
+called Mango. The new system will directly mail the maintainer(s) of the
+responsible module (you). With this email I'll try to explain how it
+will work.
+
+ ==> IF YOU AREN'T INTERESTED IN DETAILS, SEE END OF THE EMAIL FOR YOUR
+ ==> PASSWORD
+
+If you missed my blog post regarding Mango, please read/glance:
+http://blogs.gnome.org/ovitters/2007/09/26/sneak-preview-of-mango/
+(images are cropped, sorry)
+
+Basically the process is as follows:
+1. User requests account
+2. User verifies email address
+3. Mango mails maintainers
+4. Maintainers reject/approve account request
+==> can need multiple maintainers if e.g. user requested e.g. Bugzilla
+shell account and SVN for nautilus.. in practice, this won't happen
+5a. Mango mails Accounts Team
+5b. Mango mails user giving advice on the progress
+6. Accounts Team sets up user in LDAP
+7. User gets welcome email
+
+Note: steps 3-4 can be skipped as some requests will directly go to the
+accounts team (e.g. @gnome.org alias)
+
+
+What does not work:
+* This is for new accounts. It will not work if the userid already
+exists. This is planned for the future (so you can request an additional
+group).
+* You cannot change your Mango password. Sorry. See end of the email for
+how to get your password.
+* You cannot change your other details (SSH keys, email address). It is
+planned, but can take a while before you see it.
+* You cannot change who is maintainer of your modules. This is planned
+for the future.
+==> If you want to dicuss Mango, please use
+gnome-infrastructure@gnome.org mailing list.
+
+
+How to approve account requests:
+* You will get an email from Mango to your email address registered in
+LDAP. This is (possibly) different from
+http://foundation.gnome.org/membership/members.php!
+* Go to https://mango.gnome.org/ and log in (see end of email for
+password)
+* You will get an overview of outstanding requests right after logging
+in. See http://blogs.gnome.org/ovitters/files/2007/09/mango7.png. If
+there aren't any outstanding requests, currently it only says something
+like "Welcome $NAME" (and a log out button).
+* Reject/approve the request(s) and click submit
+Note: Because this goes to multiple persons, you might not see the
+request even if you got an email from Mango. This means another person
+was faster.
+==> NOTE: The user will be informed. If you reject a person, please send
+an explanation to the user. Ideally before you click submit, because
+Mango will email the user right away.
+
+
+In case of problems:
+Please either email gnome-infrastructure@gnome.org, or file a bug:
+http://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=mango
+(sysadmin product, mango component)
+
+
+YOUR MANGO PASSWORD
+To see your mango password, do:
+  ssh -l $uid svn.gnome.org mango
+
+Your username is same as your SVN username.
+
+Note: You can only run this command once. The next time it will have
+forgotten what your password was.
+
+Note2: For those who want to try out, this allows you to use the jabber
+service (jabber.gnome.org, username is same as svn/mango/etc). Please
+*enforce* SSL/TLS. Do NOT allow plain text auth! However, this is only
+intended for foundation members (it'll work currently for everyone, but
+that will not be forever). This was setup by Jeff, if it doesn't work,
+it probably requires some other setting.""")
 
     def __init__(self, passwd):
         self.LDAP_PASSWD = passwd
@@ -46,23 +148,25 @@ class Mango(object):
         self._ldap = l
         self._init_ldap_accounts()
 
+
     def _init_ldap_accounts(self):
         l = self._ldap
         results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount")
         for entry in results:
-                id = entry[0]
-                attr = entry[1]
+            id = entry[0]
+            attr = entry[1]
 
-                if 'mail' not in attr: # Make sure it isn't some internal userid
-                        continue
+            if 'mail' not in attr: # Make sure it isn't some internal userid
+                continue
 
-                uid = attr['uid'][0]
-                cn = attr['cn'][0]
+            uid = attr['uid'][0]
+            cn = attr['cn'][0]
 
-                if 'userPassword' in attr:
-                    self.UID_TO_PW[uid] = attr['userPassword'][0]
-                self.UID_TO_CN[uid] = cn
-                self.UID_TO_MAIL[uid] = attr['mail'][0].lower().strip()
+            if 'userPassword' in attr:
+                self.UID_TO_PW[uid] = attr['userPassword'][0]
+            self.UID_TO_CN[uid] = cn
+            self.UID_TO_MAIL[uid] = attr['mail'][0].lower().strip()
+
 
     def get_maintainer_data_ldap(self):
         UID_TO_MODULES = {}
@@ -98,115 +202,119 @@ class Mango(object):
         MODULE_TO_UIDS = {}
 
         for module in self.get_svn_modules():
-                # capture stderr as well to avoid displaying these
-                data = subprocess.Popen(['svnlook', 'cat', module, '/trunk/MAINTAINERS'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+            # capture stderr as well to avoid displaying these
+            data = subprocess.Popen(['svnlook', 'cat', module, '/trunk/MAINTAINERS'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
 
-                if data == "": continue
+            if data == "": continue
 
-                modname = os.path.basename(module)
-                data += "\n\n\n" # simplifies logic
+            modname = os.path.basename(module)
+            data += "\n\n\n" # simplifies logic
 
-                should_have_maint = False
-                had_maint = False
-                nr, name, email, uid = 0, None, None, None
-                for l in data.splitlines():
-                        if l.startswith('#'): continue
+            should_have_maint = False
+            had_maint = False
+            nr, name, email, uid = 0, None, None, None
+            for l in data.splitlines():
+                if l.startswith('#'): continue
 
-                        nr += 1
-                        
-                        if l.startswith("Userid:"): should_have_maint = True
+                nr += 1
+                
+                if l.startswith("Userid:"): should_have_maint = True
 
-                        if l == "":
-                                if name is not None and email is not None and uid is not None:
-                                        had_maint = True
+                if l == "":
+                    if name is not None and email is not None and uid is not None:
+                        had_maint = True
 
-                                        is_valid_uid = uid in self.UID_TO_CN
-                                        possible_emails = ["%s@svn.gnome.org" % uid, "%s@gnome.org" % uid, "%s@cvs.gnome.org" % uid]
-                                        if is_valid_uid:
-                                                possible_emails.append(self.UID_TO_MAIL[uid])
-                                        spam_1 = [mail.replace('@', ' ').replace('.', ' ') for mail in possible_emails]
-                                        spam_2 = [mail.replace('@', ' at ').replace('.', ' dot ') for mail in possible_emails]
-                                        spam_3 = [mail.replace('@', ' ') for mail in possible_emails]
-                                        spam_4 = [mail.replace('@', ' at ') for mail in possible_emails]
+                        is_valid_uid = uid in self.UID_TO_CN
+                        possible_emails = ["%s@svn.gnome.org" % uid, "%s@gnome.org" % uid, "%s@cvs.gnome.org" % uid]
+                        if is_valid_uid:
+                            possible_emails.append(self.UID_TO_MAIL[uid])
+                        spam_1 = [mail.replace('@', ' ').replace('.', ' ') for mail in possible_emails]
+                        spam_2 = [mail.replace('@', ' at ').replace('.', ' dot ') for mail in possible_emails]
+                        spam_3 = [mail.replace('@', ' ') for mail in possible_emails]
+                        spam_4 = [mail.replace('@', ' at ') for mail in possible_emails]
 
-                                        possible_emails.extend(spam_1 + spam_2 + spam_3 + spam_4)
-                                        possible_emails.extend(['<%s>' % mail for mail in possible_emails])
-                 
-                                        is_valid_email = email in possible_emails
-                  
-                                        # XXX - not used/needed: self.MAINTAINERS.setdefault(modname, {})[uid] = [email, name, is_valid_uid, is_valid_email]
-                                        if is_valid_uid:
-                                            UID_TO_MODULES.setdefault(uid, set()).add(modname)
-                                            MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
-                                        if not is_valid_uid or not is_valid_email:
-                                                if uid not in self.INVALID:
-                                                        self.INVALID[uid] = [email, name, is_valid_uid, is_valid_email]
-                                                self.INVALID[uid].append(modname)
-                                        else:
-                                                self.ONCE_VALID[uid] = [email, name, is_valid_uid, is_valid_email]
-
-                                nr, name, email, uid = 0, None, None, None
-                                continue
-
-                        if nr > 3 or (nr > 1 and ": " not in l):
-                                if email and uid:
-                                        print "ERROR: Possible forgotten empty line: %s" % modname
-                                name, email, uid = None, None, None
-                                continue
-
-                        if nr == 1:
-                                name = l
+                        possible_emails.extend(spam_1 + spam_2 + spam_3 + spam_4)
+                        possible_emails.extend(['<%s>' % mail for mail in possible_emails])
+ 
+                        is_valid_email = email in possible_emails
+  
+                        # XXX - not used/needed: self.MAINTAINERS.setdefault(modname, {})[uid] = [email, name, is_valid_uid, is_valid_email]
+                        if is_valid_uid:
+                            UID_TO_MODULES.setdefault(uid, set()).add(modname)
+                            MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
+                        if not is_valid_uid or not is_valid_email:
+                            if uid not in self.INVALID:
+                                self.INVALID[uid] = [email, name, is_valid_uid, is_valid_email]
+                            self.INVALID[uid].append(modname)
                         else:
-                                field, value = l.split(": ", 1)
-                                field = field.rstrip()
-                                value = value.strip().lower()
-                                if field == 'E-mail' or field == 'E-Mail' or field == 'Email' or field == 'EMail':
-                                        email = value
-                                elif field == 'Userid':
-                                        uid = value
-                                else:
-                                        print "ERROR: Strange field: %s (module: %s)" % (field, modname)
+                            self.ONCE_VALID[uid] = [email, name, is_valid_uid, is_valid_email]
+
+                    nr, name, email, uid = 0, None, None, None
+                    continue
+
+                if nr > 3 or (nr > 1 and ": " not in l):
+                    if email and uid:
+                        print "ERROR: Possible forgotten empty line: %s" % modname
+                    name, email, uid = None, None, None
+                    continue
+
+                if nr == 1:
+                    name = l
+                else:
+                    field, value = l.split(": ", 1)
+                    field = field.rstrip()
+                    value = value.strip().lower()
+                    if field == 'E-mail' or field == 'E-Mail' or field == 'Email' or field == 'EMail':
+                        email = value
+                    elif field == 'Userid':
+                        uid = value
+                    else:
+                        print "ERROR: Strange field: %s (module: %s)" % (field, modname)
 
 
-                if should_have_maint and not had_maint:
-                        print "ERROR: Expected at least one maintainer for module %s, but found none" % modname
+            if should_have_maint and not had_maint:
+                print "ERROR: Expected at least one maintainer for module %s, but found none" % modname
         
         return (UID_TO_MODULES, MODULE_TO_UIDS)
 
 
-def store_passwds():
-    I = file('passwdlist').read().splitlines()
+    def set_passwds(uids):
+        """Set the password for one or more users"""
+        assert find_program('mkpasswd') != ''
+        assert find_program('slappasswd') != ''
+        # XXX - should be able to write to /var/local/mango
 
-    for l in I:
-            uid, passwd, hash = l.split("\t")
+        PASSWDS = {}
 
-            f = file('/var/local/mango/%s' % uid, 'w', 0600)
-            print >>f, passwd
-            f.close()
-
-
-
-
-UIDS=[uid for uid in file('uids').read().splitlines()]
-
-
-def set_passwds():
-    p = file("passwdlist", 'w')
-    for uid in UIDS:
-            if uid not in UID_TO_CN:
-                    continue
-
+#        p = file("passwdlist", 'w')
+        for uid in uids:
+            if uid not in self.UID_TO_CN:
+                continue
+                
+            # XXX - should use internal password method instead of mkpasswd
             passwd = subprocess.Popen(['mkpasswd', '-l', '12', '-s', '0'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].rstrip("\n")
+            # XXX - replace with stdin usage (-T /dev/stdin)
             f = file('secret', 'w')
             f.write(passwd)
             f.close()
             hash = subprocess.Popen(['slappasswd', '-h', '{SSHA}', '-T', 'secret'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].rstrip("\n")
-            print >>p, "\t".join((uid, passwd, hash))
+            PASSWDS[uid] = passwd
+#            print >>p, "\t".join((uid, passwd, hash))
 
             dn="uid=%s,ou=people,dc=gnome,dc=org" % uid
             new={'userPassword': hash}
             ldif = modlist.modifyModlist({},new)
             l.modify_s(dn,ldif)
+        return PASSWDS
+
+    def store_passwds(passwds):
+        """Saves the password to files readable only by the intended UID.
+
+        These passwords will be cleared asap."""
+        for uid, passwd in passwds.iteritems():
+            f = file('/var/local/mango/%s' % uid, 'w', 0600)
+            print >>f, passwd
+            f.close()
 
 
 if __name__ == '__main__':
@@ -217,18 +325,21 @@ if __name__ == '__main__':
     ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS
     svn_data = m.get_maintainer_data_svn()
 
-    ul = set(ldap_data[0].keys())
-    us = set(svn_data[0].keys())
+    ul = set(ldap_data[1].keys())
+    us = set(svn_data[1].keys())
 
-    new_uids = us.difference(ul)
-    print "New userids:"
-    print sorted(new_uids)
-    for uid in us.intersection(ul):
-        mod_added = svn_data[0][uid].difference(ldap_data[0][uid])
-        mod_removed = ldap_data[0][uid].difference(svn_data[0][uid])
+    new_mods = us.difference(ul)
+    removed_mods = ul.difference(us)
+    print "New modules:"
+    print sorted(new_mods)
+    print "Removed modules:"
+    print sorted(removed_mods)
+    for modname in us.intersection(ul):
+        mod_added = svn_data[1][modname].difference(ldap_data[1][modname])
+        mod_removed = ldap_data[1][modname].difference(svn_data[1][modname])
         if len(mod_added) or len(mod_removed):
-            print "UID %s" % uid
-            print mod_added
-            print mod_removed
+            print "Module %s" % modname
+            print sorted(mod_added)
+            print sorted(mod_removed)
 
 

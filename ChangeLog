@@ -1,5 +1,10 @@
 2007-11-25  Olav Vitters  <olav@bkor.dhs.org>
 
+	* handle-ldap-modules: Make sure required programs exist. Further
+	improve handling. Still doesn't really do anything.
+
+2007-11-25  Olav Vitters  <olav@bkor.dhs.org>
+
 	* handle-ldap-modules: Work in progress. Deals with adding SVN modules
 	in LDAP for usage with Mango, setting maintainer passwords, informing
 	them, etc.
