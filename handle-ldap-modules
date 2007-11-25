@@ -6,7 +6,10 @@ import glob
 import subprocess
 import ldap
 import ldap.modlist
-from string import Template
+import string
+from random import choice
+from svn import fs, core, repos
+
 try: import readline
 except: pass
 
@@ -40,6 +43,33 @@ def find_program(prog):
             return program
     return ""
 
+def gen_passwd(length=8, chars=string.letters + string.digits):
+        return ''.join([choice(chars) for i in range(length)])
+
+CHUNK_SIZE = 16384
+def svn_get_file(path, filename, rev=None):
+    try:
+        repos_ptr = repos.open(path)
+    except core.SubversionException:
+        return None
+    fsob = repos.fs(repos_ptr)
+
+    if rev is None:
+        rev = fs.youngest_rev(fsob)
+
+    root = fs.revision_root(fsob, rev)
+    try:
+        file = fs.file_contents(root, filename)
+    except core.SubversionException:
+        return None
+    d = []
+    while 1:
+        data = core.svn_stream_read(file, CHUNK_SIZE)
+        if not data:
+            break
+        d.append(data)
+    return ''.join(d)
+
 
 class Mango(object):
 
@@ -54,7 +84,7 @@ class Mango(object):
     INVALID = {}
     ONCE_VALID = {}
 
-    EMAIL_TEMPLATE = Template("""Hello $cn,
+    EMAIL_TEMPLATE = string.Template("""Hello $cn,
 
 There is a new way to get accounts setup asap. This using a system
 called Mango. The new system will directly mail the maintainer(s) of the
@@ -202,10 +232,9 @@ it probably requires some other setting.""")
         MODULE_TO_UIDS = {}
 
         for module in self.get_svn_modules():
-            # capture stderr as well to avoid displaying these
-            data = subprocess.Popen(['svnlook', 'cat', module, '/trunk/MAINTAINERS'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+            data = svn_get_file(module, '/trunk/MAINTAINERS')
 
-            if data == "": continue
+            if data is None: continue
 
             modname = os.path.basename(module)
             data += "\n\n\n" # simplifies logic
@@ -280,7 +309,6 @@ it probably requires some other setting.""")
 
     def set_passwds(uids):
         """Set the password for one or more users"""
-        assert find_program('mkpasswd') != ''
         assert find_program('slappasswd') != ''
         # XXX - should be able to write to /var/local/mango
 
@@ -291,15 +319,14 @@ it probably requires some other setting.""")
             if uid not in self.UID_TO_CN:
                 continue
                 
-            # XXX - should use internal password method instead of mkpasswd
-            passwd = subprocess.Popen(['mkpasswd', '-l', '12', '-s', '0'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].rstrip("\n")
+            passwd = gen_passwd(length=12)
             # XXX - replace with stdin usage (-T /dev/stdin)
             f = file('secret', 'w')
             f.write(passwd)
             f.close()
+            # import sha from base64 import b64encode ctx = sha.new( password ) ctx.update( salt ) hash = "{SSHA}" + b64encode( ctx.digest() + salt )
             hash = subprocess.Popen(['slappasswd', '-h', '{SSHA}', '-T', 'secret'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].rstrip("\n")
             PASSWDS[uid] = passwd
-#            print >>p, "\t".join((uid, passwd, hash))
 
             dn="uid=%s,ou=people,dc=gnome,dc=org" % uid
             new={'userPassword': hash}
