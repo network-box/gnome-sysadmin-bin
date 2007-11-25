@@ -1,0 +1,234 @@
+#!/usr/bin/python
+
+import os
+import sys
+import glob
+import subprocess
+import ldap
+import ldap.modlist
+try: import readline
+except: pass
+
+def getpass(prompt = "Password: "):
+    import termios
+    fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    new = termios.tcgetattr(fd)
+    new[3] = new[3] & ~termios.ECHO          # lflags
+    try:
+        termios.tcsetattr(fd, termios.TCSADRAIN, new)
+        passwd = raw_input(prompt)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+    return passwd
+
+
+class Mango(object):
+
+    LDAP_PASSWD = None
+    _ldap = None
+
+    UID_TO_CN = {}
+    UID_TO_MAIL = {}
+    MAINTAINERS = {}
+    UID_TO_PW = {}
+    MODULE_TO_UID = {}
+
+    INVALID = {}
+    ONCE_VALID = {}
+
+    def __init__(self, passwd):
+        self.LDAP_PASSWD = passwd
+
+        l = ldap.initialize("ldap://ldap-back:389")
+        l.simple_bind_s("cn=Manager,dc=gnome,dc=org", LDAP_PASSWD)
+
+        self._ldap = l
+        self._init_ldap_accounts()
+
+    def _init_ldap_accounts(self):
+        l = self._ldap
+        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount")
+        for entry in results:
+                id = entry[0]
+                attr = entry[1]
+
+                if 'mail' not in attr: # Make sure it isn't some internal userid
+                        continue
+
+                uid = attr['uid'][0]
+                cn = attr['cn'][0]
+
+                if 'userPassword' in attr:
+                    self.UID_TO_PW[uid] = attr['userPassword'][0]
+                self.UID_TO_CN[uid] = cn
+                self.UID_TO_MAIL[uid] = attr['mail'][0].lower().strip()
+
+    def get_maintainer_data_ldap(self):
+        UID_TO_MODULES = {}
+        MODULE_TO_UIDS = {}
+
+        l = self._ldap
+        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "(&(!(objectClass=localizationModule))(objectClass=gnomeModule))", ('cn', 'description','maintainerUid'))
+        for entry in results:
+            id = entry[0]
+            attr = entry[1]
+            
+            modname = attr['cn'][0]
+            uids = attr['maintainerUid']
+
+            MODULE_TO_UIDS.setdefault(modname, set()).update(uids)
+            for uid in uids:
+                UID_TO_MODULES.setdefault(uid, set()).add(modname)
+
+        return (UID_TO_MODULES, MODULE_TO_UIDS)
+
+
+    def get_svn_modules(self):
+        """Return a list of SVN modules (cached)"""
+        if not hasattr(self, 'MODULES'):
+            self.MODULES = [mod for mod in glob.glob('/svn/*') if os.path.exists(os.path.join(mod, 'hooks'))]
+
+        return self.MODULES
+
+
+    def get_maintainer_data_svn(self):
+        """Try to find the maintainers of every GNOME SVN repository"""
+        UID_TO_MODULES = {}
+        MODULE_TO_UIDS = {}
+
+        for module in self.get_svn_modules():
+                # capture stderr as well to avoid displaying these
+                data = subprocess.Popen(['svnlook', 'cat', module, '/trunk/MAINTAINERS'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+
+                if data == "": continue
+
+                modname = os.path.basename(module)
+                data += "\n\n\n" # simplifies logic
+
+                should_have_maint = False
+                had_maint = False
+                nr, name, email, uid = 0, None, None, None
+                for l in data.splitlines():
+                        if l.startswith('#'): continue
+
+                        nr += 1
+                        
+                        if l.startswith("Userid:"): should_have_maint = True
+
+                        if l == "":
+                                if name is not None and email is not None and uid is not None:
+                                        had_maint = True
+
+                                        is_valid_uid = uid in self.UID_TO_CN
+                                        possible_emails = ["%s@svn.gnome.org" % uid, "%s@gnome.org" % uid, "%s@cvs.gnome.org" % uid]
+                                        if is_valid_uid:
+                                                possible_emails.append(self.UID_TO_MAIL[uid])
+                                        spam_1 = [mail.replace('@', ' ').replace('.', ' ') for mail in possible_emails]
+                                        spam_2 = [mail.replace('@', ' at ').replace('.', ' dot ') for mail in possible_emails]
+                                        spam_3 = [mail.replace('@', ' ') for mail in possible_emails]
+                                        spam_4 = [mail.replace('@', ' at ') for mail in possible_emails]
+
+                                        possible_emails.extend(spam_1 + spam_2 + spam_3 + spam_4)
+                                        possible_emails.extend(['<%s>' % mail for mail in possible_emails])
+                 
+                                        is_valid_email = email in possible_emails
+                  
+                                        # XXX - not used/needed: self.MAINTAINERS.setdefault(modname, {})[uid] = [email, name, is_valid_uid, is_valid_email]
+                                        if is_valid_uid:
+                                            UID_TO_MODULES.setdefault(uid, set()).add(modname)
+                                            MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
+                                        if not is_valid_uid or not is_valid_email:
+                                                if uid not in self.INVALID:
+                                                        self.INVALID[uid] = [email, name, is_valid_uid, is_valid_email]
+                                                self.INVALID[uid].append(modname)
+                                        else:
+                                                self.ONCE_VALID[uid] = [email, name, is_valid_uid, is_valid_email]
+
+                                nr, name, email, uid = 0, None, None, None
+                                continue
+
+                        if nr > 3 or (nr > 1 and ": " not in l):
+                                if email and uid:
+                                        print "ERROR: Possible forgotten empty line: %s" % modname
+                                name, email, uid = None, None, None
+                                continue
+
+                        if nr == 1:
+                                name = l
+                        else:
+                                field, value = l.split(": ", 1)
+                                field = field.rstrip()
+                                value = value.strip().lower()
+                                if field == 'E-mail' or field == 'E-Mail' or field == 'Email' or field == 'EMail':
+                                        email = value
+                                elif field == 'Userid':
+                                        uid = value
+                                else:
+                                        print "ERROR: Strange field: %s (module: %s)" % (field, modname)
+
+
+                if should_have_maint and not had_maint:
+                        print "ERROR: Expected at least one maintainer for module %s, but found none" % modname
+        
+        return (UID_TO_MODULES, MODULE_TO_UIDS)
+
+
+def store_passwds():
+    I = file('passwdlist').read().splitlines()
+
+    for l in I:
+            uid, passwd, hash = l.split("\t")
+
+            f = file('/var/local/mango/%s' % uid, 'w', 0600)
+            print >>f, passwd
+            f.close()
+
+
+
+
+UIDS=[uid for uid in file('uids').read().splitlines()]
+
+
+def set_passwds():
+    p = file("passwdlist", 'w')
+    for uid in UIDS:
+            if uid not in UID_TO_CN:
+                    continue
+
+            passwd = subprocess.Popen(['mkpasswd', '-l', '12', '-s', '0'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].rstrip("\n")
+            f = file('secret', 'w')
+            f.write(passwd)
+            f.close()
+            hash = subprocess.Popen(['slappasswd', '-h', '{SSHA}', '-T', 'secret'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].rstrip("\n")
+            print >>p, "\t".join((uid, passwd, hash))
+
+            dn="uid=%s,ou=people,dc=gnome,dc=org" % uid
+            new={'userPassword': hash}
+            ldif = modlist.modifyModlist({},new)
+            l.modify_s(dn,ldif)
+
+
+if __name__ == '__main__':
+    print "Please provide the Manager LDAP password"
+    LDAP_PASSWD = getpass('--> ')
+
+    m = Mango(LDAP_PASSWD)
+    ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS
+    svn_data = m.get_maintainer_data_svn()
+
+    ul = set(ldap_data[0].keys())
+    us = set(svn_data[0].keys())
+
+    new_uids = us.difference(ul)
+    print "New userids:"
+    print sorted(new_uids)
+    for uid in us.intersection(ul):
+        mod_added = svn_data[0][uid].difference(ldap_data[0][uid])
+        mod_removed = ldap_data[0][uid].difference(svn_data[0][uid])
+        if len(mod_added) or len(mod_removed):
+            print "UID %s" % uid
+            print mod_added
+            print mod_removed
+
+

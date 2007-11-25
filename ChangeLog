@@ -1,3 +1,9 @@
+2007-11-25  Olav Vitters  <olav@bkor.dhs.org>
+
+	* handle-ldap-modules: Work in progress. Deals with adding SVN modules
+	in LDAP for usage with Mango, setting maintainer passwords, informing
+	them, etc.
+
 2007-10-21  Olav Vitters  <olav@bkor.dhs.org>
 
 	* create-auth: Exit if we cannot bind to the LDAP server.
