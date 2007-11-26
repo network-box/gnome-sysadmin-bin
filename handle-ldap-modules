@@ -3,12 +3,13 @@
 import os
 import sys
 import glob
-import subprocess
 import ldap
 import ldap.modlist
 import string
-from random import choice
+from random import choice, randrange
 from svn import fs, core, repos
+import sha
+from base64 import b64encode
 
 try: import readline
 except: pass
@@ -44,7 +45,13 @@ def find_program(prog):
     return ""
 
 def gen_passwd(length=8, chars=string.letters + string.digits):
-        return ''.join([choice(chars) for i in range(length)])
+    return ''.join([choice(chars) for i in range(length)])
+
+def hash_ssha(password):
+    salt = ''.join([chr(randrange(0,255)) for i in range(4)])
+    ctx = sha.new(password  + salt)
+    hash = "{SSHA}" + b64encode(ctx.digest() + salt)
+    return hash
 
 CHUNK_SIZE = 16384
 def svn_get_file(path, filename, rev=None):
@@ -78,11 +85,7 @@ class Mango(object):
 
     UID_TO_CN = {}
     UID_TO_MAIL = {}
-    MAINTAINERS = {}
     UID_TO_PW = {}
-
-    INVALID = {}
-    ONCE_VALID = {}
 
     EMAIL_TEMPLATE = string.Template("""Hello $cn,
 
@@ -230,6 +233,9 @@ it probably requires some other setting.""")
         """Try to find the maintainers of every GNOME SVN repository"""
         UID_TO_MODULES = {}
         MODULE_TO_UIDS = {}
+        INVALID = {}
+        ONCE_VALID = {}
+
 
         for module in self.get_svn_modules():
             data = svn_get_file(module, '/trunk/MAINTAINERS')
@@ -272,11 +278,11 @@ it probably requires some other setting.""")
                             UID_TO_MODULES.setdefault(uid, set()).add(modname)
                             MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
                         if not is_valid_uid or not is_valid_email:
-                            if uid not in self.INVALID:
-                                self.INVALID[uid] = [email, name, is_valid_uid, is_valid_email]
-                            self.INVALID[uid].append(modname)
+                            if uid not in INVALID:
+                                INVALID[uid] = [email, name, is_valid_uid, is_valid_email]
+                            INVALID[uid].append(modname)
                         else:
-                            self.ONCE_VALID[uid] = [email, name, is_valid_uid, is_valid_email]
+                            ONCE_VALID[uid] = [email, name, is_valid_uid, is_valid_email]
 
                     nr, name, email, uid = 0, None, None, None
                     continue
@@ -304,12 +310,11 @@ it probably requires some other setting.""")
             if should_have_maint and not had_maint:
                 print "ERROR: Expected at least one maintainer for module %s, but found none" % modname
         
-        return (UID_TO_MODULES, MODULE_TO_UIDS)
+        return (UID_TO_MODULES, MODULE_TO_UIDS, INVALID, ONCE_VALID)
 
 
     def set_passwds(uids):
         """Set the password for one or more users"""
-        assert find_program('slappasswd') != ''
         # XXX - should be able to write to /var/local/mango
 
         PASSWDS = {}
@@ -320,12 +325,7 @@ it probably requires some other setting.""")
                 continue
                 
             passwd = gen_passwd(length=12)
-            # XXX - replace with stdin usage (-T /dev/stdin)
-            f = file('secret', 'w')
-            f.write(passwd)
-            f.close()
-            # import sha from base64 import b64encode ctx = sha.new( password ) ctx.update( salt ) hash = "{SSHA}" + b64encode( ctx.digest() + salt )
-            hash = subprocess.Popen(['slappasswd', '-h', '{SSHA}', '-T', 'secret'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0].rstrip("\n")
+            hash = hash_ssha(passwd)
             PASSWDS[uid] = passwd
 
             dn="uid=%s,ou=people,dc=gnome,dc=org" % uid
@@ -354,6 +354,8 @@ if __name__ == '__main__':
 
     ul = set(ldap_data[1].keys())
     us = set(svn_data[1].keys())
+    INVALID = svn_data[2]
+    ONCE_VALID = svn_data[3]
 
     new_mods = us.difference(ul)
     removed_mods = ul.difference(us)
@@ -369,4 +371,9 @@ if __name__ == '__main__':
             print sorted(mod_added)
             print sorted(mod_removed)
 
+    for uid in sorted(INVALID.keys()):
+            if uid in ONCE_VALID:
+                    continue
+
+            print "\t".join([uid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
 

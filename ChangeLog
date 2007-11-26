@@ -1,5 +1,10 @@
 2007-11-26  Olav Vitters  <olav@bkor.dhs.org>
 
+	* handle-ldap-modules: Remove dependency on slappasswd (last of the
+	external commands!).
+
+2007-11-26  Olav Vitters  <olav@bkor.dhs.org>
+
 	* handle-ldap-modules: Use SVN Python bindings to add a svn_get_file.
 	This avoids spawning svnlook hundreds of times (massive speed
 	increase). Also add a gen_passwd function, avoiding a dependency on
