@@ -519,6 +519,15 @@ if __name__ == '__main__':
             print 'Resetting passwords for: %s' % ', '.join(uids)
             passwds = m.set_passwds(uids)
             m.store_passwds(passwds)
+    elif cmd == 'new-passwd':
+        uids = []
+        for uid in sys.argv[1:]:
+            if uid in m.UID_TO_MAIL and uid not in m.UID_TO_PW:
+                uids.append(uid)
+        if uids:
+            print 'Setting new passwords for: %s' % ', '.join(uids)
+            passwds = m.set_passwds(uids)
+            m.store_passwds(passwds)
     else:
         usage()
     
