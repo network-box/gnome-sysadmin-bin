@@ -379,7 +379,6 @@ it probably requires some other setting.""")
             l.modify_s(dn,ldif)
         return PASSWDS
 
-#alo, jsh, treitter, charles, jjsanchez, bratsche, aleksey, johnp, johncarr, gauteh, dbera, markoa, luca, thomasvm, cyenyxe, erichs, rdraica, psanxiao, mvdpot, carlosd, kmaute, hasselmm, telemaco, rancell, chrisime, fredgo, kvansant, davidz, aruiz, masneyb, jtai, rbradford, oserb, bjornl, rodo, zcerza, lucilanga, samh, hub, jpu, jstowers, calvinrg, bradya, ramonnb, bgarret, hiikezoe, ccollier, dov
 
     def store_passwds(self, passwds):
         """Saves the password to files readable only by the intended UID.
@@ -391,7 +390,7 @@ it probably requires some other setting.""")
         s.connect()
         
         try:
-            prevmask = os.umask(0377)
+            prevmask = os.umask(0177)
                 
             for uid, passwd in passwds.iteritems():
                 if uid not in self.UID_TO_CN: continue # XXX -- warn loudly
@@ -451,7 +450,7 @@ it probably requires some other setting.""")
                 continue
             print ldap_dn[modname]
             
-            l.delete_s(ldap_dn[modname])
+            l.delete_s(ldap_dn[modname]) # XXX - doesn't actually work
 
         
 
@@ -511,6 +510,15 @@ if __name__ == '__main__':
 
     elif cmd == 'test-reset':
         m.store_passwds({'ovitters': 'yeahright'})
+    elif cmd == 'reset-passwd':
+        uids = []
+        for uid in sys.argv[1:]:
+            if uid in m.UID_TO_PW:
+                uids.append(uid)
+        if uids:
+            print 'Resetting passwords for: %s' % ', '.join(uids)
+            passwds = m.set_passwds(uids)
+            m.store_passwds(passwds)
     else:
         usage()
     

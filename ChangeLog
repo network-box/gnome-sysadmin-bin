@@ -1,5 +1,12 @@
 2007-12-02  Olav Vitters  <olav@bkor.dhs.org>
 
+	* handle-ldap-modules: Add 'reset-passwd' command. This command checks
+	to see if the userid exists and actually has a password before
+	resetting it. This due to users requesting Mango passwd resets while
+	they have no Mango accounts.
+
+2007-12-02  Olav Vitters  <olav@bkor.dhs.org>
+
 	* handle-ldap-modules: Use DN given by searches whenever possible.
 	Actually create and update existing modules in LDAP. Set passwords for
 	people who lack one. Email people the password retrieving
