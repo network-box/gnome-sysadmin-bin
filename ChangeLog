@@ -1,3 +1,11 @@
+2007-12-02  Olav Vitters  <olav@bkor.dhs.org>
+
+	* handle-ldap-modules: Use DN given by searches whenever possible.
+	Actually create and update existing modules in LDAP. Set passwords for
+	people who lack one. Email people the password retrieving
+	instructions.
+	Note: For some reason the module deletion/removal fails.
+
 2007-11-27  Olav Vitters  <olav@bkor.dhs.org>
 
 	* handle-ldap-modules: Generate the required ldif stuff to add and

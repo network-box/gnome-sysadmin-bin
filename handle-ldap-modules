@@ -10,6 +10,8 @@ from random import choice, randrange
 from svn import fs, core, repos
 import sha
 from base64 import b64encode
+import smtplib
+from email.MIMEText import MIMEText
 
 try: import readline
 except: pass
@@ -106,12 +108,10 @@ def svn_get_file(path, filename, rev=None):
 
 class Mango(object):
 
+    #LDAP_URL = "ldap://ldap-back:389"
+    LDAP_URL = "ldap://localhost:1389"
     LDAP_PASSWD = None
     _ldap = None
-
-    UID_TO_CN = {}
-    UID_TO_MAIL = {}
-    UID_TO_PW = {}
 
     EMAIL_TEMPLATE = string.Template("""Hello $cn,
 
@@ -201,7 +201,7 @@ it probably requires some other setting.""")
     def __init__(self, passwd):
         self.LDAP_PASSWD = passwd
 
-        l = ldap.initialize("ldap://ldap-back:389")
+        l = ldap.initialize(Mango.LDAP_URL)
         l.protocol_version = ldap.VERSION3
         l.simple_bind_s("cn=Manager,dc=gnome,dc=org", LDAP_PASSWD)
 
@@ -210,8 +210,14 @@ it probably requires some other setting.""")
 
 
     def _init_ldap_accounts(self):
+        self.UID_TO_DN = {}
+        self.UID_TO_PW = {}
+        self.UID_TO_MAIL = {}
+        self.UID_TO_CN = {}
+        self.UID_TO_NR = {}
+
         l = self._ldap
-        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount")
+        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount", ('uid', 'cn', 'mail', 'userPassword', 'uidNumber'))
         for entry in results:
             id = entry[0]
             attr = entry[1]
@@ -222,10 +228,12 @@ it probably requires some other setting.""")
             uid = attr['uid'][0]
             cn = attr['cn'][0]
 
+            self.UID_TO_DN[uid] = id
             if 'userPassword' in attr:
                 self.UID_TO_PW[uid] = attr['userPassword'][0]
             self.UID_TO_CN[uid] = cn
             self.UID_TO_MAIL[uid] = attr['mail'][0].lower().strip()
+            self.UID_TO_NR[uid] = int(attr['uidNumber'][0])
 
 
     def get_maintainer_data_ldap(self):
@@ -235,6 +243,7 @@ it probably requires some other setting.""")
 
         UID_TO_MODULES = {}
         MODULE_TO_UIDS = {}
+        MODULE_TO_DN = {}
 
         l = self._ldap
         results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "(&(!(objectClass=localizationModule))(objectClass=gnomeModule))", ('cn', 'description','maintainerUid'))
@@ -245,11 +254,12 @@ it probably requires some other setting.""")
             modname = attr['cn'][0]
             uids = attr['maintainerUid']
 
+            MODULE_TO_DN[modname] = id
             MODULE_TO_UIDS.setdefault(modname, set()).update(uids)
             for uid in uids:
                 UID_TO_MODULES.setdefault(uid, set()).add(modname)
         
-        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS)
+        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DN)
         return self._maint_ldap
 
 
@@ -350,6 +360,7 @@ it probably requires some other setting.""")
         # XXX - should be able to write to /var/local/mango
 
         PASSWDS = {}
+        l = self._ldap
 
         for uid in uids:
             if uid not in self.UID_TO_CN:
@@ -359,7 +370,7 @@ it probably requires some other setting.""")
             hash = hash_ssha(passwd)
             PASSWDS[uid] = passwd
 
-            dn="uid=%s,ou=people,dc=gnome,dc=org" % escape_dn_chars(uid)
+            dn = self.UID_TO_DN[uid]
             if uid in self.UID_TO_PW:
                 old = {'userPassword': self.UID_TO_PW[uid]}
             else:
@@ -368,20 +379,51 @@ it probably requires some other setting.""")
             l.modify_s(dn,ldif)
         return PASSWDS
 
+#alo, jsh, treitter, charles, jjsanchez, bratsche, aleksey, johnp, johncarr, gauteh, dbera, markoa, luca, thomasvm, cyenyxe, erichs, rdraica, psanxiao, mvdpot, carlosd, kmaute, hasselmm, telemaco, rancell, chrisime, fredgo, kvansant, davidz, aruiz, masneyb, jtai, rbradford, oserb, bjornl, rodo, zcerza, lucilanga, samh, hub, jpu, jstowers, calvinrg, bradya, ramonnb, bgarret, hiikezoe, ccollier, dov
+
     def store_passwds(self, passwds):
         """Saves the password to files readable only by the intended UID.
 
         These passwords will be cleared asap."""
-        for uid, passwd in passwds.iteritems():
-            f = file('/var/local/mango/%s' % uid, 'w', 0600)
-            print >>f, passwd
-            f.close()
+        if not passwds: return
 
-    def update_ldap_modules(self, modules):
-        ldap_uids, ldap_modules  = self.get_maintainer_data_ldap()
+        s = smtplib.SMTP()
+        s.connect()
+        
+        try:
+            prevmask = os.umask(0377)
+                
+            for uid, passwd in passwds.iteritems():
+                if uid not in self.UID_TO_CN: continue # XXX -- warn loudly
+                
+                mail = self.UID_TO_MAIL[uid]
+                path = '/var/local/mango/%s' % uid
+                
+                f = file(path, 'w')
+                print >>f, passwd
+                f.close()
+                os.chown(path, self.UID_TO_NR[uid], -1)
 
-        for modname in modules.keys():
-            dn = 'cn=%s,ou=modules,dc=gnome,dc=org' % escape_dn_chars(modname)
+                mime = MIMEText(self.EMAIL_TEMPLATE.safe_substitute(
+                    uid=uid,
+                    mail=mail,
+                    cn=self.UID_TO_CN[uid],
+
+                ))
+                mime['Subject'] = 'GNOME Mango account: %s' % uid
+                mime['From'] = 'Mango <accounts@gnome.org>'
+                mime['To'] = mail
+                s.sendmail('accounts@gnome.org', [mail], mime.as_string())
+        finally:
+            os.umask(prevmask)
+ 
+
+    def update_ldap_modules(self, modules, remove=False):
+        ldap_uids, ldap_modules, ldap_dn  = self.get_maintainer_data_ldap()
+        l = self._ldap
+
+        for modname in sorted(modules.keys()):
+            dn = ldap_dn.get(modname, 'cn=%s,ou=modules,dc=gnome,dc=org' % escape_dn_chars(modname))
             maints = modules[modname]
 
             if modname not in ldap_modules: # add
@@ -392,44 +434,83 @@ it probably requires some other setting.""")
                      'description': '%s module' % modname,
                      'maintainerUid': list(modules[modname])}
                 )
-                print modname, ldif
+                l.add_s(dn, ldif)
             elif modname in ldap_modules and modules[modname].symmetric_difference(ldap_modules[modname]):
                 ldif = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
                                              {'maintainerUid': list(modules[modname])})
-                print modname, ldif
+                l.modify_s(dn,ldif)
+       
+        if not remove: return
+
+        rem_mods = set(ldap_modules.keys()).difference(modules.keys())
+
+        print "Modules to REALLY remove:"
+        print rem_mods
+        for modname in rem_mods:
+            if modname not in ldap_dn:
+                continue
+            print ldap_dn[modname]
+            
+            l.delete_s(ldap_dn[modname])
+
+        
+
+def usage():
+    print "Wrong usage"
+    sys.exit(1)
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 2: usage()
+
     print "Please provide the Manager LDAP password"
     LDAP_PASSWD = getpass('--> ')
 
     m = Mango(LDAP_PASSWD)
-    ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS
-    svn_data = m.get_maintainer_data_svn()
 
-    ul = set(ldap_data[1].keys())
-    us = set(svn_data[1].keys())
-    INVALID = svn_data[2]
-    ONCE_VALID = svn_data[3]
+    cmd = sys.argv.pop(1)
+    if cmd == 'sync':
+        ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS
+        svn_data = m.get_maintainer_data_svn()
 
-    new_mods = us.difference(ul)
-    removed_mods = ul.difference(us)
-    print "New modules:"
-    print sorted(new_mods)
-    print "Removed modules:"
-    print sorted(removed_mods)
-    for modname in us.intersection(ul):
-        mod_added = svn_data[1][modname].difference(ldap_data[1][modname])
-        mod_removed = ldap_data[1][modname].difference(svn_data[1][modname])
-        if len(mod_added) or len(mod_removed):
-            print "Module %s" % modname
-            print sorted(mod_added)
-            print sorted(mod_removed)
+        ul = set(ldap_data[1].keys())
+        us = set(svn_data[1].keys())
+        INVALID = svn_data[2]
+        ONCE_VALID = svn_data[3]
 
-    for uid in sorted(INVALID.keys()):
-            if uid in ONCE_VALID:
-                    continue
+        new_mods = us.difference(ul)
+        removed_mods = ul.difference(us)
+#        print "New modules:"
+#        print sorted(new_mods)
+#        print "Removed modules:"
+#        print sorted(removed_mods)
+#        for modname in us.intersection(ul):
+#            mod_added = svn_data[1][modname].difference(ldap_data[1][modname])
+#            mod_removed = ldap_data[1][modname].difference(svn_data[1][modname])
+#            if len(mod_added) or len(mod_removed):
+#                print "Module %s" % modname
+#                print sorted(mod_added)
+#                print sorted(mod_removed)
 
-            print "\t".join([uid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
+        for uid in sorted(INVALID.keys()):
+                if uid in ONCE_VALID:
+                        continue
 
-    m.update_ldap_modules(svn_data[1])
+                print "\t".join([uid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
+
+        #m.update_ldap_modules(svn_data[1], remove=True)
+        m.update_ldap_modules(svn_data[1])
+
+        uids_give_passwd = set(svn_data[0].keys()).difference(m.UID_TO_PW.keys())
+        if uids_give_passwd:
+            print "UIDs to give/reset passwords:"
+            print ", ".join(uids_give_passwd)
+            passwds = m.set_passwds(uids_give_passwd)
+            m.store_passwds(passwds)
+
+
+    elif cmd == 'test-reset':
+        m.store_passwds({'ovitters': 'yeahright'})
+    else:
+        usage()
+    
