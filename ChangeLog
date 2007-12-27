@@ -1,3 +1,8 @@
+2007-12-27  Olav Vitters  <olav@bkor.dhs.org>
+
+	* create-homedirs: Use subprocess and shutil instead of os.system.
+	Exit in case of LDAP errors.
+
 2007-12-02  Olav Vitters  <olav@bkor.dhs.org>
 
 	* handle-ldap-modules: Add 'new-passwd' command. Handy to for this

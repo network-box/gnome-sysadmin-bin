@@ -3,6 +3,8 @@ import ldap
 import grp
 import os
 import sys
+import shutil
+import subprocess
 
 ## first you must open a connection to the server
 try:
@@ -10,6 +12,7 @@ try:
     l.simple_bind("cn=Manager,dc=gnome,dc=org")
 except ldap.LDAPError, e:
     print e
+    sys.exit(1)
 
 
 def get_uids_from_group(group):
@@ -26,30 +29,33 @@ def get_uids_from_group(group):
                 return group_info['memberUid']
     except ldap.LDAPError, e:
         print e
+        sys.exit(1)
 
     return {}
 
 
 def create_home_directory (uid):
-	if os.path.isdir ("/home/users/%s" % uid):
-		return
-	
-	os.system ("/bin/cp -a /etc/skel /home/users/%s" % uid)
-	os.system ("/bin/chown -R %s:%s /home/users/%s" % (uid, uid, uid))
-	print "Created home directory for '%s'" % uid
+    src = '/etc/skel'
+    dst = "/home/users/%s" % uid
+    if os.path.isdir("/home/users/%s" % uid):
+        return
 
-	return
+    shutil.copytree(src, dst, True)
+    subprocess.call(['/bin/chown', '-R', '%s:%s' % (uid, uid), dst ])
+    print "Created home directory for '%s'" % uid
+
+    return
 
 
 if __name__ == '__main__':
-	# Get our list of ftpadmin members
+    # Get our list of ftpadmin members
     user_list = get_uids_from_group ("ftpadmin")
     for user in user_list:
-    	create_home_directory (user)
+        create_home_directory (user)
     user_list = get_uids_from_group ("gnomeweb")
     for user in user_list:
-    	create_home_directory (user)
+        create_home_directory (user)
     user_list = get_uids_from_group ("gnomecvs")
     for user in user_list:
-    	create_home_directory (user)
+        create_home_directory (user)
 
