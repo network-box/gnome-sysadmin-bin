@@ -1,5 +1,10 @@
 2007-12-27  Olav Vitters  <olav@bkor.dhs.org>
 
+	* create-auth: Use subprocess and shutil instead os os.system. Exit
+	in case of LDAP errors.
+
+2007-12-27  Olav Vitters  <olav@bkor.dhs.org>
+
 	* create-homedirs: Use subprocess and shutil instead of os.system.
 	Exit in case of LDAP errors.
 
