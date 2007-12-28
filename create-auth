@@ -220,7 +220,7 @@ if __name__ == '__main__':
     base_directory_name = create_directory_structure (user_list)
 
     initial_user_hash = get_md5sum_hash ()
-    status = subprocess.call(['rsync', '-av', '--delete', '%s/sshd/' % base_directory_name, '/etc/sshd/'])
+    status = subprocess.call(['rsync', '-aq', '--delete', '%s/sshd/' % base_directory_name, '/etc/sshd/'])
     if status != 0:
         print ("Error in rsync of files:")
         try:
