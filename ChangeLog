@@ -1,5 +1,10 @@
 2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
 
+	* handle-ldap-modules: Parse /trunk/translation-teams.xml.in for l10n
+	team information and setup those modules in LDAP.
+
+2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
+
 	* handle-ldap-modules: Add show-diffs command.
 
 2007-12-28  Olav Vitters  <olav@bkor.dhs.org>

@@ -17,6 +17,7 @@ import sha
 from base64 import b64encode
 import smtplib
 from email.MIMEText import MIMEText
+import libxml2
 
 try: import readline
 except: pass
@@ -249,22 +250,24 @@ it probably requires some other setting.""")
         UID_TO_MODULES = {}
         MODULE_TO_UIDS = {}
         MODULE_TO_DN = {}
+        MODULE_TO_DESC = {}
 
         l = self._ldap
         results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "(&(!(objectClass=localizationModule))(objectClass=gnomeModule))", ('cn', 'description','maintainerUid'))
         for entry in results:
             id = entry[0]
             attr = entry[1]
-            
+
             modname = attr['cn'][0]
             uids = attr['maintainerUid']
 
             MODULE_TO_DN[modname] = id
+            MODULE_TO_DESC[modname] = attr['description'][0]
             MODULE_TO_UIDS.setdefault(modname, set()).update(uids)
             for uid in uids:
                 UID_TO_MODULES.setdefault(uid, set()).add(modname)
-        
-        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DN)
+
+        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, MODULE_TO_DN)
         return self._maint_ldap
 
 
@@ -280,10 +283,54 @@ it probably requires some other setting.""")
         """Try to find the maintainers of every GNOME SVN repository"""
         UID_TO_MODULES = {}
         MODULE_TO_UIDS = {}
+        MODULE_TO_DESC = {}
         INVALID = {}
         ONCE_VALID = {}
 
+        # Get translation teams from damned-lies XML info
+        # This is hackish
+        l10n = svn_get_file('/svn/damned-lies', '/trunk/translation-teams.xml.in')
+        if l10n is None:
+            sys.stderr.write("ERROR: Cannot find /trunk/translation-teams.xml.in in damned-lies!\n")
+            sys.exit(1)
 
+        bad_uids = []
+        doc = libxml2.parseDoc(l10n)
+        root = doc.getRootElement()
+        teams = root.xpathEval("team[@id]")
+        for team in teams:
+            coordinators = [uid.prop('id') for uid in team.xpathEval('coordinator[@id]') if not uid.prop('id').startswith('x-')]
+            bad = [uid for uid in coordinators if uid not in self.UID_TO_CN]
+            if len(bad):
+                coordinators = [uid for uid in coordinators if uid in self.UID_TO_CN]
+                bad_uids.extend(bad)
+
+            if not len(coordinators):
+                continue
+
+            team_id = team.prop('id')
+            desc = None
+            descs = team.xpathEval("_description")
+            if len(descs):
+                desc = descs[0].content.decode('utf-8')
+            if desc is None:
+                descs = team.xpathEval("_language")
+                desc = descs[0].content.decode('utf-8')
+
+            modname = 'l10n-%s' % team_id
+            MODULE_TO_DESC[modname] = '%s (team %s)' % (desc, team_id)
+            for uid in coordinators:
+                UID_TO_MODULES.setdefault(uid, set()).add(modname)
+                MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
+
+        doc.freeDoc()
+
+        if len(bad_uids):
+            print "Bad Uids in damned-lies:"
+            print "\n".join(sorted(bad_uids))
+
+
+        # Get module maintainer data from MAINTAINERS file in SVN
         for module in self.get_svn_modules():
             data = svn_get_file(module, '/trunk/MAINTAINERS')
 
@@ -299,7 +346,7 @@ it probably requires some other setting.""")
                 if l.startswith('#'): continue
 
                 nr += 1
-                
+
                 if l.startswith("Userid:"): should_have_maint = True
 
                 if l == "":
@@ -356,8 +403,8 @@ it probably requires some other setting.""")
 
             if should_have_maint and not had_maint:
                 print "ERROR: Expected at least one maintainer for module %s, but found none" % modname
-        
-        return (UID_TO_MODULES, MODULE_TO_UIDS, INVALID, ONCE_VALID)
+
+        return (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, INVALID, ONCE_VALID)
 
 
     def set_passwds(self, uids):
@@ -370,7 +417,7 @@ it probably requires some other setting.""")
         for uid in uids:
             if uid not in self.UID_TO_CN:
                 continue
-                
+
             passwd = gen_passwd(length=12)
             hash = hash_ssha(passwd)
             PASSWDS[uid] = passwd
@@ -422,31 +469,35 @@ it probably requires some other setting.""")
             os.umask(prevmask)
  
 
-    def update_ldap_modules(self, modules, change=True, remove=False):
-        ldap_uids, ldap_modules, ldap_dn  = self.get_maintainer_data_ldap()
+    def update_ldap_modules(self, svn_modules, svn_descs, change=True, remove=False):
+        ldap_uids, ldap_modules, ldap_desc, ldap_dn = self.get_maintainer_data_ldap()
         l = self._ldap
 
         if not change: remove = False
 
-        for modname in sorted(modules.keys()):
+        for modname in sorted(svn_modules.keys()):
             dn = ldap_dn.get(modname, 'cn=%s,ou=modules,dc=gnome,dc=org' % escape_dn_chars(modname))
-            maints = modules[modname]
+            maints = svn_modules[modname]
 
             if modname not in ldap_modules: # add
+                classes = ['gnomeModule', 'inetOrgPerson']
+                # XXX - Fucking ugly hack
+                if modname.startswith('l10n-') and modname in svn_descs:
+                    classes.append('localizationModule')
                 ldif = ldap.modlist.addModlist(
-                    {'objectClass': ['gnomeModule', 'inetOrgPerson'],
+                    {'objectClass': classes,
                      'cn': modname,
                      'sn': modname,
-                     'description': '%s module' % modname,
-                     'maintainerUid': list(modules[modname])}
+                     'description': svn_descs.get(modname, '%s module' % modname),
+                     'maintainerUid': list(svn_modules[modname])}
                 )
                 if change:
                     l.add_s(dn, ldif)
                 else:
                     print dn, ldif
-            elif modname in ldap_modules and modules[modname].symmetric_difference(ldap_modules[modname]):
+            elif modname in ldap_modules and svn_modules[modname].symmetric_difference(ldap_modules[modname]):
                 ldif = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
-                                             {'maintainerUid': list(modules[modname])})
+                                             {'maintainerUid': list(svn_modules[modname])})
                 if change:
                     l.modify_s(dn,ldif)
                 else:
@@ -454,7 +505,7 @@ it probably requires some other setting.""")
 
         if not remove: return
 
-        rem_mods = set(ldap_modules.keys()).difference(modules.keys())
+        rem_mods = set(ldap_modules.keys()).difference(svn_modules.keys())
 
         print "Modules to REALLY remove:"
         print rem_mods
@@ -484,16 +535,17 @@ if __name__ == '__main__':
     if cmd == 'sync' or cmd == 'show-diffs':
         change_stuff = cmd == 'sync'
 
-        ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS
         svn_data = m.get_maintainer_data_svn()
+#        ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC
 
-        ul = set(ldap_data[1].keys())
-        us = set(svn_data[1].keys())
-        INVALID = svn_data[2]
-        ONCE_VALID = svn_data[3]
+#        ul = set(ldap_data[1].keys())
+#        us = set(svn_data[1].keys())
+        desc_svn = svn_data[2]
+        INVALID = svn_data[3]
+        ONCE_VALID = svn_data[4]
 
-        new_mods = us.difference(ul)
-        removed_mods = ul.difference(us)
+#        new_mods = us.difference(ul)
+#        removed_mods = ul.difference(us)
 #        print "New modules:"
 #        print sorted(new_mods)
 #        print "Removed modules:"
@@ -513,7 +565,7 @@ if __name__ == '__main__':
                 print "\t".join([uid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
 
         #m.update_ldap_modules(svn_data[1], remove=True)
-        m.update_ldap_modules(svn_data[1], change=change_stuff)
+        m.update_ldap_modules(svn_data[1], svn_data[2], change=change_stuff)
 
         uids_give_passwd = set(svn_data[0].keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
