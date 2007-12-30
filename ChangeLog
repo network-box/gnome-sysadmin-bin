@@ -1,3 +1,7 @@
+2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
+
+	* handle-ldap-modules: Add show-diffs command.
+
 2007-12-28  Olav Vitters  <olav@bkor.dhs.org>
 
 	* create-auth: Make rsync be quiet.

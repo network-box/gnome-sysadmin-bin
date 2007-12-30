@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# HINT:
+#   ssh -L 1389:localhost:389 label
+#   ssh -R 1389:localhost:1389 socket
+
+
 import os
 import sys
 import glob
@@ -203,7 +208,7 @@ it probably requires some other setting.""")
 
         l = ldap.initialize(Mango.LDAP_URL)
         l.protocol_version = ldap.VERSION3
-        l.simple_bind_s("cn=Manager,dc=gnome,dc=org", LDAP_PASSWD)
+        l.simple_bind_s("cn=Manager,dc=gnome,dc=org", passwd)
 
         self._ldap = l
         self._init_ldap_accounts()
@@ -417,9 +422,11 @@ it probably requires some other setting.""")
             os.umask(prevmask)
  
 
-    def update_ldap_modules(self, modules, remove=False):
+    def update_ldap_modules(self, modules, change=True, remove=False):
         ldap_uids, ldap_modules, ldap_dn  = self.get_maintainer_data_ldap()
         l = self._ldap
+
+        if not change: remove = False
 
         for modname in sorted(modules.keys()):
             dn = ldap_dn.get(modname, 'cn=%s,ou=modules,dc=gnome,dc=org' % escape_dn_chars(modname))
@@ -433,12 +440,18 @@ it probably requires some other setting.""")
                      'description': '%s module' % modname,
                      'maintainerUid': list(modules[modname])}
                 )
-                l.add_s(dn, ldif)
+                if change:
+                    l.add_s(dn, ldif)
+                else:
+                    print dn, ldif
             elif modname in ldap_modules and modules[modname].symmetric_difference(ldap_modules[modname]):
                 ldif = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
                                              {'maintainerUid': list(modules[modname])})
-                l.modify_s(dn,ldif)
-       
+                if change:
+                    l.modify_s(dn,ldif)
+                else:
+                    print dn, ldif
+
         if not remove: return
 
         rem_mods = set(ldap_modules.keys()).difference(modules.keys())
@@ -468,7 +481,9 @@ if __name__ == '__main__':
     m = Mango(LDAP_PASSWD)
 
     cmd = sys.argv.pop(1)
-    if cmd == 'sync':
+    if cmd == 'sync' or cmd == 'show-diffs':
+        change_stuff = cmd == 'sync'
+
         ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS
         svn_data = m.get_maintainer_data_svn()
 
@@ -498,7 +513,7 @@ if __name__ == '__main__':
                 print "\t".join([uid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
 
         #m.update_ldap_modules(svn_data[1], remove=True)
-        m.update_ldap_modules(svn_data[1])
+        m.update_ldap_modules(svn_data[1], change=change_stuff)
 
         uids_give_passwd = set(svn_data[0].keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
