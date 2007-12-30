@@ -519,8 +519,9 @@ if __name__ == '__main__':
         if uids_give_passwd:
             print "UIDs to give/reset passwords:"
             print ", ".join(uids_give_passwd)
-            passwds = m.set_passwds(uids_give_passwd)
-            m.store_passwds(passwds)
+            if change_stuff:
+                passwds = m.set_passwds(uids_give_passwd)
+                m.store_passwds(passwds)
 
 
     elif cmd == 'test-reset':
