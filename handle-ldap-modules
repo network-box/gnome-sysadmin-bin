@@ -255,7 +255,7 @@ it probably requires some other setting.""")
         MODULE_TO_DESC = {}
 
         l = self._ldap
-        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "(&(!(objectClass=localizationModule))(objectClass=gnomeModule))", ('cn', 'description','maintainerUid'))
+        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "(objectClass=gnomeModule)", ('cn', 'description','maintainerUid'))
         for entry in results:
             id = entry[0]
             attr = entry[1]

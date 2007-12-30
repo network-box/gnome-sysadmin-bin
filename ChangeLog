@@ -1,5 +1,9 @@
 2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
 
+	* handle-ldap-modules: Actually retrieve l10n modules from LDAP again.
+
+2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
+
 	* handle-ldap-modules: Make l10n module handling work (doesn't allow
 	UTF-8 strings, needs 'empty' localizationTeam entry.
 
