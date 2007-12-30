@@ -314,10 +314,10 @@ it probably requires some other setting.""")
             desc = None
             descs = team.xpathEval("_description")
             if len(descs):
-                desc = descs[0].content.decode('utf-8')
+                desc = descs[0].content
             if desc is None:
                 descs = team.xpathEval("_language")
-                desc = descs[0].content.decode('utf-8')
+                desc = descs[0].content
 
             modname = 'l10n-%s' % team_id
             MODULE_TO_DESC[modname] = '%s (team %s)' % (desc, team_id)
@@ -482,17 +482,23 @@ it probably requires some other setting.""")
             maints = svn_modules[modname]
 
             if modname not in ldap_modules: # add
+                entry = {
+                    'cn': modname,
+                    'sn': modname,
+                    'description': svn_descs.get(modname, '%s module' % modname),
+                    'maintainerUid': list(svn_modules[modname])
+                }
+                
                 classes = ['gnomeModule', 'inetOrgPerson']
                 # XXX - Fucking ugly hack
                 if modname.startswith('l10n-') and modname in svn_descs:
                     classes.append('localizationModule')
-                ldif = ldap.modlist.addModlist(
-                    {'objectClass': classes,
-                     'cn': modname,
-                     'sn': modname,
-                     'description': svn_descs.get(modname, '%s module' % modname),
-                     'maintainerUid': list(svn_modules[modname])}
-                )
+                    entry['localizationTeam'] = ' '
+
+                entry['objectClass'] = classes
+                
+
+                ldif = ldap.modlist.addModlist(entry)
                 if change:
                     l.add_s(dn, ldif)
                 else:
