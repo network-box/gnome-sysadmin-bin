@@ -1,5 +1,9 @@
 2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
 
+	* handle-ldap-modules: Update 'Mango' welcome email.
+
+2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
+
 	* handle-ldap-modules: Parse /trunk/translation-teams.xml.in for l10n
 	team information and setup those modules in LDAP.
 

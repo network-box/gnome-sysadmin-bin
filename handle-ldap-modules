@@ -123,8 +123,8 @@ class Mango(object):
 
 There is a new way to get accounts setup asap. This using a system
 called Mango. The new system will directly mail the maintainer(s) of the
-responsible module (you). With this email I'll try to explain how it
-will work.
+responsible module / the language coordinator (you). With this email I'll try
+to explain how it will work.
 
  ==> IF YOU AREN'T INTERESTED IN DETAILS, SEE END OF THE EMAIL FOR YOUR
  ==> PASSWORD
@@ -136,12 +136,12 @@ http://blogs.gnome.org/ovitters/2007/09/26/sneak-preview-of-mango/
 Basically the process is as follows:
 1. User requests account
 2. User verifies email address
-3. Mango mails maintainers
-4. Maintainers reject/approve account request
+3. Mango mails maintainers / l10n coordinators
+4. Maintainer/coordinator reject/approve account request
 ==> can need multiple maintainers if e.g. user requested e.g. Bugzilla
 shell account and SVN for nautilus.. in practice, this won't happen
 5a. Mango mails Accounts Team
-5b. Mango mails user giving advice on the progress
+5b. Mango mails progress information to the user
 6. Accounts Team sets up user in LDAP
 7. User gets welcome email
 
@@ -164,6 +164,8 @@ gnome-infrastructure@gnome.org mailing list.
 
 
 How to approve account requests:
+* l10n coordinators: Make sure you have read
+  http://live.gnome.org/TranslationProject/RequestingAnAccount
 * You will get an email from Mango to your email address registered in
 LDAP. This is (possibly) different from
 http://foundation.gnome.org/membership/members.php!
