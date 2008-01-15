@@ -1,0 +1,43 @@
+#!/usr/bin/python
+
+import sys
+import re
+import time
+import getopt
+import urllib
+from types import TupleType
+
+# hack
+sys.path.append('/usr/lib/mailman/bin')
+
+import paths
+from Mailman import mm_cfg
+from Mailman import MailList
+from Mailman import Utils
+from Mailman import Errors
+from Mailman import i18n
+
+
+params = urllib.urlencode({'view': 'rootstxt'})
+f = urllib.urlopen("http://svn.gnome.org/viewvc/?%s" % params)
+
+# GNOME viewcvs was specially patched to support rootstxt and returns text/plain output
+if f.headers.getmaintype() != 'text' or f.headers.status != "":
+    sys.exit(1)
+
+modules = f.read()
+modules = modules.strip()
+modules = modules.split("\n")
+
+f.close()
+
+# Prepare topics variable
+topics = [(module, "^%s$" % re.escape(module), '', 0) for module in modules]
+
+# Update the svn-commits-list mailinglist with these topics
+mlist = MailList.MailList('svn-commits-list')
+mlist.topics = topics
+mlist.Save()
+mlist.Unlock()
+
+

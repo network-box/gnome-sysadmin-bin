@@ -1,3 +1,9 @@
+2008-01-15  Olav Vitters  <olav@bkor.dhs.org>
+
+	* mail/set-topics-svn-commits-list: Move file from /usr/local/bin on
+	menubar to here. Creates a topic for every SVN module on
+	svn.gnome.org by making use of a viewvc patch.
+
 2007-12-30  Olav Vitters  <olav@bkor.dhs.org>
 
 	* handle-ldap-modules: Actually retrieve l10n modules from LDAP again.
