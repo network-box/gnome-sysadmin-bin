@@ -1,3 +1,7 @@
+2008-02-29  Olav Vitters  <olav@bkor.dhs.org>
+
+	* gnomeweb/set_buildflag.py: Add support for branches (sorta hacky).
+
 2008-01-15  Olav Vitters  <olav@bkor.dhs.org>
 
 	* mail/set-topics-svn-commits-list: Move file from /usr/local/bin on
