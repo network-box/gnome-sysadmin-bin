@@ -18,7 +18,7 @@ def usage():
 parser = OptionParser()
 parser.add_option("-m", "--module", dest="module",
                           help="Module to trigger an update for")
-parser.add_option("-b", "--branch", dest="branch", action="store_true"
+parser.add_option("-b", "--branch", dest="branch", action="store_true",
                           help="Read branch to update from stdin")
 
 parser.set_defaults(branch=False)
