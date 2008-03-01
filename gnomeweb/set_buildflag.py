@@ -47,7 +47,7 @@ if opts.branch:
     flagline = branches.pop()
 
     for branch in branches:
-        module = '%s!%s' % (opts.module, branchname)
+        module = '%s!%s' % (opts.module, branch)
         update_flag(module, flagline)
 else:
     update_flag(opts.module, sys.stdin.readline())
