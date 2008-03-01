@@ -18,10 +18,10 @@ def usage():
 parser = OptionParser()
 parser.add_option("-m", "--module", dest="module",
                           help="Module to trigger an update for")
-parser.add_option("-b", "--branch", dest="branch",
-                          help="Branch to update")
+parser.add_option("-b", "--branch", dest="branch", action="store_true"
+                          help="Read branch to update from stdin")
 
-parser.set_defaults(kill=False, remove_seen=False, delete=False)
+parser.set_defaults(branch=False)
 
 (opts, args) = parser.parse_args()
 
@@ -30,7 +30,8 @@ if not opts.module:
     sys.exit(1)
 
 if opts.branch:
-    module = '%s!%s' % (opts.module, opts.branch)
+    branchname = sys.stdin.readline().strip()
+    module = '%s!%s' % (opts.module, branchname)
 else:
     module = opts.module
 

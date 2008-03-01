@@ -1,5 +1,10 @@
 2008-03-01  Olav Vitters  <olav@bkor.dhs.org>
 
+	* gnomeweb/set_buildflag.py: Read branch name from stdin (annoying
+	procmail limitations)
+
+2008-03-01  Olav Vitters  <olav@bkor.dhs.org>
+
 	* gnomeweb/update_sites.py: Make branch support actually work.
 
 2008-03-01  Olav Vitters  <olav@bkor.dhs.org>
