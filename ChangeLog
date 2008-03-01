@@ -1,5 +1,9 @@
 2008-03-01  Olav Vitters  <olav@bkor.dhs.org>
 
+	* gnomeweb/update_sites.py: Make branch support actually work.
+
+2008-03-01  Olav Vitters  <olav@bkor.dhs.org>
+
 	* gnomeweb/update_sites.py: Add branch support. Allows modules to be
 	updated on a branch basis. This is needed for the release-notes.
 

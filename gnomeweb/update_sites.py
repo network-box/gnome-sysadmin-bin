@@ -84,28 +84,23 @@ def update_modules(configfile, verbose):
 
         if branches:
             # FIXME: Add branches support
-            files = os.path.join(timestamp_dir, module + "!*.buildflag")
+            files = glob.glob(os.path.join(timestamp_dir, module + "!*.buildflag"))
             for fn in files:
                 branch = re.sub(r'^' + re.escape(module) + r'!(.*)\.buildflag', 
                                 r'\1', os.path.basename(fn))
 
+                checkfile = '%s!%s' % (module, branch) # Merge again for update_module
                 version = re.sub(re_branch_versioned, r'\1.\2', branch)
 
-
-                url = checkout_url % (module, branch)
+                url = checkout_url % (module, 'branches/' + branch)
                 b_moduleroot = '%s-%s' % (moduleroot, version)
-                update_module(module, module, b_moduleroot, url)
+                update_module(module, checkfile, b_moduleroot, url, verbose=verbose)
         else:
             url = checkout_url % (module, 'trunk')
-            update_module(module, module, moduleroot, url)
+            update_module(module, module, moduleroot, url, verbose=verbose)
 
 
-def update_module(module, checkfile, moduleroot, url):
-
-    print 'Testing:'
-    print module, checkfile, moduleroot, url
-    return
-
+def update_module(module, checkfile, moduleroot, url, verbose=False):
     # Compare timestamps
     if verbose:
         print "Checking '" + module + "'..."
@@ -118,9 +113,9 @@ def update_module(module, checkfile, moduleroot, url):
         return False
 
     # Only need to compare if built flag exists
+    t_build = os.stat(build_flag)
     if os.access(built_flag, os.F_OK):
         t_built = os.stat(built_flag)
-        t_build = os.stat(build_flag)
         if t_build.st_mtime <= t_built.st_mtime:
             # No need to build
             return False
@@ -151,14 +146,15 @@ def update_module(module, checkfile, moduleroot, url):
         retval = os.spawnlp(os.P_WAIT, 'svn', 'svn', 'update', '-q', '--non-interactive', moduleroot)
     if retval != 0:
         print "Updating the '" + module + "' site failed"
-        fpl.close()
         return False
 
     # We're done if there isn't a post-update hook to run
     hook_file = os.path.join(hookscripts_dir, module)
     if not os.access(hook_file, os.X_OK):
+        if not os.path.isfile(built_flag):
+            f = open(built_flag, 'w')
+            f.close()
         os.utime(built_flag, (t_build.st_mtime, t_build.st_mtime))
-        fpl.close()
         return True
 
     # Run the hook script and save the stdout+stderr in a logfile
