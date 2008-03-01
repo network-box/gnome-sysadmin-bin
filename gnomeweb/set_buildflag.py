@@ -29,20 +29,28 @@ if not opts.module:
     parser.print_usage()
     sys.exit(1)
 
+def update_flag(module, flagline)
+    build_flag = os.path.join(timestamp_dir, module + ".buildflag")
+
+    # Create the flag file (write the first line of the e-mail, which
+    # I suppose can help identify the last committer)
+    flagfile = open(build_flag, 'w')
+    flagfile.write(flagline)
+    flagfile.close()
+
 if opts.branch:
-    branchname = sys.stdin.readline().strip()
-    if branchname == '': sys.exit(1)
-    module = '%s!%s' % (opts.module, branchname)
+    branches = [l.strip() for l in sys.stdin.readlines()]
+    branches = [l for l in branches if l]
+    if len(branches) < 2:
+        sys.exit(1)
+
+    flagline = branches.pop()
+
+    for branch in branches:
+        module = '%s!%s' % (opts.module, branchname)
+        update_flag(module, flagline)
 else:
-    module = opts.module
-
-build_flag = os.path.join(timestamp_dir, module + ".buildflag")
-
-# Create the flag file (write the first line of the e-mail, which
-# I suppose can help identify the last committer)
-flagfile = open(build_flag, 'w')
-flagfile.write(sys.stdin.readline())
-flagfile.close()
+    update_flag(opts.module, sys.stdin.readline())
 
 print "Build flag set."
 
