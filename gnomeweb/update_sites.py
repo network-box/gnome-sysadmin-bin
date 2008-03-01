@@ -67,7 +67,7 @@ def update_modules(configfile, verbose):
                                            and [cfg.get(a, 'order')]
                                            or [a])[0],
                                           (cfg.has_option(b, 'order')
-                                           and [cfg.get(a, 'order')]
+                                           and [cfg.get(b, 'order')]
                                            or [b])[0])):
         # Check if the module is disabled
         if cfg.has_option(module, 'disabled') and cfg.getboolean(module, 'disabled'):
