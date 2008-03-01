@@ -196,9 +196,9 @@ def update_module(module, checkfile, moduleroot, url, verbose=False):
     else:
         os.remove(logfile_name)
 
-        # Update atime, utime
-        # This ensures the website will update again in case the build_flag file timestamp was updated during the execution of this script
-        os.utime(built_flag, (t_build.st_mtime, t_build.st_mtime))
+    # Update atime, utime
+    # This ensures the website will update again in case the build_flag file timestamp was updated during the execution of this script
+    os.utime(built_flag, (t_build.st_mtime, t_build.st_mtime))
     if verbose:
         print "Built flag set."
 
