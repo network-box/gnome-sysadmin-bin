@@ -29,13 +29,13 @@ re_branch_versioned = r'^gnome-([0-9]+)-([0-9]+)$'
 FAILURE_MAIL = """Failure updating %(url)s.
 
 Last commit by: %(author)s
-ViewCVS: http://svn.gnome.org/viewcvs/%(module)s?rev=%(rev)s&view=rev
+ViewCVS: http://svn.gnome.org/viewvc/%(module)s?rev=%(rev)s&view=rev
 
 Last few lines of output:
 
 %(outputtail)s
 
-Full output can be seen at http://www.gnome.org/updatelogs/%(module)s.out"""
+Full output can be seen at http://www.gnome.org/updatelogs/%(checkfile)s.out"""
 
 
 parser = OptionParser()
