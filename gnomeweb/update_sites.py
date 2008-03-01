@@ -91,7 +91,7 @@ def update_modules(configfile, verbose):
         if branches:
             # FIXME: Add branches support
             files = glob.glob(os.path.join(timestamp_dir, module + "!*.buildflag"))
-            for fn in files:
+            for fn in sorted(files, reverse=True):
                 branch = re.sub(r'^' + re.escape(module) + r'!(.*)\.buildflag', 
                                 r'\1', os.path.basename(fn))
 
