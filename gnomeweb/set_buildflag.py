@@ -29,7 +29,7 @@ if not opts.module:
     parser.print_usage()
     sys.exit(1)
 
-def update_flag(module, flagline)
+def update_flag(module, flagline):
     build_flag = os.path.join(timestamp_dir, module + ".buildflag")
 
     # Create the flag file (write the first line of the e-mail, which
