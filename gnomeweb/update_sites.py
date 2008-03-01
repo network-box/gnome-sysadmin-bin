@@ -7,24 +7,24 @@
 # calling a post-update hook script if one exists.
 #
 
+import glob
 import sys
 import os
 import os.path
-import getopt
 import ConfigParser
 import subprocess
 import fcntl
+import re
+from optparse import OptionParser
 
 import xml.dom.minidom # to parse svn xml output
 
 timestamp_dir = "/usr/local/www/gnomeweb/timestamps"
 hookscripts_dir = "/usr/local/www/gnomeweb/hooks"
-checkout_url = "http://svn.gnome.org/svn/%s/trunk" # %s for module name
+checkout_url = "http://svn.gnome.org/svn/%s/%s" # %s for module name
 checkout_basedir = "/usr/local/www/gnomeweb/svn-wd" # default base directory for checkouts
 log_dir = "/usr/local/www/gnomeweb/logs"
-configfile = ""
-verbose = 0
-updated = []
+re_branch_versioned = r'^gnome-([0-9]+)-([0-9]+)$'
 
 FAILURE_MAIL = """Failure updating %(url)s.
 
@@ -38,26 +38,13 @@ Last few lines of output:
 Full output can be seen at http://www.gnome.org/updatelogs/%(module)s.out"""
 
 
+parser = OptionParser()
+parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
+                          help="Be verbose")
+parser.add_option("-c", "--config", dest="configfile", metavar="FILE",
+                                  help="Read list of modules from FILE")
+parser.set_defaults(verbose=False)
 
-
-def usage():
-    print "usage: " + sys.argv[0] + " [-v] -c <configfile>"
-    print "  -v    Be verbose"
-    print "  -c    Read list of modules from <configfile>"
-
-try:                                
-    opts, args = getopt.getopt(sys.argv[1:], "vc:", ["verbose", "configfile="])
-except getopt.GetoptError:
-        usage()
-        sys.exit()
-for opt, arg in opts:
-    if opt in ("-c", "--configfile"):
-        configfile = arg
-    elif opt in ("-v", "--verbose"):
-        verbose = 1
-if configfile == "":
-    usage()
-    sys.exit()
 
 def get_svn_info(path):
     xmls = subprocess.Popen(["svn", "info", '--xml', path], stdout=subprocess.PIPE).communicate()[0]
@@ -71,43 +58,72 @@ def get_svn_info(path):
 
     return author, rev
 
-cfg = ConfigParser.ConfigParser()
-cfg.read([configfile])
+def update_modules(configfile, verbose):
+    cfg = ConfigParser.ConfigParser()
+    cfg.read([configfile])
 
-for module in cfg.sections():
-    # Check if the module is disabled
-    if cfg.has_option(module, 'disabled') and cfg.getboolean(module, 'disabled'):
-        continue
-    
-    # Retrieve configuration settings
-    url = cfg.get(module, 'url')
-    if cfg.has_option(module, 'root'):
-        moduleroot = cfg.get(module, 'root')
-    else:
-        moduleroot = os.path.join(checkout_basedir, module)
-    if cfg.has_option(module, 'owner'):
-        owner = cfg.get(module, 'owner')
-    else:
-        owner = None
+    for module in cfg.sections():
+        # Check if the module is disabled
+        if cfg.has_option(module, 'disabled') and cfg.getboolean(module, 'disabled'):
+            continue
+
+        # Retrieve configuration settings
+        url = cfg.get(module, 'url')
+        if cfg.has_option(module, 'root'):
+            moduleroot = cfg.get(module, 'root')
+        else:
+            moduleroot = os.path.join(checkout_basedir, module)
+        if cfg.has_option(module, 'owner'):
+            owner = cfg.get(module, 'owner')
+        else:
+            owner = None
+        if cfg.has_option(module, 'branches'):
+            branches = cfg.getboolean(module, 'branches')
+        else:
+            branches = False
+
+        if branches:
+            # FIXME: Add branches support
+            files = os.path.join(timestamp_dir, module + "!*.buildflag")
+            for fn in files:
+                branch = re.sub(r'^' + re.escape(module) + r'!(.*)\.buildflag', 
+                                r'\1', os.path.basename(fn))
+
+                version = re.sub(re_branch_versioned, r'\1.\2', branch)
+
+
+                url = checkout_url % (module, branch)
+                b_moduleroot = '%s-%s' % (moduleroot, version)
+                update_module(module, module, b_moduleroot, url)
+        else:
+            url = checkout_url % (module, 'trunk')
+            update_module(module, module, moduleroot, url)
+
+
+def update_module(module, checkfile, moduleroot, url):
+
+    print 'Testing:'
+    print module, checkfile, moduleroot, url
+    return
 
     # Compare timestamps
     if verbose:
         print "Checking '" + module + "'..."
-    build_flag = os.path.join(timestamp_dir, module + ".buildflag")
-    built_flag = os.path.join(timestamp_dir, module + ".built")
-        lock_file  = os.path.join(timestamp_dir, module + '.lock')
+        build_flag = os.path.join(timestamp_dir, checkfile + ".buildflag")
+        built_flag = os.path.join(timestamp_dir, checkfile + ".built")
+        lock_file  = os.path.join(timestamp_dir, checkfile + '.lock')
 
     # If the buildflag hasn't been set, ignore this module for now
     if not os.access(build_flag, os.F_OK):
-        continue
+        return False
 
     # Only need to compare if built flag exists
     if os.access(built_flag, os.F_OK):
-                t_built = os.stat(built_flag)
+        t_built = os.stat(built_flag)
         t_build = os.stat(build_flag)
         if t_build.st_mtime <= t_built.st_mtime:
             # No need to build
-            continue
+            return False
 
         # Ensure only one copy will be running
         fpl = open(lock_file, 'w')
@@ -116,11 +132,11 @@ for module in cfg.sections():
         except IOError:
             if verbose:
                 print "Already running"
-            continue
+            return False
         fpl.write("%d" % os.getpid())
         fpl.flush()
         if verbose:
-                print "Wrote PID to lock file (PID: %d)" % os.getpid()
+            print "Wrote PID to lock file (PID: %d)" % os.getpid()
 
     # Run a svn checkout/update
     retval = 0
@@ -128,30 +144,27 @@ for module in cfg.sections():
         # Path does not exist.. so check it out of SVN
         if verbose:
             print "Running 'svn checkout " + moduleroot + "'..."
-        retval = os.spawnlp(os.P_WAIT, 'svn', 'svn', 'checkout', '-q', '--non-interactive', checkout_url % module, moduleroot)
+        retval = os.spawnlp(os.P_WAIT, 'svn', 'svn', 'checkout', '-q', '--non-interactive', url, moduleroot)
     else:
         if verbose:
             print "Running 'svn update " + moduleroot + "'..."
         retval = os.spawnlp(os.P_WAIT, 'svn', 'svn', 'update', '-q', '--non-interactive', moduleroot)
     if retval != 0:
         print "Updating the '" + module + "' site failed"
-                fpl.close()
-        continue
-
-    # Remember to update the timestamp later
-    updated.append(module)
+        fpl.close()
+        return False
 
     # We're done if there isn't a post-update hook to run
     hook_file = os.path.join(hookscripts_dir, module)
     if not os.access(hook_file, os.X_OK):
-                os.utime(built_flag, (t_build.st_mtime, t_build.st_mtime))
-                fpl.close()
-        continue
+        os.utime(built_flag, (t_build.st_mtime, t_build.st_mtime))
+        fpl.close()
+        return True
 
     # Run the hook script and save the stdout+stderr in a logfile
     if verbose:
         print "Running hook script..."
-    logfile_name = "%s/%s.out.%s" % (log_dir, module, os.getpid())
+    logfile_name = "%s/%s.out.%s" % (log_dir, checkfile, os.getpid())
     logfile = open(logfile_name, "w")
     retval = subprocess.call([hook_file, module, moduleroot], stdout=logfile, stderr=subprocess.STDOUT, close_fds=True, cwd=moduleroot)
     logfile.close()
@@ -177,7 +190,7 @@ for module in cfg.sections():
 
     # Only keep non-empty logfiles by renaming them to ${MODULE}.out
     if os.stat(logfile_name)[6]:
-        os.rename(logfile_name, "%s/%s.out" % (log_dir, module))
+        os.rename(logfile_name, "%s/%s.out" % (log_dir, checkfile))
     else:
         os.remove(logfile_name)
 
@@ -188,6 +201,21 @@ for module in cfg.sections():
         print "Built flag set."
 
 
-if verbose:
-    print "Done"
+
+def main():
+    (opts, args) = parser.parse_args()
+
+    if not opts.configfile:
+        parser.print_usage()
+        sys.exit(1)
+
+    update_modules(opts.configfile, opts.verbose)
+
+    if opts.verbose:
+        print "Done"
+
+
+if __name__ == "__main__":
+    main()
+
 
