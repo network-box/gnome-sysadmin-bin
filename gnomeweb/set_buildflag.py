@@ -31,6 +31,7 @@ if not opts.module:
 
 if opts.branch:
     branchname = sys.stdin.readline().strip()
+    if branchname == '': sys.exit(1)
     module = '%s!%s' % (opts.module, branchname)
 else:
     module = opts.module
