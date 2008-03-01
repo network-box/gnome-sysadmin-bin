@@ -104,9 +104,9 @@ def update_module(module, checkfile, moduleroot, url, verbose=False):
     # Compare timestamps
     if verbose:
         print "Checking '" + module + "'..."
-        build_flag = os.path.join(timestamp_dir, checkfile + ".buildflag")
-        built_flag = os.path.join(timestamp_dir, checkfile + ".built")
-        lock_file  = os.path.join(timestamp_dir, checkfile + '.lock')
+    build_flag = os.path.join(timestamp_dir, checkfile + ".buildflag")
+    built_flag = os.path.join(timestamp_dir, checkfile + ".built")
+    lock_file  = os.path.join(timestamp_dir, checkfile + '.lock')
 
     # If the buildflag hasn't been set, ignore this module for now
     if not os.access(build_flag, os.F_OK):
