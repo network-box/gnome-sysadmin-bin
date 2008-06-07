@@ -1,3 +1,11 @@
+2008-06-07  Olav Vitters  <olav@bkor.dhs.org>
+
+	* mail/amavis-train-bayes: Use messages forwarded from Mailman
+	to train Spamassassin by using sa-learn. Mailman has been patched to
+	optionally forward Discarded and Accepted messages to the amavis user.
+	Procmail sorts the mail into two directories. This script should run
+	from cron.
+
 2008-03-01  Olav Vitters  <olav@bkor.dhs.org>
 
 	* gnomeweb/set_buildflag.py: Read branch name from stdin (annoying

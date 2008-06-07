@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Mailman has been patched to forward messages marked as Dischard + Accept to
+# the amavis user.
+#
+# It uses plussed addresses for that. 
+#
+# There is a procmail rule which sends the body of that email to two mailboxes.
+# The Mailman email has content type message/rfc822. Meaning: the original
+# message is preserved by only sending the body to the mbox.
+#
+# This scripts runs in cron and uses the mbox to train the bayes classifier.
+#
+
+cd $HOME
+
+type="spam"
+if [ -e bayes-$type/new ]; then
+	rm -rf bayes-$type/train
+	mv -f bayes-$type/new bayes-$type/train
+	sa-learn --$type bayes-$type/train
+fi
+
+type="ham"
+if [ -e bayes-$type/new ]; then
+	rm -rf bayes-$type/train
+	mv -f bayes-$type/new bayes-$type/train
+	sa-learn --$type bayes-$type/train
+fi
+
