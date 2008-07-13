@@ -48,7 +48,7 @@ def get_uids_from_group(group):
         print e
         sys.exit(1)
 
-    return {}
+    return []
 
 def get_uids_from_wheel():
     try:
@@ -60,10 +60,14 @@ def get_uids_from_wheel():
     return filter (lambda x: x != 'root', people)
     
 def get_uids_from_sysadmin():
-    wheelinfo = grp.getgrnam ('sysadmin')
-    people = wheelinfo[3]
+    # XXX 
+    try:
+        people = grp.getgrnam ('sysadmin')[3]
+    except KeyError:
+        # Server doesn't have an LDAP connection -- probably the label server
+        people = get_uids_from_group('sysadmin')
+
     return filter (lambda x: x != 'root', people)
-    
 
 def create_user_from_uid(uid):
     filter = "(&(uid=%s)(authorizedKey=*))" % uid

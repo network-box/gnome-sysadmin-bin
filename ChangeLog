@@ -1,3 +1,10 @@
+2008-07-13  Olav Vitters  <olav@bkor.dhs.org>
+
+	* create-auth (get_uids_from_group, get_uids_from_sysadmin): Make
+	get_uids_from_group return an empty list on failure. Make
+	get_uids_from_sysadmin fall back to using LDAP if the sysadmin group
+	isn't defined on this server (is the case on label.gnome.org).
+
 2008-06-07  Olav Vitters  <olav@bkor.dhs.org>
 
 	* mail/amavis-train-bayes: Use messages forwarded from Mailman
