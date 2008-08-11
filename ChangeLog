@@ -1,3 +1,7 @@
+2008-08-11  Olav Vitters  <olav@bkor.dhs.org>
+
+	* create-auth-progress.sh: Setup users from LDAP on progress.
+
 2008-07-13  Olav Vitters  <olav@bkor.dhs.org>
 
 	* create-auth (get_uids_from_group, get_uids_from_sysadmin): Make
