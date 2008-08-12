@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import ldap
+import ldap.filter
 import grp
 import os
 import tempfile
@@ -33,7 +34,7 @@ except ldap.LDAPError, e:
 
 
 def get_uids_from_group(group):
-    filter = "(cn=%s)" % group
+    filter = ldap.filter.filter_format("(cn=%s)", (group, ))
     try:
         ldap_result_id = l.search ("ou=groups,dc=gnome,dc=org",
                                    ldap.SCOPE_SUBTREE, filter, None)
@@ -69,62 +70,61 @@ def get_uids_from_sysadmin():
 
     return filter (lambda x: x != 'root', people)
 
-def create_user_from_uid(uid):
-    filter = "(&(uid=%s)(authorizedKey=*))" % uid
+def lookup_user_info(uids, user_data):
+    format = '(uid=%s)' * len(uids)
+    filter = ldap.filter.filter_format(format, list(uids))
+    if len(uids) > 0:
+        filter = '(|%s)' % filter
+    filter = '(&%s(authorizedKey=*))' % filter
     try:
-        ldap_result_id = l.search ("ou=people,dc=gnome,dc=org",
+        persona_data = l.search_s ("ou=people,dc=gnome,dc=org",
                                    ldap.SCOPE_SUBTREE, filter, None)
-        unused, person_data = l.result(ldap_result_id, 0)
     except ldap.LDAPError, e:
         return None
 
-    if person_data == []:
+    if not len(persona_data):
         return None
-    person_info = person_data[0][1]
-    user_data = {}
-    user_data['uid'] = uid
-    key_list = person_info ['authorizedKey']
-    key_list.sort ()
-    user_data['authorizedKey'] = key_list
-    user_data['uidNumber'] = person_info['uidNumber'][0]
-    user_data['gidNumber'] = person_info['gidNumber'][0]
-    user_data['cvsOnly'] = 0
+
+    for dn, person_info in persona_data:
+        key_list = person_info['authorizedKey']
+        key_list.sort ()
+
+        uid = person_info['uid'][0]
+        user_data[uid] = {
+            'uid': uid,
+            'authorizedKey': key_list,
+            'uidNumber': person_info['uidNumber'][0],
+            'gidNumber': person_info['gidNumber'][0],
+            'cvsOnly': 0
+        }
 
     return user_data
 
 def build_user_hash(group_list):
-    user_hash = {}
+    users = set()
     user_list = []
-    gnomecvs_hash = {}
+    user_data = {}
+    gnomecvs_users = set()
     global GNOMECVS
-    
+
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
-    for uid in get_uids_from_wheel ():
-        user_hash[uid] = 1
-    for uid in get_uids_from_sysadmin ():
-        user_hash[uid] = 1
+    users.update(get_uids_from_wheel())
+    users.update(get_uids_from_sysadmin())
     for group in group_list:
-        for uid in get_uids_from_group (group):
-            user_hash[uid] = 1
+        users.update(get_uids_from_group(group))
     if GNOMECVS:
-        for uid in get_uids_from_group ('gnomecvs'):
-            try:
-                user_hash[uid]
-            except KeyError:
-                gnomecvs_hash[uid] = 1
+        gnomecvs_users = set(get_uids_from_group ('gnomecvs')) - users
 
     # look up their keys (if we have them)
-    for uid in user_hash.iterkeys():
-        user_data = create_user_from_uid(uid)
-        if user_data != None:
-            user_list.append (user_data)
-    for uid in gnomecvs_hash.iterkeys():
-        user_data = create_user_from_uid(uid)
-        if user_data != None:
-            user_data['cvsOnly'] = 1
-            user_list.append (user_data)
+    lookup_user_info(users, user_data)
 
-    return user_list
+    if len(gnomecvs_users):
+        lookup_user_info(gnomecvs_users, user_data)
+        for uid in gnomecvs_users:
+            if uid in user_data:
+                user_data[uid]['cvsOnly'] = 1
+
+    return user_data.values()
 
 # we don't expect any errors with this so we let any that occur go up
 # to the top so that cron mails them out.
@@ -140,7 +140,7 @@ def remove_directory (dir):
             remove_directory (path)
     os.rmdir (dir)
 
-def create_directory_structure (list):
+def create_directory_structure (user_list):
     base_directory_name = tempfile.mktemp ('-sshd')
     sshd_directory_name = base_directory_name + "/sshd"
     users_directory_name = sshd_directory_name + "/users"

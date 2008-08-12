@@ -1,3 +1,12 @@
+2008-08-12  Olav Vitters  <olav@bkor.dhs.org>
+
+	* create-auth (get_uids_from_group, lookup_user_info, build_user_hash,
+	  create_directory_structure): Drastically reduce the number of
+	  queries executed to retrieve the user info. Instead of a query per
+	  uid, only 2 queries are executed in total.
+	  Note: Number of queries could be lowered even further, but not as
+	  drastic as this optimization.
+
 2008-08-11  Olav Vitters  <olav@bkor.dhs.org>
 
 	* create-auth-progress.sh: Setup users from LDAP on progress.
