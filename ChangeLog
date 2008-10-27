@@ -1,3 +1,9 @@
+2008-10-27  Olav Vitters  <olav@bkor.dhs.org>
+
+	* svn-migrate-repos (added): Does a dump + restore of an repository.
+	Still in testing. Intention is to allow upgrade of SVN repository
+	format with minimal downtime.
+
 2008-08-12  Olav Vitters  <olav@bkor.dhs.org>
 
 	* create-auth (get_uids_from_group, lookup_user_info, build_user_hash,
