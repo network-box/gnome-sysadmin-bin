@@ -1,5 +1,9 @@
 2008-10-27  Olav Vitters  <olav@bkor.dhs.org>
 
+	* svn-migrate-repos: Set niceness and ensure hooks are copied.
+
+2008-10-27  Olav Vitters  <olav@bkor.dhs.org>
+
 	* svn-migrate-repos: Remove old stuff. I totally redid the file, but
 	forgot to remove the copyright stuff.
 

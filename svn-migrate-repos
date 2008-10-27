@@ -3,6 +3,8 @@
 import sys, os, getopt, shutil, string, re, subprocess, glob
 import os.path
 
+os.nice(19)
+
 if __name__ == '__main__':
     orig, backup, tmp = sys.argv[1:]
     
@@ -21,6 +23,7 @@ if __name__ == '__main__':
 
         # Setup new repository
         subprocess.check_call(['svnadmin', 'create', tmpsvn])
+        subprocess.check_call(['find', '%s/hooks' % origsvn, '-type', 'f', '(', '-name', '*.tmpl', '-prune', '-o', '-exec', 'cp', '-p', '{}', '%s/hooks' % tmpsvn, ')'])
         subprocess.check_call(['chown', '-R', '--reference', origsvn, '--', tmpsvn])
         subprocess.check_call(['chmod', '-R', '--reference', origsvn, '--', tmpsvn])
         subprocess.check_call(['find', tmpsvn, '-type', 'f', '-exec', 'chmod', '-x', '{}', ';'])
