@@ -1,38 +1,7 @@
 #!/usr/bin/python
-#
-#  hot-backup.py: perform a "hot" backup of a Berkeley DB repository.
-#                 (and clean old logfiles after backup completes.)
-#
-#  Subversion is a tool for revision control. 
-#  See http://subversion.tigris.org for more information.
-#    
-# ====================================================================
-# Copyright (c) 2000-2006 CollabNet.  All rights reserved.
-#
-# This software is licensed as described in the file COPYING, which
-# you should have received as part of this distribution.  The terms
-# are also available at http://subversion.tigris.org/license-1.html.
-# If newer versions of this license are posted there, you may use a
-# newer version instead, at your option.
-#
-# This software consists of voluntary contributions made by many
-# individuals.  For exact contribution history, see the revision
-# history and logs, available at http://subversion.tigris.org/.
-# ====================================================================
-
-######################################################################
 
 import sys, os, getopt, shutil, string, re, subprocess, glob
 import os.path
-
-######################################################################
-# Global Settings
-
-# Path to svnlook utility
-svnlook = "/usr/bin/svnlook"
-
-# Path to svnadmin utility
-svnadmin = "/usr/bin/svnadmin"
 
 if __name__ == '__main__':
     orig, backup, tmp = sys.argv[1:]

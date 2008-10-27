@@ -1,5 +1,10 @@
 2008-10-27  Olav Vitters  <olav@bkor.dhs.org>
 
+	* svn-migrate-repos: Remove old stuff. I totally redid the file, but
+	forgot to remove the copyright stuff.
+
+2008-10-27  Olav Vitters  <olav@bkor.dhs.org>
+
 	* svn-migrate-repos (added): Does a dump + restore of an repository.
 	Still in testing. Intention is to allow upgrade of SVN repository
 	format with minimal downtime.
