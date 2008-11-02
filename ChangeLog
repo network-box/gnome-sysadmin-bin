@@ -1,3 +1,8 @@
+2008-11-02  Olav Vitters  <olav@bkor.dhs.org>
+
+	* svn-migrate-repos (dump_into_new): Create new function which only
+	dumps new revisions into destination repository.
+
 2008-10-27  Olav Vitters  <olav@bkor.dhs.org>
 
 	* svn-migrate-repos: Set niceness and ensure hooks are copied.
