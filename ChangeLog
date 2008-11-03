@@ -1,3 +1,8 @@
+2008-11-03  Olav Vitters  <olav@bkor.dhs.org>
+
+	* gnomeweb/update_sites.py (main): Run script (and childs) as
+	nicelevel 19.
+
 2008-11-02  Olav Vitters  <olav@bkor.dhs.org>
 
 	* svn-migrate-repos (dump_into_new): Create new function which only
