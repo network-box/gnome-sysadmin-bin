@@ -102,7 +102,6 @@ def lookup_user_info(uids, user_data):
 
 def build_user_hash(group_list):
     users = set()
-    user_list = []
     user_data = {}
     gnomecvs_users = set()
     global GNOMECVS
