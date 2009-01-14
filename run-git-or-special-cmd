@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# vim: set ts=4 sw=4:
+
+if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
+	if [ "$SSH_ORIGINAL_COMMAND" != "svnserve -t"  ]; then
+		case "$SSH_ORIGINAL_COMMAND" in
+			"new-git-repos "*)
+			        echo 'ERROR: new-git-repos: not yet implemented'
+				exit 1
+				;;
+
+# This existed for retrieving mango passwords from svn.gnome.org; if we keep the
+# system and repurpose socket for something else we could move the files to
+# git.gnome.org, but it's a bit of a wonky system.
+#			"mango")
+#				cat "/var/local/mango/`whoami`" 2> /dev/null
+#				echo > "/var/local/mango/`whoami`" 2> /dev/null
+#				exit
+#				;;
+		        *)
+			        exec /usr/bin/git-shell -c "$SSH_ORIGINAL_COMMAND"
+				;;
+		esac
+	fi
+fi
+
+echo 'ERROR: must specify a command'
+exit 1
+

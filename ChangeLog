@@ -1,3 +1,11 @@
+2009-01-14  Owen Taylor  <otaylor@redhat.com>
+
+	* run-git-or-special-cmd: Add an analogue of
+	run-svn-or-special-cmd for git.gnome.org.
+
+	* create-auth: Add --gnomegit option that works like --gnomecvs
+	but uses run-svn-or-special-cmd.
+
 2008-11-03  Olav Vitters  <olav@bkor.dhs.org>
 
 	* gnomeweb/update_sites.py (main): Run script (and childs) as
