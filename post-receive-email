@@ -187,7 +187,7 @@ generate_email_header()
 	cat <<-EOF
 	To: $recipients
 	From: $USER@src.gnome.org
-	Subject: ${emailprefix}$projectdesc $refname_type, $short_refname, ${change_type}d. $describe
+	Subject: ${emailprefix}$projectshort $refname_type, $short_refname, ${change_type}d. $describe
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Oldrev: $oldrev
@@ -615,6 +615,9 @@ if [ -z "$GIT_DIR" ]; then
 	echo >&2 "fatal: post-receive: GIT_DIR not set"
 	exit 1
 fi
+
+# Use the directory name with .git stripped as a short identifier
+projectshort=$(basename ${GIT_DIR%.git})
 
 projectdesc=$(sed -ne '1p' "$GIT_DIR/description")
 # Check if the description is unchanged from it's default, and shorten it to
