@@ -187,15 +187,11 @@ generate_email_header()
 	cat <<-EOF
 	To: $recipients
 	From: $USER@src.gnome.org
-	Subject: ${emailprefix}$projectshort $refname_type, $short_refname, ${change_type}d. $describe
+	Subject: ${emailprefix}$projectshort $refname_type $short_refname, ${change_type}d. $describe
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Oldrev: $oldrev
 	X-Git-Newrev: $newrev
-
-	This is an automated email from the git hooks/post-receive script. It was
-	generated because a ref change was pushed to the repository containing
-	the project "$projectdesc".
 
 	The $refname_type, $short_refname has been ${change_type}d
 	EOF
