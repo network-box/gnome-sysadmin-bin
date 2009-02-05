@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Log who pushed a ref to a repository and when. The input is expected to be the
+# same as for a git post-receive hook - a series of one line for each pushed ref
+#
+#  old_revision_hash new_revision_hash refname
+
+# Set GIT_DIR either from the working directory, or from the environment variable.
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+if [ -z "$GIT_DIR" ]; then
+     echo >&2 "fatal: post-receive: GIT_DIR not set"
+     exit 1
+fi
+
+LOG_FILE="$GIT_DIR/gnome_pushlog"
+
+user=$(whoami)
+# RFC 822 date with a fixed UTC timezone (Thu, 05 Feb 2009 19:25:44 +0000)
+date=$(TZ=UTC date -R)
+
+# We use a log file since the '>>' append is not guaranteed to be atomic, though
+# it almost certainly is in practice.
+LOCK_FILE=$LOG_FILE.lock
+
+count=0
+while ! ln -s $$ $LOCK_FILE > /dev/null 2>&1 ; do
+    if [ $count = 0 ] ; then
+	echo "Waiting for lock file '$LOCK_FILE'" 1>&2
+    fi
+    if [ $count = 30 ] ; then
+	echo "Timed out" 1>&2
+	exit 1
+    fi
+    sleep 1
+    count=$((count+1))
+done
+
+# successfuly created lock file
+trap "rm -f $LOCK_FILE; exit" INT TERM EXIT
+
+sleep 10
+
+while read oldrev newrev refname
+do
+	echo "$oldrev	$newrev	$refname	$user	$date" >> $LOG_FILE
+done
