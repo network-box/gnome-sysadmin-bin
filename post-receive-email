@@ -613,7 +613,8 @@ if [ -z "$GIT_DIR" ]; then
 fi
 
 # Use the directory name with .git stripped as a short identifier
-projectshort=$(basename ${GIT_DIR%.git})
+absdir=$(cd $GIT_DIR && pwd)
+projectshort=$(basename ${absdir%.git})
 
 projectdesc=$(sed -ne '1p' "$GIT_DIR/description")
 # Check if the description is unchanged from it's default, and shorten it to
