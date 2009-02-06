@@ -50,10 +50,13 @@ use vars qw ($project $from_email $dest_email $noisy $rpc_uri $sendmail
 ### Configuration
 
 # Project name (as known to CIA).
-$project = 'Cogito';
+$project = 'GNOME';
 
 # The from address in generated mails.
-$from_email = 'pasky@ucw.cz';
+# (Not sure if this has to be specifically svnmaster@gnome.org to use
+# our existing config or whether we could change it. It probably could
+# be changed.)
+$from_email = 'svnmaster@gnome.org';
 
 # Mail all reports to this address.
 $dest_email = 'cia@cia.vc';
