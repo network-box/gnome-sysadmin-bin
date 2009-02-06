@@ -22,5 +22,6 @@ GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 GIT_CONFIG="${GIT_DIR}/config"
 export GIT_CONFIG
 
-tee >($BINDIR/log-push) \
-    | $BINDIR/post-receive-email
+tee >($BINDIR/log-push 1>&2) \
+    >($BINDIR/post-receive-notify-cia 1>&2) \
+    | $BINDIR/post-receive-email 1>&2
