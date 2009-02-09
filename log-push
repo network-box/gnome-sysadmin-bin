@@ -38,8 +38,6 @@ done
 # successfuly created lock file
 trap "rm -f $LOCK_FILE; exit" INT TERM EXIT
 
-sleep 10
-
 while read oldrev newrev refname
 do
 	echo "$oldrev	$newrev	$refname	$user	$date" >> $LOG_FILE
