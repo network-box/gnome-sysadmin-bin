@@ -2,10 +2,10 @@
 #
 # ciabot -- Mail a git log message to a given address, for the purposes of CIA
 #
-# Loosely based on cvslog by Russ Allbery &lt;rra@stanford.edu&gt;
+# Loosely based on cvslog by Russ Allbery <rra@stanford.edu>
 # Copyright 1998  Board of Trustees, Leland Stanford Jr. University
 #
-# Copyright 2001, 2003, 2004, 2005  Petr Baudis &lt;pasky@ucw.cz&gt;
+# Copyright 2001, 2003, 2004, 2005  Petr Baudis <pasky@ucw.cz>
 #
 # This program is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License version 2, as published by the
@@ -29,11 +29,11 @@
 # script as the GIT update hook:
 #
 #	refname=${1#refs/heads/}
-#	[ "$refname" = "master" ] &amp;&amp; refname=
+#	[ "$refname" = "master" ] && refname=
 #	oldhead=$2
 #	newhead=$3
 #	for merged in $(git-rev-list $newhead ^$oldhead | tac); do
-#		/path/to/<b style="color: black; background-color: rgb(255, 255, 102);">ciabot.pl</b> $merged $refname
+#		/path/to/ciabot.pl $merged $refname
 #	done
 #
 # This is useful when you use a remote repository that you only push to. The
@@ -118,12 +118,12 @@ $branch = $ARGV[1];
 open COMMIT, "git-cat-file commit $commit|" or die "git-cat-file commit $commit: $!";
 my $state = 0;
 $logmsg = '';
-while (defined ($line = &lt;COMMIT&gt;)) {
+while (defined ($line = <COMMIT>)) {
   if ($state == 1) {
     $logmsg .= $line;
     $noisy or $state++;
     next;
-  } elsif ($state &gt; 1) {
+  } elsif ($state > 1) {
     next;
   }
 
@@ -148,7 +148,7 @@ close COMMIT;
 
 
 open DIFF, "git-diff-tree -r $parent[0] $tree|" or die "git-diff-tree $parent[0] $tree: $!";
-while (defined ($line = &lt;DIFF&gt;)) {
+while (defined ($line = <DIFF>)) {
   chomp $line;
   my @f;
   (undef, @f) = split(/\t/, $line, 2);
@@ -159,7 +159,7 @@ close DIFF;
 
 # Figure out who is doing the update.
 # XXX: Too trivial this way?
-($user) = $author =~ /&lt;(.*?)@/;
+($user) = $author =~ /<(.*?)@/;
 
 
 $rev = substr($commit, 0, 12);
@@ -181,49 +181,49 @@ exit unless @files;
 my ($VERSION) = '1.0';
 my $ts = time;
 
-$message = &lt;&lt;EM
-&lt;message&gt;
-   &lt;generator&gt;
-       &lt;name&gt;CIA Perl client for Git&lt;/name&gt;
-       &lt;version&gt;$VERSION&lt;/version&gt;
-   &lt;/generator&gt;
-   &lt;source&gt;
-       &lt;project&gt;$project&lt;/project&gt;
+$message = <<EM
+<message>
+   <generator>
+       <name>CIA Perl client for Git</name>
+       <version>$VERSION</version>
+   </generator>
+   <source>
+       <project>$project</project>
 EM
 ;
-$message .= "       &lt;branch&gt;$branch&lt;/branch&gt;" if ($branch);
-$message .= &lt;&lt;EM
-   &lt;/source&gt;
-   &lt;timestamp&gt;
+$message .= "       <branch>$branch</branch>" if ($branch);
+$message .= <<EM
+   </source>
+   <timestamp>
        $ts
-   &lt;/timestamp&gt;
-   &lt;body&gt;
-       &lt;commit&gt;
-           &lt;author&gt;$user&lt;/author&gt;
-           &lt;revision&gt;$rev&lt;/revision&gt;
-           &lt;files&gt;
+   </timestamp>
+   <body>
+       <commit>
+           <author>$user</author>
+           <revision>$rev</revision>
+           <files>
 EM
 ;
 
 foreach (@files) {
-  s/&amp;/&amp;amp;/g;
-  s/&lt;/&amp;lt;/g;
-  s/&gt;/&amp;gt;/g;
-  $message .= "  &lt;file&gt;$_&lt;/file&gt;\n";
+  s/&/&amp;/g;
+  s/</&lt;/g;
+  s/>/&gt;/g;
+  $message .= "  <file>$_</file>\n";
 }
 
-$logmsg =~ s/&amp;/&amp;amp;/g;
-$logmsg =~ s/&lt;/&amp;lt;/g;
-$logmsg =~ s/&gt;/&amp;gt;/g;
+$logmsg =~ s/&/&amp;/g;
+$logmsg =~ s/</&lt;/g;
+$logmsg =~ s/>/&gt;/g;
 
-$message .= &lt;&lt;EM
-           &lt;/files&gt;
-           &lt;log&gt;
+$message .= <<EM
+           </files>
+           <log>
 $logmsg
-           &lt;/log&gt;
-       &lt;/commit&gt;
-   &lt;/body&gt;
-&lt;/message&gt;
+           </log>
+       </commit>
+   </body>
+</message>
 EM
 ;
 
@@ -231,7 +231,7 @@ EM
 
 ### Write the message to an alt-target
 
-if ($alt_local_message_target and open (ALT, "&gt;&gt;$alt_local_message_target")) {
+if ($alt_local_message_target and open (ALT, ">>$alt_local_message_target")) {
   print ALT $message;
   close ALT;
 }
@@ -251,8 +251,8 @@ if ($xml_rpc) {
   require RPC::XML::Client;
 
   my $rpc_client = new RPC::XML::Client $rpc_uri;
-  my $rpc_request = RPC::XML::request-&gt;new('hub.deliver', $message);
-  my $rpc_response = $rpc_client-&gt;send_request($rpc_request);
+  my $rpc_request = RPC::XML::request->new('hub.deliver', $message);
+  my $rpc_response = $rpc_client->send_request($rpc_request);
 
   unless (ref $rpc_response) {
     die "XML-RPC Error: $RPC::XML::ERROR\n";
@@ -267,12 +267,12 @@ if ($xml_rpc) {
 
 # Open our mail program
 
-open (MAIL, "| $sendmail -t -oi -oem") or die "Cannot execute $sendmail : " . ($?&gt;&gt;8);
+open (MAIL, "| $sendmail -t -oi -oem") or die "Cannot execute $sendmail : " . ($?>>8);
 
 
 # The mail header
 
-print MAIL &lt;&lt;EOM;
+print MAIL <<EOM;
 From: $from_email
 To: $dest_email
 Content-type: text/xml
@@ -286,6 +286,6 @@ print MAIL $message;
 # Close the mail
 
 close MAIL;
-die "$0: sendmail exit status " . ($? &gt;&gt; 8) . "\n" unless ($? == 0);
+die "$0: sendmail exit status " . ($? >> 8) . "\n" unless ($? == 0);
 
 # vi: set sw=2:
