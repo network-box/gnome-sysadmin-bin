@@ -103,7 +103,7 @@ $alt_local_message_target = "";
 ### The code itself
 
 use vars qw ($commit $tree @parent $author $committer);
-use vars qw ($user $branch $rev @files $logmsg $message);
+use vars qw ($user $branch $rev @files $logmsg $message $module);
 my $line;
 
 
