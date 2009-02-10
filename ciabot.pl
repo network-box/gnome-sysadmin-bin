@@ -115,6 +115,11 @@ my $line;
 $commit = $ARGV[0];
 $branch = $ARGV[1];
 
+$module = undef;
+if (exists $ENV{'GNOME_GIT_MODULE'}) {
+    $module = $ENV{'GNOME_GIT_MODULE'};
+}
+
 open COMMIT, "git-cat-file commit $commit|" or die "git-cat-file commit $commit: $!";
 my $state = 0;
 $logmsg = '';
@@ -192,6 +197,7 @@ $message = <<EM
 EM
 ;
 $message .= "       <branch>$branch</branch>" if ($branch);
+$message .= "       <module>$module</module>" if ($module);
 $message .= <<EM
    </source>
    <timestamp>

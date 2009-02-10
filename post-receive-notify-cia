@@ -5,6 +5,21 @@
 
 BINDIR=$(cd $(dirname $0) && pwd)
 
+# Set GIT_DIR either from the working directory, or from the environment
+# variable.
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+if [ -z "$GIT_DIR" ]; then
+	echo >&2 "fatal: post-receive: GIT_DIR not set"
+	exit 1
+fi
+
+# We figure out the module from the directory name with .git stripped. Then
+# pass that to ciabot.pl as an environment variable. (We use an environment
+# variable to get a minimal delta from upstream ciabot.pl.)
+absdir=$(cd $GIT_DIR && pwd)
+GNOME_GIT_MODULE=$(basename ${absdir%.git})
+export GNOME_GIT_MODULE
+
 # Adapted from:
 #  http://kitenet.net/~joey/blog/entry/lazyweb:_git_cia_hooks/
 while read oldrev newrev refname; do
