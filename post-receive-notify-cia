@@ -4,7 +4,6 @@
 # repository before) and notify the CIA system (IRC bots, etc) about it.
 
 BINDIR=$(cd $(dirname $0) && pwd)
-echo $BINDIR
 
 # Adapted from:
 #  http://kitenet.net/~joey/blog/entry/lazyweb:_git_cia_hooks/
