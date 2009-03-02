@@ -495,11 +495,19 @@ class BranchChange(RefChange):
             else:
                 branch = "/" + self.short_refname
 
-            subject = "[%(projectshort)s%(branch)s: %(index)s/%(total)s] %(subject)s" % {
+            total = len(self.added_commits)
+            if total > 1:
+                count_string = ": %(index)s/%(total)s" % {
+                    'index' : i + 1,
+                    'total' : total
+                }
+            else:
+                count_string = ""
+
+            subject = "[%(projectshort)s%(branch)s%(count_string)s] %(subject)s" % {
                 'projectshort' : projectshort,
                 'branch' : branch,
-                'index' : i + 1,
-                'total' : len(self.added_commits),
+                'count_string' : count_string,
                 'subject' : commit.subject[0:50]
                 }
 
