@@ -273,6 +273,13 @@ class RefChange(object):
         else:
             self.short_refname = refname
 
+    # Do any setup before sending email. The __init__ function should generally
+    # just record the parameters passed in and not do git work. (The main reason
+    # for the split is to let the prepare stage do different things based on
+    # whether other ref updates have been processed or not.)
+    def prepare(self):
+        pass
+
     # Whether we should generate the normal 'main' email. For simple branch
     # updates we only generate 'extra' emails
     def get_needs_main_email(self):
@@ -365,6 +372,7 @@ class BranchChange(RefChange):
     def __init__(self, *args):
         RefChange.__init__(self, *args)
 
+    def prepare(self):
         # Find the commits that were added and removed, reverse() to get
         # chronological order
         if self.change_type == CREATE:
@@ -593,6 +601,7 @@ class AnnotatedTagChange(RefChange):
     def __init__(self, *args):
         RefChange.__init__(self, *args)
 
+    def prepare(self):
         # Resolve tag to commit
         if self.oldrev:
             self.old_commit_id = git.rev_parse(self.oldrev + "^{commit}")
@@ -1016,6 +1025,7 @@ def main():
         all_changes[change.refname] = change
 
     for change in changes:
+        change.prepare()
         change.send_emails()
         processed_changes[change.refname] = change
 
