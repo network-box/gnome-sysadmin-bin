@@ -467,7 +467,7 @@ class BranchChange(RefChange):
             mail_process = open_email()
 
             if self.short_refname == 'master':
-                branch = ""'
+                branch = ""
             else:
                 branch = "/" + self.short_refname
 
