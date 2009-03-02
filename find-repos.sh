@@ -16,7 +16,6 @@ function list_repos() {
 		echo repo.name=$shortname
 		echo repo.desc=$(test -f $r/description && cat $r/description)
 		echo repo.path=$r
-		echo repo.owner=$(stat -c %U $r)
 		echo
 	    fi
 	done
@@ -24,3 +23,4 @@ function list_repos() {
 }
 
 list_repos "/git" "GNOME git repositories"
+list_repos "/git/preview" "Git conversion preview repositories"
