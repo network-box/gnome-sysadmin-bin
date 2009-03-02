@@ -533,7 +533,11 @@ class BranchUpdate(BranchChange):
             #  [myproject/spiffy-stuff] (18 commits) ...Merge branch master
             #
             last_commit = self.added_commits[-1]
-            return self.get_count_string() + "..." + last_commit.subject[0:50]
+            if len(self.added_commits) > 1:
+                return self.get_count_string() + "..." + last_commit.subject[0:50]
+            else:
+                # The ... indicates we are only showing one of many, don't need it for a single commit
+                return last_commit.subject[0:50]
 
     def generate_body_normal(self, out):
         print >>out, s("""
