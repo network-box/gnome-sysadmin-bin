@@ -373,18 +373,6 @@ class BranchChange(RefChange):
         RefChange.__init__(self, *args)
 
     def prepare(self):
-        # Find the commits that were added and removed, reverse() to get
-        # chronological order
-        if self.change_type == CREATE:
-            self.added_commits = rev_list_commits(self.newrev)
-            self.added_commits.reverse()
-            self.removed_commits = []
-        else:
-            self.added_commits = rev_list_commits(self.oldrev + ".." + self.newrev)
-            self.added_commits.reverse()
-            self.removed_commits = rev_list_commits(self.newrev + ".." + self.oldrev)
-            self.removed_commits.reverse()
-
         # We need to figure out what commits are referenced in this commit thta
         # weren't previously referenced in the repository by another branch.
         # "Previously" here means either before this push, or by branch updates
@@ -418,6 +406,34 @@ class BranchChange(RefChange):
         self.detailed_commits = set()
         for id in detailed_commits:
             self.detailed_commits.add(id)
+
+        # Find the commits that were added and removed, reverse() to get
+        # chronological order
+        if self.change_type == CREATE:
+            # If someone creates a branch of GTK+, we don't want to list (or even walk through)
+            # all 30,000 commits in the history as "new commits" on the branch. So we start
+            # the commit listing from the first commit we are going to send a mail out about.
+            #
+            # This does mean that if someone creates a branch, merges it, and then pushes
+            # both the branch and what was merged into at once, then the resulting mails will
+            # be a bit strange (depending on ordering) - the mail for the creation of the
+            # branch may look like it was created in the finished state because all the commits
+            # have been already mailed out for the other branch. I don't think this is a big
+            # problem, and the best way to fix it would be to sort the ref updates so that the
+            # branch creation was processed first.
+            #
+            if len(detailed_commits) > 0:
+                first_detailed_commit = detailed_commits[-1]
+                self.added_commits = rev_list_commits(first_detailed_commit + "^.." + self.newrev)
+                self.added_commits.reverse()
+            else:
+                self.added_commits = []
+            self.removed_commits = []
+        else:
+            self.added_commits = rev_list_commits(self.oldrev + ".." + self.newrev)
+            self.added_commits.reverse()
+            self.removed_commits = rev_list_commits(self.newrev + ".." + self.oldrev)
+            self.removed_commits.reverse()
 
         # In some cases we'll send a cover email that describes the overall
         # change to the branch before ending individual mails for commits. In other
@@ -507,7 +523,8 @@ class BranchCreation(BranchChange):
         return self.get_count_string() + "Created branch " + self.short_refname
 
     def generate_body(self, out):
-        print >>out, s("""
+        if len(self.added_commits) > 0:
+            print >>out, s("""
 The branch '%(short_refname)s' was created.
 
 Summary of new commits:
@@ -516,7 +533,17 @@ Summary of new commits:
             'short_refname': self.short_refname,
        }
 
-        self.generate_commit_summary(out, self.added_commits)
+            self.generate_commit_summary(out, self.added_commits)
+        else:
+            print >>out, s("""
+The branch '%(short_refname)s' was created pointing to:
+
+ %(commit_oneline)s
+
+""") % {
+            'short_refname': self.short_refname,
+            'commit_oneline': commit_oneline(self.newrev)
+       }
 
 class BranchUpdate(BranchChange):
     def get_project_extra(self):
