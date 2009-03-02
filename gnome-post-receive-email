@@ -218,7 +218,7 @@ def split_lines(str):
 # Open a subprocess.Popen process object for sending mail. Write the
 # mail to process.stdin, and then call close_email()
 def open_email():
-    process = Popen("/usr/sbin/sendmail", "-t",
+    process = Popen(["/usr/sbin/sendmail", "-t"],
                     stdout=PIPE, stderr=PIPE, stdin=PIPE)
     return process
 
