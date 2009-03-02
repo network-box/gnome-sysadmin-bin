@@ -32,7 +32,7 @@
 import re
 import os
 import pwd
-from subprocess import Popen, CalledProcessError, PIPE
+from subprocess import Popen, PIPE
 import sys
 
 # Utility functions for git
@@ -182,6 +182,15 @@ def commit_oneline(commit):
 
 # General Utility
 # ===============
+
+# Clone of subprocess.CalledProcessError (not in Python 2.4)
+class CalledProcessError(Exception):
+    def __init__(self, returncode, cmd):
+        self.returncode = returncode
+        self.cmd = cmd
+
+    def __str__(self):
+        return "Command '%s' returned non-zero exit status %d" % (self.cmd, self.returncode)
 
 def die(message):
     print >>sys.stderr, message
