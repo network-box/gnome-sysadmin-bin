@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# This script should be run with the output written to /git/cgit.repositories, which
+# is included from /etc/cgitrc
+
 function list_repos() {
     paths=$1
     group=$2
