@@ -1,0 +1,45 @@
+#!/bin/bash
+
+check_maintainers() {
+    oldrev=$1
+    newrev=$2
+    refname=$3
+
+    branchname=${refname#refs/heads/}
+    if [ "$branchname" = "$refname" ] ; then
+        # not a branch update
+	return 0
+    fi
+
+    if [ "$branchname" != "master" ] ; then
+	# MAINTAINERS only required on the master branch
+	return 0
+    fi
+
+    if expr $oldrev : "^0+$" > /dev/null 2>&1; then
+        # Don't require MAINTAINERS for initial imports; keeps things simple
+	return 0
+    fi
+
+    if ! git diff-tree --name-only -r $oldrev $newrev | grep -q -v '\(LINGUAS\|ChangeLog\|.po\)$' ; then
+	# Looks like something a translator would do, exempt it from the check
+	return 0
+    fi
+
+    if ! git cat-file blob $newrev:MAINTAINERS 2>/dev/null | /bin/grep -q "^Userid:" ; then
+        echo "A valid MAINTAINERS file is required. See http://live.gnome.org/MaintainersCorner#maintainers" >&2
+        return 1
+    fi
+}
+
+if [ $# = 3 ] ; then
+    if ! check_maintainers $@ ; then
+	exit 1
+    fi
+else
+    while read oldrev newrev refname; do
+	if ! check_maintainers $oldrev $newrev $refname ; then
+	    exit 1
+	fi
+    done
+fi
