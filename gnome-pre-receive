@@ -1,0 +1,27 @@
+#!/bin/bash
+#
+# Standard GNOME pre-receive hook.
+#
+# The "pre-receive" hook is invoked just before receive-pack starts to
+# update refs on the remote repository. Its exit status determines the 
+# success or failure of the update.
+
+BINDIR=/home/admin/gitadmin-bin
+
+# If the committing user has a homedir with a .gitconfig in it, it we
+# don't want that to affect our operation. (Should this just be handled
+# in run-git-or-special-cmd?)
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+GIT_CONFIG="${GIT_DIR}/config"
+export GIT_CONFIG
+
+while read oldrev newrev refname; do
+    # Unlike the gnome-post-receive script, where we play fancy games
+    # with 'tee', we invoke the different pre-receive hooks separately
+    # for each ref that is updated. This keeps things simple and
+    # reliable and none of the scripts need all the refs at once.
+
+    if ! $BINDIR/pre-receive-check-po $oldrev $newrev $refname ; then
+	exit 1
+    fi
+done
