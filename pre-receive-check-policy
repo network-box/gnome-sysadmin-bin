@@ -1,0 +1,187 @@
+#!/bin/bash
+
+# This script checks gnome.org policy about how people are supposed to
+# use git; the intent of the policy is to keep people from shooting
+# themselve in the foot.
+#
+# Eventually, we'd like to have an ability to override policy; one way
+# it could work is that if you did 'git push --exec=force' and you
+# were a member of the right group, then run-git-or-special-cmd
+# would set an environment variable that this script would interpret.
+
+# Used in some of the messages
+server=git.gnome.org
+
+# Used to detect an initial import.
+repo_is_empty() {
+    ! git show-ref --heads | grep -q .
+}
+
+check_ref_update() {
+    oldrev=$1
+    newrev=$2
+    refname=$3
+
+    change_type=update
+    if expr $oldrev : "^0\+$" > /dev/null 2>&1; then
+	change_type=create
+    fi
+
+    if expr $newrev : "^0\+$" > /dev/null 2>&1; then
+	if [ x$change_type = xcreate ] ; then
+	    # Deleting an invalid ref, allow
+	    return 0
+	fi
+	change_type=delete
+    fi
+
+    case $refname in
+	refs/heads/*)
+	    # Branch update
+	    branchname=${refname#refs/heads/}
+
+	    case $change_type in
+		create)
+		    ;;
+		delete)
+		    # We really don't like to allow deleting any branch, but
+		    # people need to do it to clean up accidentally pushed
+		    # branches. Deleting master, however, has no purpose other
+		    # than getting around the no-fast-forward restrictions
+		    if [ "x$branchname" = xmaster ] ; then
+			cat <<EOF >&2
+---
+You are trying to delete the branch 'master'.
+---
+EOF
+			return 1
+		    fi
+		    ;;
+		update)
+		    if [ `git merge-base $oldrev $newrev` != $oldrev ] ; then
+		        # Non-fast-forward update. Right now we have
+		        # receive.denyNonFastforwards in the git configs for
+		        # our repositories anyways, but catching it here would
+		        # allow overriding without having to change the config
+			# temporarily.
+			cat <<EOF >&2
+---
+You are trying to update the branch '$branchname' in a way that is not
+a fast-forward update. Please see:
+
+  http://live.gnome.org/GitNonFastForward
+---
+EOF
+			return 1
+		    fi
+		    ;;
+	    esac
+	    ;;
+	refs/tags/*)
+	    # Tag update
+	    tagname=${refname#refs/tags/}
+
+	    case $change_type in
+		create)
+		    object_type=`git cat-file -t $newrev`
+		    case $object_type in
+			commit)
+			    # Lightweight tag; we allow an import containing these
+			    # tags, but forbid them in general
+			    if ! repo_is_empty ; then
+				cat <<EOF >&2
+---
+You are trying to push the lightweight tag '$tagname'. You should use
+a signed tag instead. See:
+
+  http://live.gnome.org/GitLightweightTags
+---
+EOF
+				return 1
+			    fi
+			    ;;
+			tag)
+			    # Annotated tag
+			    ;;
+			*)
+			    # git is happy to allow tagging random objects, we aren't
+			    cat <<EOF >&2
+---
+You are trying to push the tag '$tagname', which points to an object
+of type $object_type. (It should point to a commit or tag object.)
+---
+EOF
+			    return 1
+			    ;;
+		    esac
+		    ;;
+		delete)
+		    # Deleting a tag is probably someone trying to work-around
+		    # not being able to update a tag. Disallowing lightweight
+		    # tags will cut down on accidentally pushing tags called 'list'
+		    # or whatever.
+		    cat <<EOF >&2
+---
+You are trying to delete the tag '$tagname'.
+
+  http://live.gnome.org/GitTagUpdates
+---
+EOF
+		    return 1
+		    ;;
+		update)
+		    cat <<EOF >&2
+---
+You are trying to replace the tag '$tagname' with a new tag. Please see:
+
+  http://live.gnome.org/GitTagUpdates
+---
+EOF
+		    return 1
+		    ;;
+	    esac
+	    ;;
+	refs/remotes/*)
+	    # Remote tracking branch
+	    cat <<EOF >&2
+---
+You are trying to push the remote tracking branch:
+
+  $refname
+
+to $server.
+---
+EOF
+	    return 1
+	    ;;
+	*)
+	    # Something else
+	    cat <<EOF >&2
+---
+You are trying to push the ref:
+
+  $refname
+
+to $server. This isn't a branch or tag.
+---
+EOF
+	    return 1
+	    ;;
+    esac
+
+    return 0
+}
+
+if [ $# = 3 ] ; then
+    if ! check_ref_update $@ ; then
+	exit 1
+    fi
+else
+    while read oldrev newrev refname; do
+	if ! check_ref_update $oldrev $newrev $refname ; then
+	    exit 1
+	fi
+    done
+fi
+
+exit 0
