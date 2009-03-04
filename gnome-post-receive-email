@@ -34,6 +34,8 @@ import os
 import pwd
 from subprocess import Popen, PIPE
 import sys
+import tempfile
+import time
 
 # Utility functions for git
 # =========================
@@ -215,21 +217,107 @@ def split_lines(str):
     else:
         return str.split("\n")
 
-# Open a subprocess.Popen process object for sending mail. Write the
-# mail to process.stdin, and then call close_email()
-def open_email():
-    process = Popen(["/usr/sbin/sendmail", "-t"],
-                    stdout=PIPE, stderr=PIPE, stdin=PIPE)
-    return process
+# How long to wait between mails (in seconds); the idea of waiting
+# is to try to make the sequence of mails we send out in order
+# actually get delivered in order. The waiting is done in a forked
+# subprocess and doesn't stall completion of the main script.
+EMAIL_DELAY = 5
 
-def close_email(process):
-    output, error = process.communicate()
+# Some line that can never appear in any email we send out
+EMAIL_BOUNDARY="---@@@--- gnome-post-receive-email ---@@@---\n"
 
-    if process.returncode != 0:
-        if not quiet and not interactive:
-            print >>sys.stderr, error,
-            print output,
-        raise CalledProcessError(process.returncode, "/usr/sbin/sendmail -t")
+# Run in subprocess
+def do_send_emails():
+    email_files = []
+    current_file = None
+    last_line = None
+
+    # Read emails from stdin and write each to a file
+    for line in sys.stdin:
+        if current_file is None:
+            current_file, filename = tempfile.mkstemp(suffix=".mail", prefix="gnome-post-receive-email-")
+            email_files.append(filename)
+
+        if line == EMAIL_BOUNDARY:
+            # Strip the last line if blank; see comment when writing
+            # the email boundary for rationale
+            if last_line.strip() != "":
+                os.write(current_file, last_line)
+                last_line = None
+            os.close(current_file)
+            current_file = None
+        else:
+            if last_line is not None:
+                os.write(current_file, last_line)
+            last_line = line
+
+    if current_file is not None:
+        if last_line is not None:
+            os.write(current_file, last_line)
+        os.close(current_file)
+
+    # We're done interacting with the parent process, the rest happens
+    # asynchronously; send out the emails one by one and remove the
+    # temporary files
+    for i, filename in enumerate(email_files):
+        if i != 0:
+            time.sleep(EMAIL_DELAY)
+
+        f = open(filename, "r")
+        process = Popen(["/usr/sbin/sendmail", "-t"],
+                        stdout=None, stderr=None, stdin=f)
+        process.wait()
+        f.close()
+
+        os.remove(filename)
+
+email_file = None
+
+# Start a new outgoing email; returns a file object that the
+# email should be written to. Call end_email() when done
+def start_email():
+    global email_file
+    if email_file is None:
+        email_pipe = os.pipe()
+        pid = os.fork()
+        if pid == 0:
+            # The child
+
+            # Redirect stdin from our pipe
+            os.close(email_pipe[1])
+            os.close(0)
+            os.dup2(email_pipe[0], 0)
+            os.close(email_pipe[0])
+
+            # Redirect stdout/stderr to /dev/null
+            devnull = os.open("/dev/null", os.O_WRONLY)
+            os.close(1)
+            os.dup2(devnull, 1)
+            os.close(2)
+            os.dup2(devnull, 2)
+            os.close(devnull)
+
+            # Fork again to daemonize
+            if os.fork() > 0:
+                sys.exit(0)
+
+            do_send_emails()
+            sys.exit(0)
+
+        email_file = os.fdopen(email_pipe[1], "w")
+    else:
+        # The email might not end with a newline, so add one. We'll
+        # strip the last line, if blank, when emails, so the net effect
+        # is to add a newline to messages without one
+        email_file.write("\n")
+        email_file.write(EMAIL_BOUNDARY)
+
+    return email_file
+
+# Finish an email started with start_email
+def end_email():
+    global email_file
+    email_file.flush()
 
 ######################################################################
 
@@ -350,12 +438,12 @@ X-Git-Newrev: %(newrev)s
             extra = ""
         subject = "[" + projectshort + extra + "] " + self.get_subject()
 
-        mail_process = open_email()
+        mail_out = start_email()
 
-        self.generate_header(mail_process.stdin, subject, include_revs=True, oldrev=self.oldrev, newrev=self.newrev)
-        self.generate_body(mail_process.stdin)
+        self.generate_header(mail_out, subject, include_revs=True, oldrev=self.oldrev, newrev=self.newrev)
+        self.generate_body(mail_out)
 
-        close_email(mail_process)
+        end_email()
 
     # Allow multiple emails to be sent - used for branch updates
     def send_extra_emails(self):
@@ -488,7 +576,7 @@ class BranchChange(RefChange):
             if not commit.id in self.detailed_commits:
                 continue
 
-            mail_process = open_email()
+            mail_out = start_email()
 
             if self.short_refname == 'master':
                 branch = ""
@@ -515,16 +603,16 @@ class BranchChange(RefChange):
             # for the total branch update. Without a cover email, we are conceptually
             # breaking up the update into individual updates for each commit
             if self.needs_cover_email:
-                self.generate_header(mail_process.stdin, subject, include_revs=False)
+                self.generate_header(mail_out, subject, include_revs=False)
             else:
                 parent = git.rev_parse(commit.id + "^")
-                self.generate_header(mail_process.stdin, subject,
+                self.generate_header(mail_out, subject,
                                      include_revs=True,
                                      oldrev=parent, newrev=commit.id)
 
-            mail_process.stdin.flush()
-            git.show(commit.id, p=True, stat=True, _outfile=mail_process.stdin)
-            close_email(mail_process)
+            mail_out.flush()
+            git.show(commit.id, p=True, stat=True, _outfile=mail_out)
+            end_email()
 
 class BranchCreation(BranchChange):
     def get_subject(self):
