@@ -243,9 +243,7 @@ def do_send_emails(email_in):
             # the email boundary for rationale
             if last_line.strip() != "":
                 os.write(current_file, last_line)
-                last_line = None
-            else:
-                last_line = None
+            last_line = None
             os.close(current_file)
             current_file = None
         else:
