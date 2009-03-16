@@ -69,7 +69,7 @@ EOF
 You are trying to update the branch '$branchname' in a way that is not
 a fast-forward update. Please see:
 
-  http://live.gnome.org/GitNonFastForward
+  http://live.gnome.org/Git/Help/NonFastForward
 ---
 EOF
 			return 1
@@ -94,7 +94,7 @@ EOF
 You are trying to push the lightweight tag '$tagname'. You should use
 a signed tag instead. See:
 
-  http://live.gnome.org/GitLightweightTags
+  http://live.gnome.org/Git/Help/LightweightTags
 ---
 EOF
 				return 1
@@ -124,7 +124,7 @@ EOF
 ---
 You are trying to delete the tag '$tagname'.
 
-  http://live.gnome.org/GitTagUpdates
+  http://live.gnome.org/Git/Help/TagUpdates
 ---
 EOF
 		    return 1
@@ -134,7 +134,7 @@ EOF
 ---
 You are trying to replace the tag '$tagname' with a new tag. Please see:
 
-  http://live.gnome.org/GitTagUpdates
+  http://live.gnome.org/Git/Help/TagUpdates
 ---
 EOF
 		    return 1
