@@ -332,6 +332,9 @@ def end_email():
 
 ######################################################################
 
+# When we put a git subject into the Subject: line, where to truncate
+SUBJECT_MAX_SUBJECT_CHARS = 100
+
 CREATE = 0
 UPDATE = 1
 DELETE = 2
@@ -607,7 +610,7 @@ class BranchChange(RefChange):
                 'projectshort' : projectshort,
                 'branch' : branch,
                 'count_string' : count_string,
-                'subject' : commit.subject[0:50]
+                'subject' : commit.subject[0:SUBJECT_MAX_SUBJECT_CHARS]
                 }
 
             # If there is a cover email, it has the X-Git-OldRev/X-Git-NewRev in it
@@ -676,10 +679,10 @@ class BranchUpdate(BranchChange):
             #
             last_commit = self.added_commits[-1]
             if len(self.added_commits) > 1:
-                return self.get_count_string() + "..." + last_commit.subject[0:50]
+                return self.get_count_string() + "..." + last_commit.subject[0:SUBJECT_MAX_SUBJECT_CHARS]
             else:
                 # The ... indicates we are only showing one of many, don't need it for a single commit
-                return last_commit.subject[0:50]
+                return last_commit.subject[0:SUBJECT_MAX_SUBJECT_CHARS]
 
     def generate_body_normal(self, out):
         print >>out, s("""
