@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Script to set up the right config variables and hooks for our
+# git repositories.
+
+gnomify_repo() {
+    export GIT_DIR=$1
+
+    git config hooks.emailprefix ""
+    git config hooks.mailinglist svn-commits-list@gnome.org
+
+    ln -sf /home/admin/gitadmin-bin/gnome-pre-receive $GIT_DIR/hooks/pre-receive
+    ln -sf /home/admin/gitadmin-bin/gnome-post-receive $GIT_DIR/hooks/post-receive
+}
+
+# We only enforce the above parameters for the standard repositories; the
+# ones owned by 'gnomecvs'. There are also some unusual repositories owned
+# by other groups that have different policies.
+for r in $(find /git -maxdepth 1 -group gnomecvs -print); do
+    if [ -d $r/objects ] ; then
+       gnomify_repo $r
+    fi
+done
