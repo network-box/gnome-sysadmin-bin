@@ -598,7 +598,7 @@ class BranchChange(RefChange):
                 branch = "/" + self.short_refname
 
             total = len(self.added_commits)
-            if total > 1:
+            if total > 1 and self.needs_cover_email:
                 count_string = ": %(index)s/%(total)s" % {
                     'index' : i + 1,
                     'total' : total
