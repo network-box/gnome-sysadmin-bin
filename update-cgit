@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# Script to update the repository list for CGIT
+
+# NOTE: This script is run via sudo to the gitadmin user. Using sudo constrains
+#  the environment, but it's important to be a bit careful about what we do
+#  in here.
+
+BINDIR=/home/admin/gitadmin-bin
+
+$BINDIR/find-cgit-repos.sh > /git/cgit.repositories
