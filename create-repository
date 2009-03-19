@@ -8,14 +8,10 @@
 
 BINDIR=/home/admin/gitadmin-bin
 
-name="$1"
+. $BINDIR/functions
 
-# This check actually excludes some current names like gtk+ and libIDL,
-# but it reflects our general policy
-if ! expr "$name" : "\([a-z][a-z0-9-]*\|perl-[a-zA-Z][a-zA-Z0-9-]*\)$" > /dev/null ; then
-   echo "'$name' is not a valid name for a GNOME project" 1>&2
-   exit 1
-fi
+validate_repository_name "$1"
+name="$1"
 
 if [ -e /git/$name.git -o -e /git/preview/$name.git ] ; then
    echo "'$name' already exists" 1>&2
