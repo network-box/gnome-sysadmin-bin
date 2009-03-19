@@ -12,9 +12,10 @@
 # Used in some of the messages
 server=git.gnome.org
 
-# Used to detect an initial import.
-repo_is_empty() {
-    ! git show-ref --heads | grep -q .
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+
+in_import() {
+    test -e "$GIT_DIR/pending"
 }
 
 check_ref_update() {
@@ -88,7 +89,7 @@ EOF
 			commit)
 			    # Lightweight tag; we allow an import containing these
 			    # tags, but forbid them in general
-			    if ! repo_is_empty ; then
+			    if ! in_import ; then
 				cat <<EOF >&2
 ---
 You are trying to push the lightweight tag '$tagname'. You should use
@@ -119,15 +120,18 @@ EOF
 		    # Deleting a tag is probably someone trying to work-around
 		    # not being able to update a tag. Disallowing lightweight
 		    # tags will cut down on accidentally pushing tags called 'list'
-		    # or whatever.
-		    cat <<EOF >&2
+		    # or whatever. During import we allow the user to clean up
+		    # accidentally pushed tags.
+		    if ! in_import ; then
+			cat <<EOF >&2
 ---
 You are trying to delete the tag '$tagname'.
 
   http://live.gnome.org/Git/Help/TagUpdates
 ---
 EOF
-		    return 1
+			return 1
+		    fi
 		    ;;
 		update)
 		    cat <<EOF >&2
