@@ -8,4 +8,6 @@
 
 BINDIR=/home/admin/gitadmin-bin
 
+echo -n "Updating the cgit repository list... "
 $BINDIR/find-cgit-repos.sh > /git/cgit.repositories
+echo "done"
