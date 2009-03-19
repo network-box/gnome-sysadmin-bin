@@ -13,6 +13,11 @@ if [ -z "$GIT_DIR" ]; then
 	exit 1
 fi
 
+# Don't notify for a repository in the process of being imported
+if [ -e "$GIT_DIR/pending" ] ; then
+    exit 0
+fi
+
 # We figure out the module from the directory name with .git stripped. Then
 # pass that to ciabot.pl as an environment variable. (We use an environment
 # variable to get a minimal delta from upstream ciabot.pl.)
