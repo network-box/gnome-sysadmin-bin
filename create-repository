@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Script to create a new repository
+
+# NOTE: This script is run via sudo to the gitadmin user. Using sudo constrains
+#  the environment, but it's important to do validation on the argument and
+#  be careful how we use it.
+
+BINDIR=/home/admin/gitadmin-bin
+
+name="$1"
+
+# This check actually excludes some current names like gtk+ and libIDL,
+# but it reflects our general policy
+if ! expr "$name" : "\([a-z][a-z0-9-]*\|perl-[a-zA-Z][a-zA-Z0-9-]*\)$" > /dev/null ; then
+   echo "'$name' is not a valid name for a GNOME project" 1>&2
+   exit 1
+fi
+
+if [ -e /git/$name.git -o -e /git/preview/$name.git ] ; then
+   echo "'$name' already exists" 1>&2
+   exit 1
+fi
+
+if [ -e /mnt/git-data/svn-archive/$name ] ; then
+   echo "'$name' already exists as an archived project" 1>&2
+   exit 1
+fi
+
+export GIT_DIR=/git/$name.git
+git init --shared --bare
+chgrp -R gnomecvs $GIT_DIR
+$BINDIR/gnomify-repos $GIT_DIR
+
+# Mark as a "pending" repository
+touch $GIT_DIR/pending
+
+$BINDIR/update-cgit
+
