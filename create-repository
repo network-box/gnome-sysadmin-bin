@@ -6,6 +6,10 @@
 #  the environment, but it's important to do validation on the argument and
 #  be careful how we use it.
 
+# If no run from a login shell, we might end up with the default umask of 0022
+# but we want group-writable directories.
+umask 0002
+
 BINDIR=/home/admin/gitadmin-bin
 
 if [ `whoami` != gitadmin ] ; then
