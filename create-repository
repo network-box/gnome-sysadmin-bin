@@ -33,3 +33,17 @@ touch $GIT_DIR/pending
 
 $BINDIR/update-cgit
 
+user=$SUDO_USER
+if [ -z "$user" ] ; then
+    user=$USER
+fi
+
+echo <<EOF
+You can now import an existing Git repository using:
+
+  git push ssh://$user@git.gnome.org/git/$name refs/heads/* refs/tags/*
+
+When you are finished importing and everything looks good, run:
+
+  ssh git.gnome.org finish-import $name
+EOF
