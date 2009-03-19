@@ -14,4 +14,4 @@ if ! $in_gitadmin ; then
 fi
 
 export GNOME_GIT_FORCE=1
-exec git-receive-pack $@
+exec git-receive-pack "$@"

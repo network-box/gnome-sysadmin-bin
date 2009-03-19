@@ -1,4 +1,4 @@
 #!/bin/bash
 
 export GNOME_GIT_IMPORT=1
-exec git-receive-pack $@
+exec git-receive-pack "$@"
