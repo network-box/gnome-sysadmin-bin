@@ -1,5 +1,14 @@
 2009-01-14  Owen Taylor  <otaylor@redhat.com>
 
+	* run-git-or-special-cmd: Rework to allow the special commands:
+
+	  create-repository
+	  finish-import
+	  force (for git push --exec=force)
+	  import (for git push --exec=import)
+
+2009-01-14  Owen Taylor  <otaylor@redhat.com>
+
 	* run-git-or-special-cmd: Add an analogue of
 	run-svn-or-special-cmd for git.gnome.org.
 
