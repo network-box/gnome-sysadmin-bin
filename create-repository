@@ -49,7 +49,7 @@ fi
 cat <<EOF
 You can now import an existing Git repository using:
 
-  git push ssh://$user@git.gnome.org/git/$name refs/heads/* refs/tags/*
+  git push --exec=import ssh://$user@git.gnome.org/git/$name refs/heads/* refs/tags/*
 
 When you are finished importing and everything looks good, run:
 

@@ -24,21 +24,26 @@ projectshort=$(basename ${absdir%.git})
 # state.
 if [ -e "$GIT_DIR/pending" -a -z "$GNOME_GIT_IMPORT" ] ; then
     cat <<EOF 1>&2
+---
 $projectshort is still in the process of being imported. To import
 into $projectshort use 'git push --exec=import'. If you are done
 importing, do:
 
-   ssh USERNAME@git.gnome.org finish-import $projectshort
+   ssh $USER@git.gnome.org finish-import $projectshort
+
+---
 EOF
     exit 1
 fi
 
 if [ \! -e "$GIT_DIR/pending" -a -n "$GNOME_GIT_IMPORT" ] ; then
     cat <<EOF 1>&2
+---
 $projectshort is no longer in the process of being imported. You
 can push to $projectshort normally. If you accidentally ran
 finish-import too early, please contact gitmaster@gnome.org
 for assistance.
+----
 EOF
     exit 1
 fi
