@@ -38,7 +38,7 @@ if [ -z "$user" ] ; then
     user=$USER
 fi
 
-echo <<EOF
+cat <<EOF
 You can now import an existing Git repository using:
 
   git push ssh://$user@git.gnome.org/git/$name refs/heads/* refs/tags/*
