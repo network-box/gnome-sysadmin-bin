@@ -14,10 +14,15 @@ function list_repos() {
 		shortname=${shortname%%.git}
 		shortname=${shortname/\/home\//\~}
 		url=${shortname}
+		if test -f $r/pending ; then
+		    pending="[PENDING] "
+		else
+		    pending=""
+		fi
 		test -z "$group" || echo repo.group=$group
 		echo repo.url=$url
 		echo repo.name=$shortname
-		echo repo.desc=$(test -f $r/description && cat $r/description)
+		echo repo.desc=$pending$(test -f $r/description && cat $r/description)
 		echo repo.path=$r
 		echo
 	    fi
