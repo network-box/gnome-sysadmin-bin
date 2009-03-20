@@ -183,14 +183,10 @@ EOF
 }
 
 if [ $# = 3 ] ; then
-    if ! check_ref_update $@ ; then
-	exit 1
-    fi
+    check_ref_update $@ || exit 1
 else
     while read oldrev newrev refname; do
-	if ! check_ref_update $oldrev $newrev $refname ; then
-	    exit 1
-	fi
+	check_ref_update $oldrev $newrev $refname || exit 1
     done
 fi
 

@@ -54,15 +54,7 @@ while read oldrev newrev refname; do
     # for each ref that is updated. This keeps things simple and
     # reliable and none of the scripts need all the refs at once.
 
-    if ! $BINDIR/pre-receive-check-policy $oldrev $newrev $refname ; then
-	exit 1
-    fi
-
-    if ! $BINDIR/pre-receive-check-maintainers $oldrev $newrev $refname ; then
-	exit 1
-    fi
-
-    if ! $BINDIR/pre-receive-check-po $oldrev $newrev $refname ; then
-	exit 1
-    fi
+    $BINDIR/pre-receive-check-policy $oldrev $newrev $refname || exit 1
+    $BINDIR/pre-receive-check-maintainers $oldrev $newrev $refname || exit 1
+    $BINDIR/pre-receive-check-po $oldrev $newrev $refname || exit 1
 done

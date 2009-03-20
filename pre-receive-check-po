@@ -131,13 +131,9 @@ if [ -e $GIT_DIR/pending ] ; then
 fi
 
 if [ $# = 3 ] ; then
-    if ! check_pos $@ ; then
-	exit 1
-    fi
+    check_pos $@ || exit 1
 else
     while read oldrev newrev refname; do
-	if ! check_pos $oldrev $newrev $refname ; then
-	    exit 1
-	fi
+	check_pos $oldrev $newrev $refname || exit 1
     done
 fi

@@ -38,13 +38,9 @@ check_maintainers() {
 }
 
 if [ $# = 3 ] ; then
-    if ! check_maintainers $@ ; then
-	exit 1
-    fi
+    check_maintainers $@ || exit 1
 else
     while read oldrev newrev refname; do
-	if ! check_maintainers $oldrev $newrev $refname ; then
-	    exit 1
-	fi
+	check_maintainers $oldrev $newrev $refname || exit 1
     done
 fi
