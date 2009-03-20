@@ -122,6 +122,14 @@ check_pos() {
 
 }
 
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+
+# Don't check .po's during import; we don't want to enforce correct
+# .po files for some ancient historical branch
+if [ -e $GIT_DIR/pending ] ; then
+    exit 0
+fi
+
 if [ $# = 3 ] ; then
     if ! check_pos $@ ; then
 	exit 1
