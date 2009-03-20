@@ -16,8 +16,13 @@ check_maintainers() {
 	return 0
     fi
 
-    if expr $oldrev : "^0+$" > /dev/null 2>&1; then
+    if expr $oldrev : "^0\+$" > /dev/null 2>&1; then
         # Don't require MAINTAINERS for initial imports; keeps things simple
+	return 0
+    fi
+
+    if expr $newrev : "^0\+$" > /dev/null 2>&1; then
+        # Branch deletion; (shouldn't really happen for the master branch)
 	return 0
     fi
 
