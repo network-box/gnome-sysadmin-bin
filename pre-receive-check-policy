@@ -18,6 +18,10 @@ in_import() {
     test -e "$GIT_DIR/pending"
 }
 
+forced() {
+    test -n "$GNOME_GIT_FORCE"
+}
+
 check_ref_update() {
     oldrev=$1
     newrev=$2
@@ -59,7 +63,7 @@ EOF
 		    fi
 		    ;;
 		update)
-		    if [ `git merge-base $oldrev $newrev` != $oldrev ] ; then
+		    if [ `git merge-base $oldrev $newrev` != $oldrev ] && ! forced ; then
 		        # Non-fast-forward update. Right now we have
 		        # receive.denyNonFastforwards in the git configs for
 		        # our repositories anyways, but catching it here would
@@ -89,7 +93,7 @@ EOF
 			commit)
 			    # Lightweight tag; we allow an import containing these
 			    # tags, but forbid them in general
-			    if ! in_import ; then
+			    if ! in_import && ! forced ; then
 				cat <<EOF >&2
 ---
 You are trying to push the lightweight tag '$tagname'. You should use
@@ -122,7 +126,7 @@ EOF
 		    # tags will cut down on accidentally pushing tags called 'list'
 		    # or whatever. During import we allow the user to clean up
 		    # accidentally pushed tags.
-		    if ! in_import ; then
+		    if ! in_import && ! forced ; then
 			cat <<EOF >&2
 ---
 You are trying to delete the tag '$tagname'.
@@ -134,14 +138,16 @@ EOF
 		    fi
 		    ;;
 		update)
-		    cat <<EOF >&2
+		    if  ! forced ; then
+			cat <<EOF >&2
 ---
 You are trying to replace the tag '$tagname' with a new tag. Please see:
 
   http://live.gnome.org/Git/Help/TagUpdates
 ---
 EOF
-		    return 1
+			return 1
+		    fi
 		    ;;
 	    esac
 	    ;;
