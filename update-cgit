@@ -9,7 +9,7 @@
 BINDIR=/home/admin/gitadmin-bin
 
 if [ `whoami` != gitadmin ] ; then
-    exec sudo -u gitadmin $BINDIR/update-cgit "$@"
+    cd / && exec sudo -u gitadmin $BINDIR/update-cgit "$@"
 fi
 
 echo -n "Updating the cgit repository list... "

@@ -13,7 +13,7 @@ umask 0002
 BINDIR=/home/admin/gitadmin-bin
 
 if [ `whoami` != gitadmin ] ; then
-    exec sudo -u gitadmin $BINDIR/create-repository "$@"
+    cd / && exec sudo -u gitadmin $BINDIR/create-repository "$@"
 fi
 
 . $BINDIR/functions
