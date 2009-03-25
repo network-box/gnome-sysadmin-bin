@@ -53,5 +53,5 @@ You can now import an existing Git repository using:
 
 When you are finished importing and everything looks good, run:
 
-  ssh git.gnome.org finish-import $name
+  ssh $user@git.gnome.org finish-import $name
 EOF
