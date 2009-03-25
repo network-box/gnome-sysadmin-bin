@@ -19,6 +19,6 @@ fi
 echo "Clearing pending flag on $GIT_DIR"
 rm $GIT_DIR/pending
 
-sudo -u gitadmin $BINDIR/update-cgit
+$BINDIR/update-cgit
 
 echo "$name is now ready for use"
