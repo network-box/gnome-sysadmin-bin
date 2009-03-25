@@ -1,5 +1,11 @@
 2009-01-14  Owen Taylor  <otaylor@redhat.com>
 
+	* run-git-or-special-cmd: Remove the sudo from running of
+	create-repository ... we'll let the script sudo itself, instead
+	of having to get the logic right in two places.
+
+2009-01-14  Owen Taylor  <otaylor@redhat.com>
+
 	* run-git-or-special-cmd: Rework to allow the special commands:
 
 	  create-repository

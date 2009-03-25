@@ -10,7 +10,7 @@ if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
 
     case "$COMMAND" in
 	create-repository)
-	    exec sudo -u gitadmin /home/admin/gitadmin-bin/create-repository "$@"
+	    exec /home/admin/gitadmin-bin/create-repository "$@"
 	    ;;
 
 	finish-import)
