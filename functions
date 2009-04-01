@@ -5,7 +5,8 @@
 # This check actually excludes some current names like gtk+ and libIDL,
 # but it reflects our general policy
 validate_repository_name() {
-    if ! expr "$1" : "\([a-z][a-z0-9-]*\|perl-[a-zA-Z][a-zA-Z0-9-]*\)$" > /dev/null ; then
+    # character class ranges work weirdly localized for some C library versions
+    if ! LANG=C expr "$1" : "\([a-z][a-z0-9-]*\|perl-[a-zA-Z][a-zA-Z0-9-]*\)$" > /dev/null ; then
         echo "'$1' is not a valid name for a GNOME project" 1>&2
         exit 1
     fi
