@@ -18,6 +18,12 @@ fi
 
 . $BINDIR/functions
 
+if [ $# != 1 ] ; then
+   echo "Too many arguments" 1>&2
+   echo "Usage: create-repository <repository-name>" 1>&2
+   exit 1
+fi
+
 validate_repository_name "$1"
 name="$1"
 
