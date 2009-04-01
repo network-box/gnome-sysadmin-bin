@@ -6,6 +6,7 @@
 gnomify_repo() {
     export GIT_DIR=$1
 
+    git config core.sharedrepository 1
     git config hooks.emailprefix ""
     git config hooks.mailinglist svn-commits-list@gnome.org
 
