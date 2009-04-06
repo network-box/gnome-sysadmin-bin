@@ -15,10 +15,9 @@ check_po() {
 
     basename=`basename $path`
 
-    # gettext-0.14.6 on git.gnome.org isn't new enough to handle
-    # features such as msgctx
-    # dash_c="-c"
-    dash_c=
+    # Perform extensive tests. This could be disabled if GNOME .po
+    # files used newer features than those available on git.gnome.org.
+    dash_c="-c"
 
     # Parse the file and check for errors
     result=`git cat-file blob "$rev:$path" | msgfmt $dash_c -o /dev/null - 2>&1`
@@ -121,6 +120,9 @@ check_pos() {
     fi
 
 }
+
+# Use a newer version of the gettext tools than the ones shipped with RHEL 5
+PATH=/usr/libexec/gettext17:$PATH
 
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 
