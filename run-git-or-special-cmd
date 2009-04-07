@@ -40,5 +40,5 @@ if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
     esac
 fi
 
-echo 'ERROR: must specify a command'
+echo 'SSH authentication succeeded. Interactive login is not allowed.'
 exit 1
