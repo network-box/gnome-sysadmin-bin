@@ -28,7 +28,8 @@ check_commit() {
     email="$(git log $commit -1 --pretty=format:%ae)"
     case "$email" in
 	*localhost.localdomain|*\(none\))
-	    cat <<EOF >&2
+	    if ! in_import && ! forced ; then
+		cat <<EOF >&2
 ---
 The commits you are trying to push contain the author email
 address '$email'. Please configure your
@@ -40,12 +41,14 @@ For instructions about how to do this and how to fix your
 existing commits.
 ---
 EOF
-	    exit 1
-	;;
+		exit 1
+	    fi
+	    ;;
     esac
 
     subject="$(git log $commit -1 --pretty=format:%s)"
     if expr "$subject" : ".*Merge branch.*of.*\(git\|ssh\):" > /dev/null 2>&1; then
+	if ! in_import && ! forced ; then
 	    cat <<EOF >&2
 ---
 The commit:
@@ -62,6 +65,7 @@ will fix the problem. Then please try, 'git push' again. Please see:
 ---
 EOF
 	    exit 1
+	fi
     fi
 }
 
