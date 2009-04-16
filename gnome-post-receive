@@ -23,6 +23,7 @@ GIT_CONFIG="${GIT_DIR}/config"
 export GIT_CONFIG
 
 tee >($BINDIR/log-push 1>&2) \
+    >($BINDIR/post-receive-update-description 1>&2) \
     >($BINDIR/post-receive-notify-cia 1>&2) \
     >($BINDIR/post-receive-notify-updates 1>&2) \
     | $BINDIR/gnome-post-receive-email 1>&2

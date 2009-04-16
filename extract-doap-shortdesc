@@ -1,0 +1,17 @@
+#!/usr/bin/python
+
+import sys
+
+script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
+script_dir = os.path.dirname(script_path)
+sys.path.insert(0, script_dir)
+
+import semi_rdf
+
+DOAP = "http://usefulinc.com/ns/doap#"
+
+nodes = semi_rdf.read_rdf(sys.stdin)
+for node in nodes:
+    if node.name != (DOAP, "Project"):
+        continue
+    print node.find_property((DOAP, "shortdesc"))
