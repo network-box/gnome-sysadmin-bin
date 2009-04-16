@@ -22,6 +22,49 @@ forced() {
     test -n "$GNOME_GIT_FORCE"
 }
 
+check_commit() {
+    commit=$1
+
+    email="$(git log $commit -1 --pretty=format:%ae)"
+    case "$email" in
+	*localhost.localdomain|*\(none\))
+	    cat <<EOF >&2
+---
+The commits you are trying to push contain the author email
+address '$email'. Please configure your
+username and email address. See:
+
+  http://live.gnome.org/Git/Help/AuthorEmail
+
+For instructions about how to do this and how to fix your
+existing commits.
+---
+EOF
+	    exit 1
+	;;
+    esac
+
+    subject="$(git log $commit -1 --pretty=format:%s)"
+    if expr "$subject" : ".*Merge branch.*of.*\(git\|ssh\):" > /dev/null 2>&1; then
+	    cat <<EOF >&2
+---
+The commit:
+
+EOF
+	    git log $commit -1 >&2
+	    cat <<EOF >&2
+
+Looks like it was produced by typing 'git pull' without the --rebase
+option when you had local changes. Running 'git  pull --rebase' now
+will fix the problem. Then please try, 'git push' again. Please see:
+
+  http://live.gnome.org/Git/Help/ExtraMergeCommits
+---
+EOF
+	    exit 1
+    fi
+}
+
 check_ref_update() {
     oldrev=$1
     newrev=$2
@@ -45,8 +88,10 @@ check_ref_update() {
 	    # Branch update
 	    branchname=${refname#refs/heads/}
 
+	    range=
 	    case $change_type in
 		create)
+		    range="$newrev"
 		    ;;
 		delete)
 		    # We really don't like to allow deleting any branch, but
@@ -59,10 +104,11 @@ check_ref_update() {
 You are trying to delete the branch 'master'.
 ---
 EOF
-			return 1
+			exit 1
 		    fi
 		    ;;
 		update)
+		    range="$oldrev..$newrev"
 		    if [ `git merge-base $oldrev $newrev` != $oldrev ] && ! forced ; then
 		        # Non-fast-forward update. Right now we have
 		        # receive.denyNonFastforwards in the git configs for
@@ -77,10 +123,26 @@ a fast-forward update. Please see:
   http://live.gnome.org/Git/Help/NonFastForward
 ---
 EOF
-			return 1
+			exit 1
 		    fi
 		    ;;
 	    esac
+
+	    # For new commits introduced with this branch update, we want to run some
+	    # checks to catch common mistakes.
+	    #
+	    # Expression here is same as in post-receive-notify-cia; we take 
+	    # all the branches in the repo, as "^/ref/heads/branchname", other than the
+            # branch we are actualy committing to, and exclude commits already on those
+            # branches from the list of commits between $oldrev and $newrev.
+
+	    if [ -n "$range" ] ; then
+		for merged in $(git rev-parse --symbolic-full-name --not --branches | \
+                    egrep -v "^\^$refname$" | \
+		    git rev-list --reverse --stdin "$range"); do
+		    check_commit $merged
+		done
+	    fi
 	    ;;
 	refs/tags/*)
 	    # Tag update
@@ -102,7 +164,7 @@ a signed tag instead. See:
   http://live.gnome.org/Git/Help/LightweightTags
 ---
 EOF
-				return 1
+				exit 1
 			    fi
 			    ;;
 			tag)
@@ -116,7 +178,7 @@ You are trying to push the tag '$tagname', which points to an object
 of type $object_type. (It should point to a commit or tag object.)
 ---
 EOF
-			    return 1
+			    exit 1
 			    ;;
 		    esac
 		    ;;
@@ -134,7 +196,7 @@ You are trying to delete the tag '$tagname'.
   http://live.gnome.org/Git/Help/TagUpdates
 ---
 EOF
-			return 1
+			exit 1
 		    fi
 		    ;;
 		update)
@@ -146,7 +208,7 @@ You are trying to replace the tag '$tagname' with a new tag. Please see:
   http://live.gnome.org/Git/Help/TagUpdates
 ---
 EOF
-			return 1
+			exit 1
 		    fi
 		    ;;
 	    esac
@@ -162,7 +224,7 @@ You are trying to push the remote tracking branch:
 to $server.
 ---
 EOF
-	    return 1
+	    exit 1
 	    ;;
 	*)
 	    # Something else
@@ -175,7 +237,7 @@ You are trying to push the ref:
 to $server. This isn't a branch or tag.
 ---
 EOF
-	    return 1
+	    exit 1
 	    ;;
     esac
 
@@ -183,10 +245,10 @@ EOF
 }
 
 if [ $# = 3 ] ; then
-    check_ref_update $@ || exit 1
+    check_ref_update $@
 else
     while read oldrev newrev refname; do
-	check_ref_update $oldrev $newrev $refname || exit 1
+	check_ref_update $oldrev $newrev $refname
     done
 fi
 
