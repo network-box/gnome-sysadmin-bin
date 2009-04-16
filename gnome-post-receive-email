@@ -819,6 +819,11 @@ def main():
     global user_fullname
     global recipients
 
+    # No emails for a repository in the process of being imported
+    git_dir = git.rev_parse(git_dir=True, _quiet=True)
+    if os.path.exists(os.path.join(git_dir, 'pending')):
+        return
+
     projectshort = get_module_name()
 
     try:

@@ -181,10 +181,6 @@ def get_module_name():
     except CalledProcessError:
         die("GIT_DIR not set")
 
-    # No emails for a repository in the process of being imported
-    if os.path.exists(os.path.join(git_dir, 'pending')):
-        return
-
     # Use the directory name with .git stripped as a short identifier
     absdir = os.path.abspath(git_dir)
     projectshort = os.path.basename(absdir)
