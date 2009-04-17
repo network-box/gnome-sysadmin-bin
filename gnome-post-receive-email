@@ -335,7 +335,7 @@ class BranchChange(RefChange):
                                      oldrev=parent, newrev=commit.id)
 
             email_out.flush()
-            git.show(commit.id, p=True, stat=True, _outfile=email_out)
+            git.show(commit.id, p=True, M=True, stat=True, _outfile=email_out)
             end_email()
 
 class BranchCreation(BranchChange):
