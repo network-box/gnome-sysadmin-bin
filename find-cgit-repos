@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+# This script should be run with the output written to /git/cgit.repositories, which
+# is included from /etc/cgitrc
+
+import os
+import re
+
+grouplist = ('Administration Tools', 'Bindings', 'Deprecated', 'Desktop', 'Development Tools',
+             'Infrastructure', 'Platform', 'Productivity Tools', 'Other')
+groupmap = {
+    'admin': 'Administration Tools',
+    'bindings': 'Bindings',
+    'deprecated': 'Deprecated',
+    'desktop': 'Desktop',
+    'development': 'Development Tools',
+    'infrastructure': 'Infrastructure',
+    'platform': 'Platform',
+    'productivity': 'Productivity Tools'
+    }
+groups = {}
+for group in grouplist:
+    groups[group] = []
+
+def list_repos (paths):
+    for path in paths:
+        if not os.path.isdir(path):
+            continue
+        for repo in os.listdir(path):
+            repopath = os.path.join (path, repo)
+            if not os.path.isdir(repopath):
+                continue
+            shortname = re.sub('/git/', '', repopath)
+            shortname = re.sub('/srv/', '', shortname)
+            shortname = re.sub('\.git$', '', shortname)
+            shortname = re.sub('/home/', '~', shortname)
+            pending = ''
+            if os.path.isfile(os.path.join(repopath, 'pending')):
+                pending = '[PENDING] '
+
+            desc_file = os.path.join(repopath, 'description')
+            desc = ''
+            if os.path.isfile(desc_file):
+                desc = open(desc_file).readline().strip()
+            desc = pending + desc
+                
+            group_file = os.path.join(repopath, 'gnome_group')
+            group = None
+            if os.path.isfile(group_file):
+                group = open(group_file).readline().strip()
+            group = groupmap.get(group, 'Other')
+
+            groups[group].append ((shortname, shortname, desc, repopath))
+
+    for group in grouplist:
+        for repo in groups[group]:
+            print 'repo.group=%s' % group
+            print 'repo.url=%s' % repo[0]
+            print 'repo.name=%s' % repo[1]
+            print 'repo.desc=%s' % repo[2]
+            print 'repo.path=%s' % repo[3]
+            print
+
+list_repos (('/git', '/git/preview'))

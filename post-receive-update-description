@@ -17,8 +17,7 @@ update_description_from_file() {
         return
     fi
 
-    shortdesc=$(git cat-file blob "$newrev:$path" | $BINDIR/extract-doap-shortdesc)
-    echo $shortdesc > $GIT_DIR/description
+    git cat-file blob "$newrev:$path" | $BINDIR/extract-doap-info $GIT_DIR
     $BINDIR/update-cgit
 }
 

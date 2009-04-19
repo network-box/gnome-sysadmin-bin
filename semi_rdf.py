@@ -81,7 +81,7 @@ class RdfHandler(xml.sax.handler.ContentHandler):
                 if attrname == (XML, "lang"):
                     pass
                 elif attrname == (RDF, "resource"):
-                    resource = attrname
+                    resource = attributes.getValue(attrname)
                 elif attrname == (RDF, "parseType"):
                     parseType = attributes.getValue(attrname)
                     if parseType == "resource":

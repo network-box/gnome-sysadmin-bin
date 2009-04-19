@@ -13,5 +13,5 @@ if [ `whoami` != gitadmin ] ; then
 fi
 
 echo -n "Updating the cgit repository list... "
-$BINDIR/find-cgit-repos.sh > /git/cgit.repositories
+$BINDIR/find-cgit-repos > /git/cgit.repositories
 echo "done"
