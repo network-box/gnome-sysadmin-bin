@@ -7,6 +7,7 @@
 import sys
 import os
 import os.path
+import time
 from optparse import OptionParser
 
 timestamp_dir = "/usr/local/www/gnomeweb/timestamps"
@@ -19,7 +20,7 @@ parser = OptionParser()
 parser.add_option("-m", "--module", dest="module",
                           help="Module to trigger an update for")
 parser.add_option("-b", "--branch", dest="branch", action="store_true",
-                          help="Read branch to update from stdin")
+                          help="Remaining arguments are branches")
 
 parser.set_defaults(branch=False)
 
@@ -29,28 +30,25 @@ if not opts.module:
     parser.print_usage()
     sys.exit(1)
 
-def update_flag(module, flagline):
+def update_flag(module, body):
     build_flag = os.path.join(timestamp_dir, module + ".buildflag")
 
-    # Create the flag file (write the first line of the e-mail, which
-    # I suppose can help identify the last committer)
     flagfile = open(build_flag, 'w')
-    flagfile.write(flagline)
+    # Write the time into file
+    flagfile.write(time.strftime("Date: %F %T UTC\n", time.gmtime()))
+    flagfile.write(body)
     flagfile.close()
 
+# We echo the body into the flag file for debugging purposes
+# (it contains the old and new revisions)
+body = sys.stdin.read()
+
 if opts.branch:
-    branches = [l.strip() for l in sys.stdin.readlines()]
-    branches = [l for l in branches if l]
-    if len(branches) < 2:
-        sys.exit(1)
-
-    flagline = branches.pop()
-
-    for branch in branches:
+    for branch in args:
         module = '%s!%s' % (opts.module, branch)
-        update_flag(module, flagline)
+        update_flag(module, body)
 else:
-    update_flag(opts.module, sys.stdin.readline())
+    update_flag(opts.module, body)
 
 print "Build flag set."
 
