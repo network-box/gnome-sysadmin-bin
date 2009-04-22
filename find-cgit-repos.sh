@@ -21,6 +21,8 @@ function list_repos() {
 		    pending=""
 		fi
 
+		desc=""
+
 		if ! cmp $r/description /git/empty-description; then
 		    desc=$(test -f $r/description && cat $r/description)
 		fi
