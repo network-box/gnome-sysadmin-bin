@@ -14,15 +14,25 @@ function list_repos() {
 		shortname=${shortname%%.git}
 		shortname=${shortname/\/home\//\~}
 		url=${shortname}
+
 		if test -f $r/pending ; then
 		    pending="[PENDING] "
 		else
 		    pending=""
 		fi
+
+		if ! cmp $r/description /git/empty-description; then
+		    desc=$(test -f $r/description && cat $r/description)
+		fi
+
+		if test -z "$desc"; then
+		    desc="Please create $shortname.doap (see http://live.gnome.org/Git/FAQ)"
+		fi
+
 		test -z "$group" || echo repo.group=$group
 		echo repo.url=$url
 		echo repo.name=$shortname
-		echo repo.desc=$pending$(test -f $r/description && cat $r/description)
+		echo repo.desc=$pending$desc
 		echo repo.path=$r
 		echo
 	    fi
