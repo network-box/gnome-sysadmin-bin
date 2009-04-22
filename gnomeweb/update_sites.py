@@ -3,7 +3,7 @@
 # This script is called from cron every minute or so. It will read a list
 # of modules and check the timestamps for each module. Any modules that
 # have commits since their last build will be rebuilt. Rebuilding is just
-# a case of spawning a 'svn update' in the right directory, and maybe
+# a case of refreshing the git checkout in the right directory, and maybe
 # calling a post-update hook script if one exists.
 #
 
@@ -17,19 +17,21 @@ import fcntl
 import re
 from optparse import OptionParser
 
-import xml.dom.minidom # to parse svn xml output
+sys.path.insert(0, "/home/admin/gitadmin-bin")
+
+from git import *
 
 timestamp_dir = "/usr/local/www/gnomeweb/timestamps"
 hookscripts_dir = "/usr/local/www/gnomeweb/hooks"
-checkout_url = "http://svn.gnome.org/svn/%s/%s" # %s for module name
-checkout_basedir = "/usr/local/www/gnomeweb/svn-wd" # default base directory for checkouts
+checkout_url = "git://git.gnome.org/%(module)s"
+checkout_basedir = "/usr/local/www/gnomeweb/git-wd" # default base directory for checkouts
 log_dir = "/usr/local/www/gnomeweb/logs"
 re_branch_versioned = r'^gnome-([0-9]+)-([0-9]+)$'
 
 FAILURE_MAIL = """Failure updating %(url)s.
 
-Last commit by: %(author)s
-ViewCVS: http://svn.gnome.org/viewvc/%(module)s?rev=%(rev)s&view=rev
+Last commit by: %(committer)s
+CGIT: http://git.gnome.org/cgit/%(module)s/commit/?id=%(rev)s
 
 Last few lines of output:
 
@@ -46,17 +48,12 @@ parser.add_option("-c", "--config", dest="configfile", metavar="FILE",
 parser.set_defaults(verbose=False)
 
 
-def get_svn_info(path):
-    xmls = subprocess.Popen(["svn", "info", '--xml', path], stdout=subprocess.PIPE).communicate()[0]
-    document = xml.dom.minidom.parseString(xmls)
-    
-    try: author = document.getElementsByTagName('author')[0].firstChild.nodeValue
-    except: author = ""
+def get_git_info(path):
+    os.chdir(path)
+    committer = git.log("HEAD^!", pretty="format:%cn <%ce>")
+    rev = git.rev_parse("HEAD")
 
-    try: rev = document.getElementsByTagName('entry')[0].getAttribute('revision')
-    except: rev = ""
-
-    return author, rev
+    return committer, rev
 
 def update_modules(configfile, verbose):
     cfg = ConfigParser.ConfigParser()
@@ -96,17 +93,18 @@ def update_modules(configfile, verbose):
                                 r'\1', os.path.basename(fn))
 
                 checkfile = '%s!%s' % (module, branch) # Merge again for update_module
+                # Transform gnome-x-y to x.y
                 version = re.sub(re_branch_versioned, r'\1.\2', branch)
 
-                url = checkout_url % (module, 'branches/' + branch)
+                url = checkout_url % { 'module' : module }
                 b_moduleroot = '%s-%s' % (moduleroot, version)
-                update_module(module, checkfile, b_moduleroot, url, verbose=verbose)
+                update_module(module, checkfile, b_moduleroot, url, owner, branch=branch, verbose=verbose)
         else:
-            url = checkout_url % (module, 'trunk')
-            update_module(module, module, moduleroot, url, verbose=verbose)
+            url = checkout_url % { 'module' : module }
+            update_module(module, module, moduleroot, url, owner, verbose=verbose)
 
 
-def update_module(module, checkfile, moduleroot, url, verbose=False):
+def update_module(module, checkfile, moduleroot, url, owner, branch='master', verbose=False):
     # Compare timestamps
     if verbose:
         print "Checking '" + module + "'..."
@@ -139,19 +137,32 @@ def update_module(module, checkfile, moduleroot, url, verbose=False):
         if verbose:
             print "Wrote PID to lock file (PID: %d)" % os.getpid()
 
-    # Run a svn checkout/update
-    retval = 0
-    if not os.path.exists(moduleroot):
-        # Path does not exist.. so check it out of SVN
-        if verbose:
-            print "Running 'svn checkout " + moduleroot + "'..."
-        retval = os.spawnlp(os.P_WAIT, 'svn', 'svn', 'checkout', '-q', '--non-interactive', url, moduleroot)
-    else:
-        if verbose:
-            print "Running 'svn update " + moduleroot + "'..."
-        retval = os.spawnlp(os.P_WAIT, 'svn', 'svn', 'update', '-q', '--non-interactive', moduleroot)
-    if retval != 0:
-        print "Updating the '" + module + "' site failed"
+    # Get the latest git contents
+    try:
+        retval = 0
+        if not os.path.exists(moduleroot):
+            # Path does not exist.. so check it out of GIT
+            if verbose:
+                print "Running 'git clone' to create " + moduleroot
+            git.clone(url, moduleroot)
+            os.chdir(moduleroot)
+            if branch != 'master':
+                if verbose:
+                    print "Running git checkout -b", branch, "origin/" + branch
+                git.checkout('-b', branch, 'origin/' + branch)
+        else:
+            if not os.path.exists(os.path.join(moduleroot, ".git")):
+                print "%s exists and is not a git clone" % moduleroot
+                return False
+            os.chdir(moduleroot)
+            if verbose:
+                print "Running 'git fetch' to update " + moduleroot
+            git.fetch("origin")
+            if verbose:
+                print "Resetting to latest content"
+            git.reset('origin/' + branch, hard=True)
+    except CalledProcessError, e:
+        print str(e)
         return False
 
     # We're done if there isn't a post-update hook to run
@@ -175,16 +186,16 @@ def update_module(module, checkfile, moduleroot, url, verbose=False):
         print "Hook script failed with exitcode: %s" % retval
 
     # When an error occurs: inform the owner via email
-    if retval != 0 and owner:
+    if retval != 0:
         # Generate contents of the mail
-        author, rev = get_svn_info(moduleroot)
+        committer, rev = get_git_info(moduleroot)
         outputtail = subprocess.Popen(["tail", "-n30", logfile_name], stdout=subprocess.PIPE).communicate()[0]
         mailmessage = FAILURE_MAIL % locals()
         
         # Send the mail
-        cmd = ['mail', '-s', "Failure updating %s" % url, owner]
-        if author:
-            cmd.append("%s@svn.gnome.org" % author)
+        cmd = ['mail', '-s', "Failure updating %s" % url, committer]
+        if owner:
+            cmd.append(owner)
         obj = subprocess.Popen(cmd, stdin=subprocess.PIPE, close_fds=True)
         obj.stdin.write(mailmessage)
         obj.stdin.close()
