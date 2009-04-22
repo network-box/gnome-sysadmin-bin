@@ -46,6 +46,8 @@ def list_repos (paths):
             desc = ''
             if os.path.isfile(desc_file):
                 desc = open(desc_file).readline().strip()
+                if desc == 'Unnamed repository; edit this file to name it for gitweb.':
+                    desc = "Please create %s.doap (see http://live.gnome.org/Git/FAQ)" % shortname
             desc = pending + desc
                 
             group_file = os.path.join(repopath, 'gnome_group')
