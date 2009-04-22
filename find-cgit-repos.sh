@@ -23,7 +23,7 @@ function list_repos() {
 
 		desc=""
 
-		if ! cmp $r/description /git/empty-description; then
+		if ! cmp $r/description /git/empty-description 2>/dev/null ; then
 		    desc=$(test -f $r/description && cat $r/description)
 		fi
 
