@@ -32,7 +32,8 @@ def list_repos (paths):
             continue
         for repo in os.listdir(path):
             repopath = os.path.join (path, repo)
-            if not os.path.isdir(repopath):
+            # We check for ./refs to avoid non-git repository subdirs
+            if not os.path.isdir(os.path.join(repopath, 'refs')):
                 continue
             shortname = re.sub('/git/', '', repopath)
             shortname = re.sub('/srv/', '', shortname)
