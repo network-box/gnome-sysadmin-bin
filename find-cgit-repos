@@ -22,6 +22,10 @@ groups = {}
 for group in grouplist:
     groups[group] = []
 
+# Sort alphabetically by name
+def sort_repos(a, b):
+    return cmp(a[1].lower(), b[1].lower())
+
 def list_repos (paths):
     for path in paths:
         if not os.path.isdir(path):
@@ -53,7 +57,7 @@ def list_repos (paths):
             groups[group].append ((shortname, shortname, desc, repopath))
 
     for group in grouplist:
-        for repo in groups[group]:
+        for repo in sorted(groups[group], sort_repos):
             print 'repo.group=%s' % group
             print 'repo.url=%s' % repo[0]
             print 'repo.name=%s' % repo[1]
