@@ -18,10 +18,9 @@ from Mailman import Errors
 from Mailman import i18n
 
 
-params = urllib.urlencode({'view': 'rootstxt'})
-f = urllib.urlopen("http://svn.gnome.org/viewvc/?%s" % params)
+f = urllib.urlopen("http://git.gnome.org/repositories.txt")
 
-# GNOME viewcvs was specially patched to support rootstxt and returns text/plain output
+# Ensure the URL is sane (readable and plain text)
 if f.headers.getmaintype() != 'text' or f.headers.status != "":
     sys.exit(1)
 
