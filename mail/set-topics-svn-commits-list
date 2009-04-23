@@ -27,6 +27,7 @@ if f.headers.getmaintype() != 'text' or f.headers.status != "":
 modules = f.read()
 modules = modules.strip()
 modules = modules.split("\n")
+modules.sort()
 
 f.close()
 
