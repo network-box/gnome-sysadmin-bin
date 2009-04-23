@@ -6,6 +6,9 @@
 import os
 import re
 
+# This is what GIT writes by default, we replace it with something better
+NO_DESCRIPTION = 'Unnamed repository; edit this file to name it for gitweb.'
+
 grouplist = ('Administration Tools', 'Bindings', 'Deprecated', 'Desktop', 'Development Tools',
              'Infrastructure', 'Platform', 'Productivity Tools', 'Other')
 groupmap = {
@@ -47,7 +50,7 @@ def list_repos (paths):
             desc = ''
             if os.path.isfile(desc_file):
                 desc = open(desc_file).readline().strip()
-                if desc == 'Unnamed repository; edit this file to name it for gitweb.':
+                if desc == '' or desc == NO_DESCRIPTION:
                     desc = "Please create %s.doap (see http://live.gnome.org/Git/FAQ)" % shortname
             desc = pending + desc
                 
