@@ -3,6 +3,7 @@
 # This script should be run with the output written to /git/cgit.repositories, which
 # is included from /etc/cgitrc
 
+from optparse import OptionParser
 import os
 import re
 
@@ -29,7 +30,7 @@ for group in grouplist:
 def sort_repos(a, b):
     return cmp(a[1].lower(), b[1].lower())
 
-def list_repos (paths):
+def list_repos (paths, flat=False):
     for path in paths:
         if not os.path.isdir(path):
             continue
@@ -64,11 +65,19 @@ def list_repos (paths):
 
     for group in grouplist:
         for repo in sorted(groups[group], sort_repos):
-            print 'repo.group=%s' % group
-            print 'repo.url=%s' % repo[0]
-            print 'repo.name=%s' % repo[1]
-            print 'repo.desc=%s' % repo[2]
-            print 'repo.path=%s' % repo[3]
-            print
+            if flat:
+                print repo[0]
+            else:
+                print 'repo.group=%s' % group
+                print 'repo.url=%s' % repo[0]
+                print 'repo.name=%s' % repo[1]
+                print 'repo.desc=%s' % repo[2]
+                print 'repo.path=%s' % repo[3]
+                print
 
-list_repos (('/git', '/git/preview'))
+parser = OptionParser()
+parser.add_option('', "--flat", action='store_true',
+                  help="Produce a flat text file")
+options, args = parser.parse_args()
+
+list_repos (('/git', '/git/preview'), flat=options.flat)
