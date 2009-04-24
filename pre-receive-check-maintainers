@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# This checks to see if the module has maintainer information. Maintainer
+# information can be provided one of two ways:
+#
+#  - A <modulename>.doap file
+#  - A MAINTAINERS file (deprecated)
+
+BINDIR=/home/admin/gitadmin-bin
+
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+
+# Use the directory name with .git stripped as a short identifier
+absdir=$(cd $GIT_DIR && pwd)
+projectshort=$(basename ${absdir%.git})
+
 check_maintainers() {
     oldrev=$1
     newrev=$2
@@ -12,12 +26,12 @@ check_maintainers() {
     fi
 
     if [ "$branchname" != "master" ] ; then
-	# MAINTAINERS only required on the master branch
+	# maintainer info only required on the master branch
 	return 0
     fi
 
     if expr $oldrev : "^0\+$" > /dev/null 2>&1; then
-        # Don't require MAINTAINERS for initial imports; keeps things simple
+        # Don't require maintainer info for initial imports; keeps things simple
 	return 0
     fi
 
@@ -31,9 +45,21 @@ check_maintainers() {
 	return 0
     fi
 
-    if ! git cat-file blob $newrev:MAINTAINERS 2>/dev/null | /bin/grep -q "^Userid:" ; then
-        echo "A valid MAINTAINERS file is required. See http://live.gnome.org/MaintainersCorner#maintainers" >&2
-        return 1
+    if git cat-file -e $newrev:$projectshort.doap 2>/dev/null ; then
+	# There's a DOAP file. For performance reasons and to allow having fairly
+	# strict validation without being annoying, we only validate the DOAP file
+        # if it changed
+	if git diff-tree --name-only -r $oldrev $newrev | grep -q $projectshort.doap ; then
+	    if ! git cat-file blob $newrev:$projectshort.doap | $BINDIR/validate-doap $projectshort ; then
+		return 1
+	    fi
+	fi
+    else
+        # See if there is a old-style MAINTAINERS file
+	if ! git cat-file blob $newrev:MAINTAINERS 2>/dev/null | /bin/grep -q "^Userid:" ; then
+            echo "A valid $projectshort.doap file is required. See http://live.gnome.org/MaintainersCorner#maintainers" >&2
+            return 1
+	fi
     fi
 }
 
