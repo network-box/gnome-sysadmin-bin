@@ -3,6 +3,7 @@
 from cStringIO import StringIO
 import os
 import sys
+from xml.sax import SAXParseException
 
 script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
 script_dir = os.path.dirname(script_path)
@@ -49,7 +50,11 @@ if len(sys.argv) < 2:
 
 modulename = sys.argv[1]
 
-nodes = semi_rdf.read_rdf(sys.stdin)
+try:
+    nodes = semi_rdf.read_rdf(sys.stdin)
+except SAXParseException, e:
+    die("XML parse error (line %d): %s" % (e.getLineNumber(), e.getMessage()))
+
 seen_project = False
 for node in nodes:
     if node.name != (DOAP, "Project"):
