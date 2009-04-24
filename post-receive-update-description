@@ -1,5 +1,7 @@
 #!/bin/bash
 
+umask 0002
+
 BINDIR=/home/admin/gitadmin-bin
 
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
