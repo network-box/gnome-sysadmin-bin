@@ -44,14 +44,12 @@ for l in data.splitlines():
     if nr == 1:
         name = l
     elif ":" in l:
-        field, value = l.split(": ", 1)
-        field = field.rstrip()
+        field, value = l.split(":", 1)
+        field = field.strip()
         value = value.strip().lower()
         if field == 'E-mail' or field == 'E-Mail' or field == 'Email' or field == 'EMail':
             email = value
         elif field == 'Userid':
             uid = value
-        else:
-            print "ERROR: Strange field: %s (module: %s)" % (field, modname)
 
 semi_rdf.dump_rdf(nodes, sys.stdout)
