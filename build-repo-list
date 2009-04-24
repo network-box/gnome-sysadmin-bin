@@ -117,16 +117,16 @@ elif options.output == 'doap':
             file_nodes = semi_rdf.read_rdf(f)
             f.close()
 
-        for node in file_nodes:
-            if node.name != (DOAP, "Project"):
-                continue
+            for node in file_nodes:
+                if node.name != (DOAP, "Project"):
+                    continue
 
-            node.remove_property((GNOME, "GitRepository"))
-            node.add_property((GNOME, "GitRepository"),
-                              None,
-                              semi_rdf.UrlResource("git://git.gnome.org/%s" % repo.shortname))
+                node.remove_property((GNOME, "GitRepository"))
+                node.add_property((GNOME, "GitRepository"),
+                                  None,
+                                  semi_rdf.UrlResource("git://git.gnome.org/%s" % repo.shortname))
 
-        nodes.extend(file_nodes)
+            nodes.extend(file_nodes)
 
     iter_repos(paths, add_file)
     semi_rdf.dump_rdf(nodes, sys.stdout)
