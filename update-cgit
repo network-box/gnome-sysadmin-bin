@@ -12,7 +12,8 @@ if [ `whoami` != gitadmin ] ; then
     cd / && exec sudo -u gitadmin $BINDIR/update-cgit "$@"
 fi
 
-echo -n "Updating the cgit repository list... "
-$BINDIR/find-cgit-repos > /git/cgit.repositories
-$BINDIR/find-cgit-repos --flat > /git/repositories.txt
+echo -n "Updating the repository list... "
+$BINDIR/build-repo-list --output=cgit > /git/cgit.repositories
+$BINDIR/build-repo-list --output=flat > /git/repositories.txt
+$BINDIR/build-repo-list --output=doap > /git/repositories.doap
 echo "done"

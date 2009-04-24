@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+
+# This script should be run with the output written to /git/cgit.repositories, which
+# is included from /etc/cgitrc
+
+from optparse import OptionParser
+import os
+import re
+import sys
+
+# Namespaces for DOAP files
+DOAP = "http://usefulinc.com/ns/doap#"
+GNOME = "http://api.gnome.org/doap-extensions#"
+
+# This is what GIT writes by default, we replace it with something better
+NO_DESCRIPTION = 'Unnamed repository; edit this file to name it for gitweb.'
+
+grouplist = ('Administration Tools', 'Bindings', 'Deprecated', 'Desktop', 'Development Tools',
+             'Infrastructure', 'Platform', 'Productivity Tools', 'Other')
+groupmap = {
+    'admin': 'Administration Tools',
+    'bindings': 'Bindings',
+    'deprecated': 'Deprecated',
+    'desktop': 'Desktop',
+    'development': 'Development Tools',
+    'infrastructure': 'Infrastructure',
+    'platform': 'Platform',
+    'productivity': 'Productivity Tools'
+    }
+groups = {}
+for group in grouplist:
+    groups[group] = []
+
+class Repo:
+    def __init__(self, repopath):
+        self.path = repopath
+
+        shortname = re.sub('/git/', '', repopath)
+        shortname = re.sub('/srv/', '', shortname)
+        shortname = re.sub('\.git$', '', shortname)
+        shortname = re.sub('/home/', '~', shortname)
+        self.shortname = shortname
+
+        pending = ''
+        if os.path.isfile(os.path.join(repopath, 'pending')):
+            pending = '[PENDING] '
+
+        desc_file = os.path.join(repopath, 'description')
+        desc = ''
+        if os.path.isfile(desc_file):
+            desc = open(desc_file).readline().strip()
+            if desc == '' or desc == NO_DESCRIPTION:
+                desc = "Please create %s.doap (see http://live.gnome.org/Git/FAQ)" % shortname
+        self.desc = pending + desc
+
+        group_file = os.path.join(repopath, 'gnome_group')
+        group = None
+        if os.path.isfile(group_file):
+            group = open(group_file).readline().strip()
+        self.group = groupmap.get(group, 'Other')
+
+# Sort alphabetically by name
+def sort_repos(a, b):
+    return cmp(a.shortname, b.shortname)
+
+# Call a function on each repository
+def iter_repos (paths, repo_func):
+    for path in paths:
+        if not os.path.isdir(path):
+            continue
+        for repo in os.listdir(path):
+            repopath = os.path.join (path, repo)
+            # We check for ./refs to avoid non-git repository subdirs
+            if not os.path.isdir(os.path.join(repopath, 'refs')):
+                continue
+
+            repo = Repo(repopath)
+            groups[repo.group].append(repo)
+
+    for group in grouplist:
+        for repo in sorted(groups[group], sort_repos):
+            repo_func(repo)
+
+def output_cgit(repo):
+    print 'repo.group=%s' % repo.group
+    print 'repo.url=%s' % repo.shortname
+    print 'repo.name=%s' % repo.shortname
+    print 'repo.desc=%s' % repo.desc
+    print 'repo.path=%s' % repo.path
+    print
+
+def output_flat(repo):
+    print repo.shortname
+
+parser = OptionParser()
+parser.add_option('', "--output", action='store', choices=['cgit', 'flat', 'doap'],
+                  help="Type of output to produce")
+options, args = parser.parse_args()
+
+if len(args) == 0:
+    paths = ('/git', '/git/preview')
+else:
+    paths = args
+
+if options.output == 'cgit':
+    iter_repos (paths, output_cgit)
+elif options.output == 'flat':
+    iter_repos (paths, output_flat)
+elif options.output == 'doap':
+    import semi_rdf
+
+    nodes = []
+    def add_file(repo):
+        doapfile = os.path.join(repo.path, "gnome_doap")
+        if os.path.isfile(doapfile):
+            f = open(doapfile)
+            file_nodes = semi_rdf.read_rdf(f)
+            f.close()
+
+        for node in file_nodes:
+            if node.name != (DOAP, "Project"):
+                continue
+
+            node.remove_property((GNOME, "GitRepository"))
+            node.add_property((GNOME, "GitRepository"),
+                              None,
+                              semi_rdf.UrlResource("git://git.gnome.org/%s" % repo.shortname))
+
+        nodes.extend(file_nodes)
+
+    iter_repos(paths, add_file)
+    semi_rdf.dump_rdf(nodes, sys.stdout)
