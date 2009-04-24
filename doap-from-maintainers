@@ -34,7 +34,7 @@ for l in data.splitlines():
 
                 maintainernode.add_property((FOAF, "mbox"),
                                             None,
-                                            "mailto:" + semi_rdf.UrlResource(email))
+                                            semi_rdf.UrlResource("mailto:" + email))
             projectnode.add_property((DOAP, "maintainer"), None, maintainernode)
             nodes.append(maintainernode)
 
