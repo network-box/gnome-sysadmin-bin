@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# This script should be run with the output written to /git/cgit.repositories, which
+# is included from /etc/cgitrc
+
+BINDIR=/home/admin/gitadmin-bin
+
+function process_repos() {
+    paths=$1
+    for p in $paths; do
+	for r in $(echo $p/*); do
+	    if test -d $r/objects; then
+		absdir=$(cd $r && pwd)
+		projectshort=$(basename ${absdir%.git})
+
+		export GIT_DIR=$r
+		if git cat-file -e master:$projectshort.doap 2>/dev/null ; then
+		    git cat-file blob master:$projectshort.doap | $BINDIR/extract-doap-info $r
+		elif git cat-file -e master:MAINTAINERS 2>/dev/null ; then
+		    git cat-file blob master:MAINTAINERS | $BINDIR/doap-from-maintainers > $r/gnome_doap
+		fi
+	    fi
+	done
+    done
+}
+
+process_repos "/git"
+$BINDIR/update-cgit
