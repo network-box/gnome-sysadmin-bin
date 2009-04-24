@@ -192,7 +192,7 @@ def _dump_node(f, node, lang, namespaces, depth=0):
             if isinstance(v, str):
                 f.write(escape(v))
             else:
-                f.write(escape(v).decode("utf8"))
+                f.write(escape(v).encode("utf8"))
             f.write('</%s>\n' % qualname(n, namespaces))
         elif v == None:
             f.write("/>\n");
