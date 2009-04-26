@@ -19,7 +19,7 @@ GNOME = "http://api.gnome.org/doap-extensions#"
 
 groups = {
     (GNOME + 'admin'): 'admin',
-    (GNOME + 'bindings'): 'platform',
+    (GNOME + 'bindings'): 'bindings',
     (GNOME + 'deprecated'): 'deprecated',
     (GNOME + 'desktop'): 'desktop',
     (GNOME + 'development'): 'development',
