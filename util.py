@@ -27,13 +27,6 @@ def die(message):
     print >>sys.stderr, message
     sys.exit(1)
 
-# Used to split the output of a command that outputs one result per line
-def split_lines(str):
-    if str == "":
-        return []
-    else:
-        return str.split("\n")
-
 # This cleans up our generation code by allowing us to use the same indentation
 # for the first line and subsequent line of a multi-line string
 def strip_string(str):

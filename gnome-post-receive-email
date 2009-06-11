@@ -40,7 +40,7 @@ script_dir = os.path.dirname(script_path)
 sys.path.insert(0, script_dir)
 
 from git import *
-from util import die, split_lines, strip_string as s, start_email, end_email
+from util import die, strip_string as s, start_email, end_email
 
 # When we put a git subject into the Subject: line, where to truncate
 SUBJECT_MAX_SUBJECT_CHARS = 100
@@ -213,7 +213,7 @@ class BranchChange(RefChange):
                 # Exclude commits that are ancestors of all other branches
                 detailed_commit_args.append("^" + branch)
 
-        detailed_commits = split_lines(git.rev_list(*detailed_commit_args))
+        detailed_commits = git.rev_list(*detailed_commit_args).splitlines()
 
         self.detailed_commits = set()
         for id in detailed_commits:

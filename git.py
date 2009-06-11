@@ -110,7 +110,7 @@ def git_run(command, *args, **kwargs):
         return None
     else:
         if do_split_lines:
-            return split_lines(output.strip())
+            return output.strip().splitlines()
         else:
             return output.strip()
 
