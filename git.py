@@ -24,7 +24,7 @@ import re
 from subprocess import Popen, PIPE
 import sys
 
-from util import die, split_lines
+from util import die
 
 # Clone of subprocess.CalledProcessError (not in Python 2.4)
 class CalledProcessError(Exception):
