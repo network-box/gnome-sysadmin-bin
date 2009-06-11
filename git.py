@@ -183,6 +183,8 @@ def get_module_name():
 
     # Use the directory name with .git stripped as a short identifier
     absdir = os.path.abspath(git_dir)
+    if absdir.endswith(os.sep + '.git'):
+        absdir = os.path.dirname(absdir)
     projectshort = os.path.basename(absdir)
     if projectshort.endswith(".git"):
         projectshort = projectshort[:-4]
