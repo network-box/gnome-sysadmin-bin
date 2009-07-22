@@ -236,9 +236,15 @@ class BranchChange(RefChange):
             # branch creation was processed first.
             #
             if len(detailed_commits) > 0:
-                first_detailed_commit = detailed_commits[-1]
-                self.added_commits = rev_list_commits(first_detailed_commit + "^.." + self.newrev)
-                self.added_commits.reverse()
+                # Verify parent of first detailed commit is valid. On initial push, it is not.
+                parent = detailed_commits[-1] + "^"
+                try:
+                    validref = git.rev_parse(parent, _quiet=True)
+                except CalledProcessError:
+                    self.added_commits = []
+                else:
+                    self.added_commits = rev_list_commits(parent + ".." + self.newrev)
+                    self.added_commits.reverse()
             else:
                 self.added_commits = []
             self.removed_commits = []
