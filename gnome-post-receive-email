@@ -33,6 +33,7 @@ import re
 import os
 import pwd
 import sys
+from email import Header
 
 script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
 script_dir = os.path.dirname(script_path)
@@ -850,7 +851,10 @@ def main():
         if m:
             fullname = m.group(1).strip()
             if fullname != "":
-                user_fullname = fullname
+                try:
+                    user_fullname = unicode(fullname, 'ascii')
+                except UnicodeDecodeError:
+                    user_fullname = Header.Header(fullname, 'utf-8').encode()
 
     changes = []
 
