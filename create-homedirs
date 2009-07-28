@@ -58,4 +58,7 @@ if __name__ == '__main__':
     user_list = get_uids_from_group ("gnomecvs")
     for user in user_list:
         create_home_directory (user)
+    user_list = get_uids_from_group ("bugzilla")
+    for user in user_list:
+        create_home_directory (user)
 
