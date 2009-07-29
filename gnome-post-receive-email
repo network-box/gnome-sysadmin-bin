@@ -70,6 +70,7 @@ class RefChange(object):
         self.refname = refname
         self.oldrev = oldrev
         self.newrev = newrev
+        self.cc = set()
 
         if oldrev == None and newrev != None:
             self.change_type = CREATE
@@ -119,12 +120,14 @@ class RefChange(object):
 
         print >>out, s("""
 To: %(recipients)s
+Cc: %(cc)s
 From: %(from_address)s
 Subject: %(subject)s
 Keywords: %(projectshort)s
 X-Git-Refname: %(refname)s
 """) % {
             'recipients': recipients,
+            'cc': ','.join(self.cc)
             'from_address': from_address,
             'subject': subject,
             'projectshort': projectshort,
@@ -348,6 +351,13 @@ class BranchChange(RefChange):
             end_email()
 
 class BranchCreation(BranchChange):
+    def __init__(self, *args):
+        BranchChange.__init__(self, *args)
+
+        # Inform required parties in case of official branch creation
+        if self.short_refname.startswith('gnome'):
+            self.cc.update(('release-team@gnome.org',))
+
     def get_subject(self):
         return self.get_count_string() + "Created branch " + self.short_refname
 
