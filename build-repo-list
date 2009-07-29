@@ -117,17 +117,31 @@ elif options.output == 'doap':
             file_nodes = semi_rdf.read_rdf(f)
             f.close()
 
+            repository_node = semi_rdf.Node((DOAP, "GitRepository"))
+            repository_node.add_property((DOAP, "location"),
+                                         None,
+                                         semi_rdf.UrlResource("git://git.gnome.org/%s" % repo.shortname))
+            repository_node.add_property((DOAP, "browse"),
+                                       None,
+                                       semi_rdf.UrlResource("http://git.gnome.org/cgit/%s" % repo.shortname))
+            old_repository_node = None
+
             for node in file_nodes:
                 if node.name != (DOAP, "Project"):
                     continue
 
-                node.remove_property((GNOME, "GitRepository"))
-                node.remove_property((DOAP, "GitRepository"))
-                node.add_property((DOAP, "GitRepository"),
+                old_repository_node = node.find_property((DOAP, "repository"))
+                node.remove_property((DOAP, "repository"))
+                node.add_property((DOAP, "repository"),
                                   None,
-                                  semi_rdf.UrlResource("git://git.gnome.org/%s" % repo.shortname))
+                                  repository_node)
+
+            # Don't want the old repository emitted as a toplevel node
+            if old_repository_node:
+                file_nodes.remove(old_repository_node)
 
             nodes.extend(file_nodes)
+            nodes.append(repository_node)
 
     iter_repos(paths, add_file)
     semi_rdf.dump_rdf(nodes, sys.stdout)
