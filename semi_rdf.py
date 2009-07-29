@@ -104,7 +104,6 @@ class RdfHandler(xml.sax.handler.ContentHandler):
                     node.properties.append((attrname, lang, attributes.getValue(attrname)))
             self.__property_stack.append((name, lang, resource))
             if node is not None:
-                print node.properties
                 self.__node_stack.append(node)
                 self.__depth += 1
         else:
