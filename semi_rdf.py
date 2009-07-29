@@ -129,7 +129,8 @@ class RdfHandler(xml.sax.handler.ContentHandler):
 
     def popNode(self):
         node = self.__node_stack.pop()
-        self.__object = node
+        if self.__property_stack:
+            self.__object = node
         self.nodes.append(node)
         return node
 
