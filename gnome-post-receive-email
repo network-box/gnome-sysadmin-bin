@@ -874,10 +874,7 @@ def main():
         if m:
             fullname = m.group(1).strip()
             if fullname != "":
-                try:
-                    user_fullname = unicode(fullname, 'ascii')
-                except UnicodeDecodeError:
-                    user_fullname = Header.Header(fullname, 'utf-8').encode()
+                user_fullname = fullname
 
     changes = []
 
