@@ -356,7 +356,11 @@ class BranchCreation(BranchChange):
 
         # Inform required parties in case of official branch creation
         if self.short_refname.startswith('gnome'):
-            self.cc.update(('release-team@gnome.org',))
+            self.cc.update((
+                'release-team@gnome.org',
+                'gnome-doc-list@gnome.org',
+                'gnome-i18n@gnome.org'
+            ))
 
     def get_subject(self):
         return self.get_count_string() + "Created branch " + self.short_refname
