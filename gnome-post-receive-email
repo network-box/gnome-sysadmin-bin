@@ -111,12 +111,15 @@ class RefChange(object):
     def generate_body(self, out):
         raise NotImplemenetedError()
 
-    def generate_header(self, out, subject, include_revs=True, oldrev=None, newrev=None):
+    def generate_header(self, out, subject, include_revs=True, oldrev=None, newrev=None, cc=None):
         user = os.environ['USER']
         if user_fullname:
             from_address = "%s <%s@src.gnome.org>" % (user_fullname, user)
         else:
             from_address = "%s@src.gnome.org" % (user)
+
+        if cc is None:
+            cc = self.cc
 
         print >>out, s("""
 To: %(recipients)s
@@ -127,7 +130,7 @@ Keywords: %(projectshort)s
 X-Git-Refname: %(refname)s
 """) % {
             'recipients': recipients,
-            'cc': ','.join(self.cc),
+            'cc': ','.join(cc),
             'from_address': from_address,
             'subject': subject,
             'projectshort': projectshort,
@@ -337,7 +340,7 @@ class BranchChange(RefChange):
             # for the total branch update. Without a cover email, we are conceptually
             # breaking up the update into individual updates for each commit
             if self.needs_cover_email:
-                self.generate_header(email_out, subject, include_revs=False)
+                self.generate_header(email_out, subject, include_revs=False, cc=[])
             else:
                 parent = git.rev_parse(commit.id + "^")
                 self.generate_header(email_out, subject,
@@ -355,7 +358,7 @@ class BranchCreation(BranchChange):
         BranchChange.__init__(self, *args)
 
         # Inform required parties in case of official branch creation
-        if self.short_refname.startswith('gnome'):
+        if re.match(r'gnome-[0-9]+-[0-9]+$', self.short_refname):
             self.cc.update((
                 'release-team@gnome.org',
                 'gnome-doc-list@gnome.org',
