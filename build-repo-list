@@ -122,7 +122,8 @@ elif options.output == 'doap':
                     continue
 
                 node.remove_property((GNOME, "GitRepository"))
-                node.add_property((GNOME, "GitRepository"),
+                node.remove_property((DOAP, "GitRepository"))
+                node.add_property((DOAP, "GitRepository"),
                                   None,
                                   semi_rdf.UrlResource("git://git.gnome.org/%s" % repo.shortname))
 
