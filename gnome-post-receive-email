@@ -127,7 +127,7 @@ Keywords: %(projectshort)s
 X-Git-Refname: %(refname)s
 """) % {
             'recipients': recipients,
-            'cc': ','.join(self.cc)
+            'cc': ','.join(self.cc),
             'from_address': from_address,
             'subject': subject,
             'projectshort': projectshort,
