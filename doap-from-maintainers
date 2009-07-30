@@ -14,12 +14,11 @@ projectnode = semi_rdf.Node((DOAP, "Project"), )
 nodes = [projectnode]
 
 data = sys.stdin.read()
+data += "\n\n\n" # simplifies logic
 
 nr, name, email, uid = 0, None, None, None
 for l in data.splitlines():
     if l.startswith('#'): continue
-
-    data += "\n\n\n" # simplifies logic
 
     nr += 1
 
