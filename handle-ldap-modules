@@ -315,25 +315,25 @@ it probably requires some other setting.""")
         # Get module maintainer data from MAINTAINERS file in Git
         nodes = semi_rdf.read_rdf('http://git.gnome.org/repositories.doap')
         for node in nodes:
-            if node.name != (DOAP, "Project"):
+            if node.name != (self.DOAP, "Project"):
                 continue
 
-            repo = node.find_property((DOAP, u'repository'))
+            repo = node.find_property((self.DOAP, u'repository'))
             modname = None
             if isinstance(repo, semi_rdf.Node):
-                repo_loc = repo.find_property((DOAP, u'location'))
+                repo_loc = repo.find_property((self.DOAP, u'location'))
 
-                if hasattr(repo_loc, 'startswith') and repo_loc.startswith(GNOME_REPO):
-                    modname = repo_loc[len(GNOME_REPO):]
+                if hasattr(repo_loc, 'startswith') and repo_loc.startswith(self.GNOME_REPO):
+                    modname = repo_loc[len(self.GNOME_REPO):]
 
             if not modname:
                 continue
 
-            for maint in node.find_properties((DOAP, u'maintainer')):
+            for maint in node.find_properties((self.DOAP, u'maintainer')):
                 if not isinstance(maint, semi_rdf.Node):
                     continue
 
-                uid = maint.find_property((GNOME, u'userid'))
+                uid = maint.find_property((self.GNOME, u'userid'))
                 if uid.__class__.__name__ != "unicode":
                     continue
 
