@@ -167,11 +167,11 @@ def create_directory_structure (user_list):
                 if user['cvsOnly']:
                     #file.write ("command=\"/usr/bin/cvs server\",no-pty,no-port-forwarding ")
                     if GNOMEGIT:
-                        file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding,no-user-rc ")
+                        file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
                     elif MANGO:
-                        file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwarding,no-user-rc ")
+                        file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwardin ")
                     else:
-                        file.write ("command=\"/home/admin/bin/run-svn-or-special-cmd\",no-pty,no-port-forwarding,no-user-rc ")
+                        file.write ("command=\"/home/admin/bin/run-svn-or-special-cmd\",no-pty,no-port-forwarding ")
                 file.write (key)
                 file.write ("\n")
             file.close()
