@@ -20,8 +20,8 @@ if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
 				exit
 				;;
 			"mango")
-				cat "/var/local/mango/`whoami`" 2> /dev/null
-				echo > "/var/local/mango/`whoami`" 2> /dev/null
+				echo "Please run the following instead:"
+				echo "  ssh -l `whoami` mango.gnome.org mango"
 				exit
 				;;
 		esac
