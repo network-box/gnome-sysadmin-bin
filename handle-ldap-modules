@@ -564,6 +564,11 @@ if __name__ == '__main__':
             print 'Setting new passwords for: %s' % ', '.join(uids)
             passwds = m.set_passwds(uids)
             m.store_passwds(passwds)
+    elif cmd =='ldap-maints':
+        ldap_uids, ldap_modules, ldap_desc, ldap_dn = m.get_maintainer_data_ldap()
+
+        for uid in sorted(ldap_uids.keys()):
+            print uid, ", ".join(ldap_uids[uid])
     else:
         usage()
     
