@@ -50,6 +50,15 @@ class Node:
 
         return value
 
+    def find_properties(self, name, lang="en"):
+        value = None
+        for (n, l, v) in self.properties:
+            if n == name:
+                if l == lang:
+                    yield v
+                elif l == None or value == None:
+                    yield v
+
     def add_property(self, name, lang, value):
         self.properties.append((name, lang, value))
 
