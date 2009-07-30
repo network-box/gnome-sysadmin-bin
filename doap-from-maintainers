@@ -19,6 +19,8 @@ nr, name, email, uid = 0, None, None, None
 for l in data.splitlines():
     if l.startswith('#'): continue
 
+    data += "\n\n\n" # simplifies logic
+
     nr += 1
 
     if l == "":
@@ -51,5 +53,7 @@ for l in data.splitlines():
             email = value
         elif field == 'Userid':
             uid = value
+    else:
+        name = None
 
 semi_rdf.dump_rdf(nodes, sys.stdout)
