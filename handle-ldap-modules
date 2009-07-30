@@ -1,9 +1,11 @@
 #!/usr/bin/python
 
 import sys
-sys.path.insert(0, '../gitadmin-bin')
-
 import os
+import os.path
+script_path = os.path.realpath(os.path.abspath(sys.argv[0]) + '../gitadmin-bin')
+sys.path.insert(0, script_path)
+
 import glob
 import ldap
 import ldap.modlist
