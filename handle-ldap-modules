@@ -500,8 +500,7 @@ if __name__ == '__main__':
             doc = et.parse(file(f, 'r'))
             root = doc.getroot()
             for el in root.getchildren():
-                if el.tag in cfg_opts:
-                    MANGO_CFG[el.tag] = el.text
+                MANGO_CFG[el.tag] = el.text
 
             break
 
