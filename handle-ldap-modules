@@ -342,6 +342,9 @@ it probably requires some other setting.""")
                     continue
                 email = email[7:]
 
+                uid = str(uid)
+                name = str(name)
+                email = str(email)
 
                 is_valid_uid = uid in self.UID_TO_CN
                 possible_emails = set([
