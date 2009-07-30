@@ -502,7 +502,7 @@ if __name__ == '__main__':
             for el in root.getchildren():
                 if el.tag in cfg_opts:
                     MANGO_CFG[el.tag] = el.text
-    ········
+
             break
 
     LDAP_PASSWD = MANGO_CFG.get('ldap_bindpw', None)
