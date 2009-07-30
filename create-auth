@@ -169,7 +169,7 @@ def create_directory_structure (user_list):
                     if GNOMEGIT:
                         file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
                     elif MANGO:
-                        file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwardin ")
+                        file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwarding ")
                     else:
                         file.write ("command=\"/home/admin/bin/run-svn-or-special-cmd\",no-pty,no-port-forwarding ")
                 file.write (key)
