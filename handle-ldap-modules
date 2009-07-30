@@ -279,22 +279,21 @@ it probably requires some other setting.""")
         ONCE_VALID = {}
 
         # Get l10n coordinators from damned-lies
-        doc = et.parse(get_remote_file("http://l10n.gnome.org/teams/?format=l10n.xml"))
-        root = doc.getroot()
+        root = et.fromstring(get_remote_file("http://l10n.gnome.org/teams/?format=xml"))
         for team in root.getchildren():
             team_id = team.get('id')
             uid = team.findtext('coordinator/vcs')
 
-            if teamid is None or uid is None:
+            if team_id is None or uid is None:
                 continue
 
-            if uid not in if uid in self.UID_TO_CN:
+            if uid not in self.UID_TO_CN:
                 print "WARNING: Bad damned-lies coordinator: %s" % uid
                 continue
 
             desc = team.findtext('description')
             if desc is None:
-                desc = teamid
+                desc = team_id
 
             modname = 'l10n-%s' % team_id
 
@@ -470,14 +469,14 @@ it probably requires some other setting.""")
                 if change:
                     l.add_s(dn, ldif_entry)
                 else:
-                    print dn, ldif_entry
+                    print "A", dn, ldif_entry
             elif modname in ldap_modules and vcs_modules[modname].symmetric_difference(ldap_modules[modname]):
                 ldif_entry = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
                                              {'maintainerUid': list(vcs_modules[modname])})
                 if change:
                     l.modify_s(dn,ldif_entry)
                 else:
-                    print dn, ldif_entry
+                    print "C:", dn, ldif_entry
 
         if not remove: return
 
