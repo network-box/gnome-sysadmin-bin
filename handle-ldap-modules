@@ -1,10 +1,5 @@
 #!/usr/bin/python
 
-# HINT:
-#   ssh -L 1389:localhost:389 label
-#   ssh -R 1389:localhost:1389 socket
-
-
 import sys
 sys.path.insert(0, '../gitadmin-bin')
 
@@ -15,7 +10,10 @@ import ldap.modlist
 import ldif
 import string
 from random import choice, randrange
-import sha
+try:
+    import hashlib
+else:
+    import sha as hashlib
 from base64 import b64encode
 import smtplib
 from email.MIMEText import MIMEText
@@ -91,34 +89,10 @@ def gen_passwd(length=8, chars=string.letters + string.digits):
 
 def hash_ssha(password):
     salt = ''.join([chr(randrange(0,255)) for i in range(4)])
-    ctx = sha.new(password  + salt)
+    ctx = hashlib.sha(password  + salt)
     hash = "{SSHA}" + b64encode(ctx.digest() + salt)
     return hash
 
-
-CHUNK_SIZE = 16384
-def svn_get_file(path, filename, rev=None):
-    try:
-        repos_ptr = repos.open(path)
-    except core.SubversionException:
-        return None
-    fsob = repos.fs(repos_ptr)
-
-    if rev is None:
-        rev = fs.youngest_rev(fsob)
-
-    root = fs.revision_root(fsob, rev)
-    try:
-        file = fs.file_contents(root, filename)
-    except core.SubversionException:
-        return None
-    d = []
-    while 1:
-        data = core.svn_stream_read(file, CHUNK_SIZE)
-        if not data:
-            break
-        d.append(data)
-    return ''.join(d)
 
 def get_remote_file(url):
     f = urllib.urlopen(url)
@@ -293,16 +267,8 @@ it probably requires some other setting.""")
         return self._maint_ldap
 
 
-    def get_vcs_modules(self):
-        """Return a list of SVN modules (cached)"""
-        if not hasattr(self, 'MODULES'):
-            self.MODULES = [mod for mod in glob.glob('/svn/*') if os.path.exists(os.path.join(mod, 'hooks'))]
-
-        return self.MODULES
-
-
-    def get_maintainer_data_svn(self):
-        """Try to find the maintainers of every GNOME SVN repository"""
+    def get_maintainer_data_vcs(self):
+        """Try to find the maintainers of every GNOME vcs repository"""
         UID_TO_MODULES = {}
         MODULE_TO_UIDS = {}
         MODULE_TO_DESC = {}
@@ -443,7 +409,7 @@ it probably requires some other setting.""")
             os.umask(prevmask)
  
 
-    def update_ldap_modules(self, vcs_modules, svn_descs, change=True, remove=False):
+    def update_ldap_modules(self, vcs_modules, vcs_descs, change=True, remove=False):
         ldap_uids, ldap_modules, ldap_desc, ldap_dn = self.get_maintainer_data_ldap()
         l = self._ldap
 
@@ -460,13 +426,13 @@ it probably requires some other setting.""")
                 entry = {
                     'cn': modname,
                     'sn': modname,
-                    'description': svn_descs.get(modname, '%s module' % modname),
+                    'description': vcs_descs.get(modname, '%s module' % modname),
                     'maintainerUid': list(vcs_modules[modname])
                 }
                 
                 classes = ['gnomeModule', 'inetOrgPerson']
                 # XXX - Fucking ugly hack
-                if modname.startswith('l10n-') and modname in svn_descs:
+                if modname.startswith('l10n-') and modname in vcs_descs:
                     classes.append('localizationModule')
                     entry['localizationTeam'] = ' '
 
@@ -537,14 +503,14 @@ if __name__ == '__main__':
     if cmd == 'sync' or cmd == 'show-diffs':
         change_stuff = cmd == 'sync'
 
-        svn_data = m.get_maintainer_data_svn()
+        vcs_data = m.get_maintainer_data_vcs()
 #        ldap_data = m.get_maintainer_data_ldap() # UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC
 
 #        ul = set(ldap_data[1].keys())
-#        us = set(svn_data[1].keys())
-        desc_svn = svn_data[2]
-        INVALID = svn_data[3]
-        ONCE_VALID = svn_data[4]
+#        us = set(vcs_data[1].keys())
+        desc_vcs = vcs_data[2]
+        INVALID = vcs_data[3]
+        ONCE_VALID = vcs_data[4]
 
 #        new_mods = us.difference(ul)
 #        removed_mods = ul.difference(us)
@@ -553,8 +519,8 @@ if __name__ == '__main__':
 #        print "Removed modules:"
 #        print sorted(removed_mods)
 #        for modname in us.intersection(ul):
-#            mod_added = svn_data[1][modname].difference(ldap_data[1][modname])
-#            mod_removed = ldap_data[1][modname].difference(svn_data[1][modname])
+#            mod_added = vcs_data[1][modname].difference(ldap_data[1][modname])
+#            mod_removed = ldap_data[1][modname].difference(vcs_data[1][modname])
 #            if len(mod_added) or len(mod_removed):
 #                print "Module %s" % modname
 #                print sorted(mod_added)
@@ -566,10 +532,10 @@ if __name__ == '__main__':
 
                 print "\t".join([uid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
 
-        #m.update_ldap_modules(svn_data[1], remove=True)
-        m.update_ldap_modules(svn_data[1], svn_data[2], change=change_stuff)
+        #m.update_ldap_modules(vcs_data[1], remove=True)
+        m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff)
 
-        uids_give_passwd = set(svn_data[0].keys()).difference(m.UID_TO_PW.keys())
+        uids_give_passwd = set(vcs_data[0].keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
             print "UIDs to give/reset passwords:"
             print ", ".join(uids_give_passwd)
