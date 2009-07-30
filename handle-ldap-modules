@@ -348,15 +348,22 @@ it probably requires some other setting.""")
 
 
                 is_valid_uid = uid in self.UID_TO_CN
-                possible_emails = set(["%s@svn.gnome.org" % uid, "%s@gnome.org" % uid, "%s@cvs.gnome.org" % uid])
+                possible_emails = set([
+                    "%s@svn.gnome.org" % uid,
+                    "%s@gnome.org" % uid,
+                    "%s@cvs.gnome.org" % uid,
+                    "%s@src.gnome.org" % uid
+                ])
                 if is_valid_uid:
                     possible_emails.add(self.UID_TO_MAIL[uid])
                 spam_1 = [mail.replace('@', ' ').replace('.', ' ') for mail in possible_emails]
                 spam_2 = [mail.replace('@', ' at ').replace('.', ' dot ') for mail in possible_emails]
                 spam_3 = [mail.replace('@', ' ') for mail in possible_emails]
                 spam_4 = [mail.replace('@', ' at ') for mail in possible_emails]
+                spam_5 = [mail.replace('@', '%40') for mail in possible_emails]
+                spam_6 = [mail.replace('@', '.') for mail in possible_emails]
 
-                possible_emails.update(spam_1 + spam_2 + spam_3 + spam_4)
+                possible_emails.update(spam_1 + spam_2 + spam_3 + spam_4 + spam_5 + spam_6)
                 possible_emails.update(['<%s>' % mail for mail in possible_emails])
 
                 is_valid_email = email in possible_emails
