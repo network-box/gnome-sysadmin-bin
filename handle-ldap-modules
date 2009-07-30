@@ -12,7 +12,7 @@ import string
 from random import choice, randrange
 try:
     import hashlib
-else:
+except ImportError:
     import sha as hashlib
 from base64 import b64encode
 import smtplib
