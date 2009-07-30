@@ -278,6 +278,30 @@ it probably requires some other setting.""")
         INVALID = {}
         ONCE_VALID = {}
 
+        # Get l10n coordinators from damned-lies
+        doc = et.parse(get_remote_file("http://l10n.gnome.org/teams/?format=l10n.xml"))
+        root = doc.getroot()
+        for team in root.getchildren():
+            team_id = team.get('id')
+            uid = team.findtext('coordinator/vcs')
+
+            if teamid is None or uid is None:
+                continue
+
+            if uid not in if uid in self.UID_TO_CN:
+                print "WARNING: Bad damned-lies coordinator: %s" % uid
+                continue
+
+            desc = team.findtext('description')
+            if desc is None:
+                desc = teamid
+
+            modname = 'l10n-%s' % team_id
+
+            MODULE_TO_DESC[modname] = '%s (team %s)' % (desc, team_id)
+            UID_TO_MODULES.setdefault(uid, set()).add(modname)
+            MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
+
         # Get module maintainer data from MAINTAINERS file in Git
         nodes = semi_rdf.read_rdf('http://git.gnome.org/repositories.doap')
         for node in nodes:
