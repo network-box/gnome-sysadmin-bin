@@ -337,6 +337,12 @@ it probably requires some other setting.""")
                 if uid.__class__.__name__ != "unicode":
                     continue
 
+                email = maint.find_property((self.FOAF, u'mbox'))
+                if not isinstance(email, semi_rdf.UrlResource) or not email.startswith('mailto:'):
+                    continue
+                email = email[7:]
+
+
                 is_valid_uid = uid in self.UID_TO_CN
                 possible_emails = set(["%s@svn.gnome.org" % uid, "%s@gnome.org" % uid, "%s@cvs.gnome.org" % uid])
                 if is_valid_uid:
