@@ -12,6 +12,7 @@ import os
 import glob
 import ldap
 import ldap.modlist
+import ldif
 import string
 from random import choice, randrange
 import sha
@@ -343,7 +344,6 @@ it probably requires some other setting.""")
                 email = email[7:]
 
                 uid = str(uid)
-                name = str(name)
                 email = str(email)
 
                 is_valid_uid = uid in self.UID_TO_CN
@@ -401,8 +401,8 @@ it probably requires some other setting.""")
                 old = {'userPassword': self.UID_TO_PW[uid]}
             else:
                 old = {}
-            ldif = ldap.modlist.modifyModlist(old, {'userPassword': hash})
-            l.modify_s(dn,ldif)
+            ldif_entry = ldap.modlist.modifyModlist(old, {'userPassword': hash})
+            l.modify_s(dn,ldif_entry)
         return PASSWDS
 
 
@@ -453,6 +453,9 @@ it probably requires some other setting.""")
             dn = ldap_dn.get(modname, 'cn=%s,ou=modules,dc=gnome,dc=org' % escape_dn_chars(modname))
             maints = vcs_modules[modname]
 
+            if len(modname) > 14:
+                continue
+
             if modname not in ldap_modules: # add
                 entry = {
                     'cn': modname,
@@ -470,18 +473,18 @@ it probably requires some other setting.""")
                 entry['objectClass'] = classes
                 
 
-                ldif = ldap.modlist.addModlist(entry)
+                ldif_entry = ldap.modlist.addModlist(entry)
                 if change:
-                    l.add_s(dn, ldif)
+                    l.add_s(dn, ldif_entry)
                 else:
-                    print dn, ldif
+                    print dn, ldif_entry
             elif modname in ldap_modules and vcs_modules[modname].symmetric_difference(ldap_modules[modname]):
-                ldif = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
+                ldif_entry = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
                                              {'maintainerUid': list(vcs_modules[modname])})
                 if change:
-                    l.modify_s(dn,ldif)
+                    l.modify_s(dn,ldif_entry)
                 else:
-                    print dn, ldif
+                    print dn, ldif_entry
 
         if not remove: return
 
