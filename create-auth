@@ -115,7 +115,7 @@ def build_user_hash(group_list):
     users.update(get_uids_from_sysadmin())
     for group in group_list:
         users.update(get_uids_from_group(group))
-    if GNOMECVS or GNOMEGIT:
+    if GNOMECVS or GNOMEGIT or MANGO:
         gnomecvs_users = set(get_uids_from_group ('gnomecvs')) - users
 
     # look up their keys (if we have them)
