@@ -4,7 +4,7 @@
 import os, sys
 
 dbs = [] # Databases on the machine, got from MySQL
-uidbs = {} # Databases not to be backed up, read from db-list
+uidbs = {} # Databases not to be backed up, read from copy-db.exclude
 
 # Get available DBs list
 for db in os.popen ('mysqlshow').readlines ()[3:-1]:
@@ -20,7 +20,7 @@ for line in list.readlines ():
 # Spit warnings and remove not-to-be-backed-up databases from the list
 for i in uidbs:
     if i not in dbs:
-        sys.stderr.write ('WARNING: redundant entry for database %s in db-list\n\n' % i)
+        sys.stderr.write ('WARNING: redundant entry for database %s in copy-db.exclude\n\n' % i)
     else:
         sys.stdout.write ('WARNING: database %s not being backed up (request by %s on %s)\n\n' % (i, uidbs[i][0], uidbs[i][1]))
         dbs.remove (i)
