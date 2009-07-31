@@ -11,7 +11,7 @@ for db in os.popen ('mysqlshow').readlines ()[3:-1]:
     dbs.append (db.replace ('|', ' ').strip ())
 
 # Get not-to-be-backed-up list
-list = open ('/root/bin/db-list')
+list = open ('/etc/copy-db.exclude')
 for line in list.readlines ():
     if not line.startswith ('#'):
         dbname, who, when = line.strip ().split ()
