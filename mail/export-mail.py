@@ -76,10 +76,9 @@ if __name__ == '__main__':
         f.writelines((file_format % (uid, domain, mail) for uid, mail in emails))
         f.close()
 
-        p = subprocess.Popen(['/usr/bin/diff', '-U1', '--', aliasfile, newaliasfile], stdout=subprocess.PIPE)
+        p = subprocess.Popen(['/usr/bin/diff', '-U0', '--', aliasfile, newaliasfile], stdout=subprocess.PIPE)
         (stdout, stderr) = p.communicate()
         if p.returncode != 0:
-            print " ==== %s ===" % aliasfile
             print stdout
             print
             print
