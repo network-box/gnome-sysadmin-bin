@@ -82,7 +82,8 @@ def lookup_user_info(uids, user_data):
         persona_data = l.search_s ("ou=people,dc=gnome,dc=org",
                                    ldap.SCOPE_SUBTREE, filter, None)
     except ldap.LDAPError, e:
-        return None
+        print e
+        sys.exit(1)
 
     if not len(persona_data):
         return None
