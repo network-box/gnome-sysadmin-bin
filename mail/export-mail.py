@@ -22,7 +22,8 @@ def fetch_email_addresses(members):
     unknown_emails = members.difference(_cache_email.keys())
 
     if len(unknown_emails):
-        filter = '(|%s)' % ("".join([ldap.filter.filter_format('(uid=%s)', (member,)) for member in unknown_emails]))
+        format = '(uid=%s)' * len(unknown_emails)
+        filter = '(|%s)' % ldap.filter.filter_format(format, list(unknown_emails))
         results = l.search_s(LDAP_USER_BASE, ldap.SCOPE_SUBTREE, filter, ('uid', 'mail'))
         for entry in results:
             id = entry[0]
