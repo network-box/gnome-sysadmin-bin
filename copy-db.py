@@ -2,7 +2,9 @@
 # Determine what databases to backup and do it
 
 import os, sys
+import re
 import subprocess
+import MySQLdb
 
 do_verbose = False
 for a in sys.argv:
@@ -17,8 +19,14 @@ dbs = [] # Databases on the machine, got from MySQL
 uidbs = {} # Databases not to be backed up, read from copy-db.exclude
 
 # Get available DBs list
-for db in os.popen ('mysqlshow').readlines ()[3:-1]:
-    dbs.append (db.replace ('|', ' ').strip ())
+conn = MySQLdb.connect(host="localhost", user="root")
+conn.set_character_set("utf8")
+cursor = conn.cursor()
+cursor.execute("SHOW DATABASES")
+for fields in cursor.fetchall():
+    dbs.append(unicode(fields[0], "utf8"))
+cursor.close()
+conn.close()
 
 # Get not-to-be-backed-up list
 list = open ('/etc/copy-db.exclude')
@@ -34,6 +42,24 @@ for i in uidbs:
     else:
         sys.stdout.write ('WARNING: database %s not being backed up (request by %s on %s)\n\n' % (i, uidbs[i][0], uidbs[i][1]))
         dbs.remove (i)
+
+# Turn a database name into a filename. What we consider
+# filename-safe is the same MySQL, but the encoding of non-safe
+# characters differs. MySQL has tables for some non-ASCII unicode -
+# e.g. U+00C0 LATIN CHARACTER CAPITAL LETTER A WITH ACUTE is @0G
+# then it uses @xxxx for the rest. We use @xxxx for everything.
+# We don't actually need a match with what MySQL does, just
+# something that won't contain meta-characters like '/', but matching
+# up for ASCII names like 'db_backup' is slightly useful
+def encode_as_filename(s):
+    return re.sub('[^A-Za-z0-9]', escape_match, s)
+
+def escape_match(m):
+    o = ord(m.group(0))
+    if o < 0x10000:
+        return "@%04x" % o
+    else:
+        return "@%04x@%04x" % (0xd800 + (o / 1024), 0xdc00 + (o % 1024))
 
 # Backup!
 for db in dbs:
@@ -62,22 +88,25 @@ for db in dbs:
     # Future enhancement would be to extent copy-db.exclude to allow specifying
     # per-database backup methods.
 
-    # Figure out what types of tables the database has
-    table_status = subprocess.Popen(['mysql', '--batch', '-e', 'show table status', db],
-                                    stdout=subprocess.PIPE)
-    first = True
     can_hotcopy = True
-    for line in table_status.stdout:
-        if first: # skip header line
-            first = False
-            continue
-        fields = line.rstrip().split("\t")
-        table = fields[0]
+
+    db_filename = encode_as_filename(db)
+    if db_filename != db:
+        # mysqlhotcopy doesn't understand encoded database names
+        can_hotcopy = False
+
+    # Figure out what types of tables the database has
+    conn = MySQLdb.connect(host="localhost", user="root")
+    conn.set_character_set("utf8")
+    conn.select_db(db.encode("utf8"))
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLE STATUS")
+    for fields in cursor.fetchall():
         engine = fields[1]
         if engine != 'MyISAM' and engine != 'ARCHIVE':
             can_hotcopy = False
-    table_status.stdout.close()
-    table_status.wait()
+    cursor.close()
+    conn.close()
 
     if can_hotcopy:
         verbose("Backing up %s via mysqlhotcopy"% db)
@@ -85,9 +114,12 @@ for db in dbs:
         hotcopy.wait()
     else:
         verbose("Backing up %s via mysqldump" % db)
-        outfilename = os.path.join('/var/lib/mysql-backup/', db + ".dump.gz")
+        outfilename = os.path.join('/var/lib/mysql-backup', db_filename + ".dump.gz")
         outfile = open(outfilename, "w")
-        dump = subprocess.Popen(['mysqldump', '--single-transaction', db],
+        dump = subprocess.Popen(['mysqldump',
+                                 '--single-transaction',
+                                 '--default-character-set=utf8',
+                                 db.encode("utf8")],
                                 stdout=subprocess.PIPE)
         gzip = subprocess.Popen(['gzip', '-c'],
                                 stdin=dump.stdout, stdout=outfile)
