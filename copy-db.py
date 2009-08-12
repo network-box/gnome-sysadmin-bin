@@ -19,7 +19,7 @@ dbs = [] # Databases on the machine, got from MySQL
 uidbs = {} # Databases not to be backed up, read from copy-db.exclude
 
 # Get available DBs list
-conn = MySQLdb.connect(host="localhost", user="root")
+conn = MySQLdb.connect(host="localhost", user="root", read_default_file="/root/.my.cnf")
 conn.set_character_set("utf8")
 cursor = conn.cursor()
 cursor.execute("SHOW DATABASES")
