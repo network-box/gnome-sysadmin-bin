@@ -18,9 +18,9 @@ def verbose(s):
 # we connect multiple times to avoid leaving an idle connection open
 # while we do long dump operations; it might get timed out
 def connect_to_db():
-    MySQLdb.connect(host="localhost",
-                    user="root",
-                    read_default_file="/root/.my.cnf")
+    return MySQLdb.connect(host="localhost",
+                           user="root",
+                           read_default_file="/root/.my.cnf")
 
 dbs = [] # Databases on the machine, got from MySQL
 uidbs = {} # Databases not to be backed up, read from copy-db.exclude
