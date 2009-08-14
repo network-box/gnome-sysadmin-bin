@@ -15,11 +15,18 @@ def verbose(s):
     if do_verbose:
         print >>sys.stderr, s
 
+# we connect multiple times to avoid leaving an idle connection open
+# while we do long dump operations; it might get timed out
+def connect_to_db():
+    MySQLdb.connect(host="localhost",
+                    user="root",
+                    read_default_file="/root/.my.cnf")
+
 dbs = [] # Databases on the machine, got from MySQL
 uidbs = {} # Databases not to be backed up, read from copy-db.exclude
 
 # Get available DBs list
-conn = MySQLdb.connect(host="localhost", user="root", read_default_file="/root/.my.cnf")
+conn = connect_to_db()
 conn.set_character_set("utf8")
 cursor = conn.cursor()
 cursor.execute("SHOW DATABASES")
@@ -96,7 +103,7 @@ for db in dbs:
         can_hotcopy = False
 
     # Figure out what types of tables the database has
-    conn = MySQLdb.connect(host="localhost", user="root")
+    conn = connect_to_db()
     conn.set_character_set("utf8")
     conn.select_db(db.encode("utf8"))
     cursor = conn.cursor()
