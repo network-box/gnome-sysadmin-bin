@@ -137,5 +137,5 @@ for db in dbs:
         if dump.returncode == 0 and gzip.returncode == 0:
             os.rename(outfilename_tmp, outfilename)
         else:
-            print "Failed to back up %s, leaving old backup" % db
+            print >>sys.stderr, "Failed to back up %s, leaving old backup" % db
             os.remove(outfilename_tmp)
