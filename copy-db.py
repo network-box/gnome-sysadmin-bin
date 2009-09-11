@@ -122,7 +122,8 @@ for db in dbs:
     else:
         verbose("Backing up %s via mysqldump" % db)
         outfilename = os.path.join('/var/lib/mysql-backup', db_filename + ".dump.gz")
-        outfile = open(outfilename, "w")
+        outfilename_tmp = outfilename + ".tmp"
+        outfile = open(outfilename_tmp, "w")
         dump = subprocess.Popen(['mysqldump',
                                  '--single-transaction',
                                  '--default-character-set=utf8',
@@ -130,5 +131,11 @@ for db in dbs:
                                 stdout=subprocess.PIPE)
         gzip = subprocess.Popen(['gzip', '-c'],
                                 stdin=dump.stdout, stdout=outfile)
+        dump.wait()
         gzip.wait()
         outfile.close()
+        if dump.returncode == 0 and gzip.returncode == 0:
+            os.rename(outfilename_tmp, outfilename)
+        else:
+            print "Failed to back up %s, leaving old backup" % db
+            os.remove(outfilename_tmp)
