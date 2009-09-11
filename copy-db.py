@@ -47,7 +47,7 @@ for i in uidbs:
     if i not in dbs:
         sys.stderr.write ('WARNING: redundant entry for database %s in copy-db.exclude\n\n' % i)
     else:
-        sys.stdout.write ('WARNING: database %s not being backed up (request by %s on %s)\n\n' % (i, uidbs[i][0], uidbs[i][1]))
+        verbose ('database %s not being backed up (request by %s on %s)' % (i, uidbs[i][0], uidbs[i][1]))
         dbs.remove (i)
 
 # Turn a database name into a filename. What we consider
