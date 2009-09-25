@@ -7,7 +7,10 @@ import tempfile
 import sys
 import subprocess
 import shutil
-import md5
+try:
+    import hashlib as md5
+except:
+    import md5
 
 def get_md5sum_hash():
     dir = "/etc/sshd/users/"
@@ -19,7 +22,7 @@ def get_md5sum_hash():
             f = open (path)
             str = f.read ()
             f.close ()
-            m = md5.new (str)
+            m = md5.md5(str)
             user_md5sums [file] = m.hexdigest ()
     return user_md5sums
 
