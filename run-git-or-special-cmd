@@ -2,6 +2,11 @@
 
 # vim: set ts=4 sw=4:
 
+# In case .bashrc was executed, umask might have been changed from
+# the default, which could result in files being created private
+# not world-readable
+umask 0002
+
 if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
     # $SSH_ORIGINAL_COMMAND has quoting; split it apart into arguments
     eval "set $SSH_ORIGINAL_COMMAND"
