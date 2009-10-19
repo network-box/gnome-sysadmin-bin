@@ -27,12 +27,12 @@ fi
 validate_repository_name "$1"
 name="$1"
 
-if [ -e /git/$name.git -o -e /git/preview/$name.git ] ; then
+if [ -e /git/$name.git ] ; then
    echo "'$name' already exists" 1>&2
    exit 1
 fi
 
-if [ -e /mnt/git-data/svn-archive/$name ] ; then
+if [ -e /git/archive/$name.git ] ; then
    echo "'$name' already exists as an archived project" 1>&2
    exit 1
 fi
