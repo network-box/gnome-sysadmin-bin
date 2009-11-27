@@ -362,7 +362,8 @@ class BranchCreation(BranchChange):
             self.cc.update((
                 'release-team@gnome.org',
                 'gnome-doc-list@gnome.org',
-                'gnome-i18n@gnome.org'
+                'gnome-i18n@gnome.org',
+                '%s@src.gnome.org' % os.environ['USER']
             ))
 
     def get_subject(self):
