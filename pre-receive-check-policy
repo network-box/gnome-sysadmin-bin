@@ -113,7 +113,7 @@ EOF
 		    ;;
 		update)
 		    range="$oldrev..$newrev"
-		    if [ `git merge-base $oldrev $newrev` != $oldrev ] && ! forced ; then
+		    if [ "`git merge-base $oldrev $newrev`" != $oldrev ] && ! forced ; then
 		        # Non-fast-forward update. Right now we have
 		        # receive.denyNonFastforwards in the git configs for
 		        # our repositories anyways, but catching it here would
