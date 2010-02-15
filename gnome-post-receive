@@ -11,7 +11,7 @@
 #
 # git-config options affecting the operation of this script:
 # hook.emailprefix  - should always be empty
-# hooks.mailinglist - should always be svn-commits-list@gnome.org
+# hooks.mailinglist - should always be commits-list@gnome.org
 
 BINDIR=/home/admin/gitadmin-bin
 

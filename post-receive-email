@@ -184,7 +184,7 @@ generate_email_header()
 {
 	# --- Email (all stdout will be the email)
 	# Generate header
-	# Keywords: header is set to allow use of the Mailman 'topics' feature for svn-commits-list
+	# Keywords: header is set to allow use of the Mailman 'topics' feature for commits-list
 	cat <<-EOF
 	To: $recipients
 	From: $USER@src.gnome.org
