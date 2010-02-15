@@ -34,8 +34,8 @@ f.close()
 # Prepare topics variable
 topics = [(module, "^%s$" % re.escape(module), '', 0) for module in modules]
 
-# Update the svn-commits-list mailinglist with these topics
-mlist = MailList.MailList('svn-commits-list')
+# Update the commits-list mailinglist with these topics
+mlist = MailList.MailList('commits-list')
 mlist.topics = topics
 mlist.Save()
 mlist.Unlock()
