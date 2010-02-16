@@ -13,7 +13,7 @@
   <maintainer>
     <foaf:Person>
       <foaf:name>GNOME sysadmin team</foaf:name>
-      <foaf:mbox rdf:resource="gnome-sysadmin@redhat.com" />
+      <foaf:mbox rdf:resource="mailto:gnome-sysadmin@gnome.org" />
       <gnome:userid>root</gnome:userid>
     </foaf:Person>
   </maintainer>
