@@ -17,7 +17,7 @@ MOD_PASSWORD = open('/var/mailman/MM_MODERATOR_PASSWORD_CRYPT').readline().strip
 PATH_MLIST_NAMES = '/var/mailman/list-of-moderated-lists'
 
 mlist_names = Utils.list_names()
-names.sort()
+mlist_names.sort()
 moderated_lists = []
 
 for n in mlist_names:
