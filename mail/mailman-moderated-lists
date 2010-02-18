@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+import sys
+
 # hack
 sys.path.append('/usr/lib/mailman/bin')
 
