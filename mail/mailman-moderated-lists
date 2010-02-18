@@ -1,0 +1,38 @@
+#!/usr/bin/python
+
+# hack
+sys.path.append('/usr/lib/mailman/bin')
+
+import paths
+from Mailman import mm_cfg
+from Mailman import MailList
+from Mailman import Utils
+from Mailman import Errors
+from Mailman import i18n
+
+MODERATORTEAM = ['moderator@gnome.org']
+MOD_PASSWORD = open('/var/mailman/MM_MODERATOR_PASSWORD_CRYPT').readline().strip()
+PATH_MLIST_NAMES = '/var/mailman/list-of-moderated-lists'
+
+mlist_names = Utils.list_names()
+names.sort()
+moderated_lists = []
+
+for n in mlist_names:
+    mlist = MailList.MailList(n, lock=0)
+    if mlist.moderator != MODERATORTEAM:
+        continue
+
+    moderated_lists.append(mlist.internal_name())
+
+    if mlist.mod_password != MOD_PASSWORD:
+        continue
+
+    mlist.Lock()
+    mlist.mod_password = MOD_PASSWORD
+    mlist.Save()
+    mlist.Unlock()
+
+f = open(PATH_MLIST_NAMES, 'w')
+f.write("\n".join(moderated_lists))
+f.close()
