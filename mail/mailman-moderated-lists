@@ -27,9 +27,10 @@ for n in mlist_names:
 
     moderated_lists.append(mlist.internal_name())
 
-    if mlist.mod_password != MOD_PASSWORD:
+    if mlist.mod_password == MOD_PASSWORD:
         continue
 
+    print "Resetting moderator password for mailing list:", n
     mlist.Lock()
     mlist.mod_password = MOD_PASSWORD
     mlist.Save()
