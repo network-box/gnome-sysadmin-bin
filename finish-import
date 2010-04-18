@@ -22,6 +22,14 @@ if ! [ -e $GIT_DIR/pending ] ; then
     exit 1
 fi
 
+if [ -e $GIT_DIR/gnome_doap ] ; then
+    validate-doap "$name" < $GIT_DIR/gnome_doap
+    if [ $? -gt 0 ]; then
+        echo ERROR: Cannot clear pending flag as DOAP syntax is invalid >&2
+        exit 1
+    fi
+fi
+
 echo "Clearing pending flag on $GIT_DIR"
 rm $GIT_DIR/pending
 
