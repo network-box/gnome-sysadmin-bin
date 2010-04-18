@@ -146,5 +146,5 @@ elif options.output == 'doap':
             nodes.extend(file_nodes)
             nodes.append(repository_node)
 
-    iter_repos(paths, add_file)
-    semi_rdf.dump_rdf(nodes, sys.stdout, include_pending=False)
+    iter_repos(paths, add_file, include_pending=False)
+    semi_rdf.dump_rdf(nodes, sys.stdout)
