@@ -52,6 +52,8 @@ modulename = sys.argv[1]
 
 try:
     nodes = semi_rdf.read_rdf(sys.stdin)
+except semi_rdf.ParseError, e:
+    die("Invalid RSS syntax")
 except SAXParseException, e:
     die("XML parse error (line %d): %s" % (e.getLineNumber(), e.getMessage()))
 

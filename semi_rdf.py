@@ -33,6 +33,9 @@ WHITESPACE_RE = re.compile("\s+")
 class UrlResource(str):
     pass
 
+class ParseError(Exception):
+    pass
+
 class Node:
     def __init__(self, name, about=None):
         self.name  = name
@@ -116,6 +119,8 @@ class RdfHandler(xml.sax.handler.ContentHandler):
                 self.__node_stack.append(node)
                 self.__depth += 1
         else:
+            if not self.__object is None:
+                raise ParseError()
             node = Node(name)
             self.__node_stack.append(node)
             for attrname in attributes.getNames():
