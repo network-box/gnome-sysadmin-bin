@@ -34,6 +34,7 @@ for group in grouplist:
 class Repo:
     def __init__(self, repopath):
         self.path = repopath
+        self.pending = os.path.isfile(os.path.join(repopath, 'pending'))
 
         shortname = re.sub('/git/', '', repopath)
         shortname = re.sub('/srv/', '', shortname)
@@ -42,7 +43,7 @@ class Repo:
         self.shortname = shortname
 
         pending = ''
-        if os.path.isfile(os.path.join(repopath, 'pending')):
+        if self.pending:
             pending = '[PENDING] '
 
         desc_file = os.path.join(repopath, 'description')
@@ -112,7 +113,7 @@ elif options.output == 'doap':
     nodes = []
     def add_file(repo):
         doapfile = os.path.join(repo.path, "gnome_doap")
-        if os.path.isfile(doapfile):
+        if os.path.isfile(doapfile) and not repo.pending:
             f = open(doapfile)
             file_nodes = semi_rdf.read_rdf(f)
             f.close()
