@@ -65,7 +65,7 @@ def sort_repos(a, b):
     return cmp(a.shortname, b.shortname)
 
 # Call a function on each repository
-def iter_repos (paths, repo_func):
+def iter_repos (paths, repo_func, include_pending=True):
     for path in paths:
         if not os.path.isdir(path):
             continue
@@ -76,6 +76,8 @@ def iter_repos (paths, repo_func):
                 continue
 
             repo = Repo(repopath)
+            if not include_pending and repo.pending:
+                continue
             groups[repo.group].append(repo)
 
     for group in grouplist:
@@ -106,14 +108,14 @@ else:
 if options.output == 'cgit':
     iter_repos (paths, output_cgit)
 elif options.output == 'flat':
-    iter_repos (paths, output_flat)
+    iter_repos (paths, output_flat, include_pending=False)
 elif options.output == 'doap':
     import semi_rdf
 
     nodes = []
     def add_file(repo):
         doapfile = os.path.join(repo.path, "gnome_doap")
-        if os.path.isfile(doapfile) and not repo.pending:
+        if os.path.isfile(doapfile):
             f = open(doapfile)
             file_nodes = semi_rdf.read_rdf(f)
             f.close()
@@ -145,4 +147,4 @@ elif options.output == 'doap':
             nodes.append(repository_node)
 
     iter_repos(paths, add_file)
-    semi_rdf.dump_rdf(nodes, sys.stdout)
+    semi_rdf.dump_rdf(nodes, sys.stdout, include_pending=False)
