@@ -1,2 +1,2 @@
 #!/bin/sh
-/home/admin/bin/create-auth --gnomecvs
+/home/admin/bin/create-auth
