@@ -31,7 +31,9 @@ re_branch_versioned = r'^gnome-([0-9]+)-([0-9]+)$'
 FAILURE_MAIL = """Failure updating %(url)s.
 
 Last commit by: %(committer)s
-CGIT: http://git.gnome.org/cgit/%(module)s/commit/?id=%(rev)s
+CGIT: http://git.gnome.org/browse/%(module)s/commit/?id=%(rev)s
+
+THE PERSON WHO BREAKS THE BUILD IS RESPONSIBLE TO FIX IT!
 
 Last few lines of output:
 

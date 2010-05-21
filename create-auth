@@ -246,6 +246,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     user_list = build_user_hash (group_list)
+    if not len(user_list):
+        print "ERROR: No users to create! Likely empty LDAP directory!!"
+        sys.exit(1)
     base_directory_name = create_directory_structure (user_list)
 
     initial_user_hash = get_md5sum_hash ()
