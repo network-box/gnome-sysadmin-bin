@@ -24,6 +24,10 @@ parser.add_option('-d', '--backup-dir', action="store",
                   help = "Directory to store backup (%default)",
                   dest = "backup_dir",
                   default = "/var/lib/mysql-backup")
+parser.add_option('-n', '--no-hot-copy', action="store_true",
+                  help = "Never backup using mysqlhotcopy",
+                  dest = "disable_hotcopy",
+                  default = False)
 
 do_verbose = False
 (options,args) = parser.parse_args()
@@ -32,6 +36,7 @@ do_verbose = options.verbose
 secret_file = options.secret
 exclude_file = options.exclude
 backup_dir = options.backup_dir
+disable_hotcopy = options.disable_hotcopy
 
 def verbose(s):
     if do_verbose:
@@ -125,6 +130,8 @@ for db in dbs:
     db_filename = encode_as_filename(db)
     if db_filename != db:
         # mysqlhotcopy doesn't understand encoded database names
+        can_hotcopy = False
+    if disable_hotcopy:
         can_hotcopy = False
 
     # Figure out what types of tables the database has
