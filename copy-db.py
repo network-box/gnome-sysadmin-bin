@@ -5,11 +5,33 @@ import os, sys
 import re
 import subprocess
 import MySQLdb
+import optparse
+
+parser = optparse.OptionParser()
+parser.add_option('-v', '--verbose', action="store_true",
+                  help = "Enable verbose output",
+                  dest = "verbose",
+                  default = False)
+parser.add_option('-s', '--secrets-file', action="store",
+                  help = "Secrets file containing mysql login (%default)",
+                  dest = "secret",
+                  default = "/root/.my.cnf")
+parser.add_option('-e', '--exclude-file', action="store",
+                  help = "File of databases to exclude from backup, one per line (%default)",
+                  dest = "exclude",
+                  default = "/etc/copy-db.exclude")
+parser.add_option('-d', '--backup-dir', action="store",
+                  help = "Directory to store backup (%default)",
+                  dest = "backup_dir",
+                  default = "/var/lib/mysql-backup")
 
 do_verbose = False
-for a in sys.argv:
-    if a == '--verbose' or a == '-v':
-        do_verbose = True
+(options,args) = parser.parse_args()
+
+do_verbose = options.verbose
+secret_file = options.secret
+exclude_file = options.exclude
+backup_dir = options.backup_dir
 
 def verbose(s):
     if do_verbose:
@@ -20,7 +42,7 @@ def verbose(s):
 def connect_to_db():
     return MySQLdb.connect(host="localhost",
                            user="root",
-                           read_default_file="/root/.my.cnf")
+                           read_default_file=secret_file)
 
 dbs = [] # Databases on the machine, got from MySQL
 uidbs = {} # Databases not to be backed up, read from copy-db.exclude
@@ -36,7 +58,7 @@ cursor.close()
 conn.close()
 
 # Get not-to-be-backed-up list
-list = open ('/etc/copy-db.exclude')
+list = open(exclude_file)
 for line in list.readlines ():
     if not line.startswith ('#'):
         dbname, who, when = line.strip ().split ()
@@ -45,7 +67,7 @@ for line in list.readlines ():
 # Spit warnings and remove not-to-be-backed-up databases from the list
 for i in uidbs:
     if i not in dbs:
-        sys.stderr.write ('WARNING: redundant entry for database %s in copy-db.exclude\n\n' % i)
+        sys.stderr.write('WARNING: redundant entry for database %s in %s\n\n' % (i, exclude_file))
     else:
         verbose ('database %s not being backed up (request by %s on %s)' % (i, uidbs[i][0], uidbs[i][1]))
         dbs.remove (i)
@@ -117,11 +139,11 @@ for db in dbs:
 
     if can_hotcopy:
         verbose("Backing up %s via mysqlhotcopy"% db)
-        hotcopy = subprocess.Popen(['mysqlhotcopy', '--quiet', '--allowold', db, '/var/lib/mysql-backup'])
+        hotcopy = subprocess.Popen(['mysqlhotcopy', '--quiet', '--allowold', db, backup_dir])
         hotcopy.wait()
     else:
         verbose("Backing up %s via mysqldump" % db)
-        outfilename = os.path.join('/var/lib/mysql-backup', db_filename + ".dump.gz")
+        outfilename = os.path.join(backup_dir, db_filename + ".dump.gz")
         outfilename_tmp = outfilename + ".tmp"
         outfile = open(outfilename_tmp, "w")
         dump = subprocess.Popen(['mysqldump',
