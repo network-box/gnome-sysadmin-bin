@@ -148,6 +148,15 @@ for db in dbs:
         verbose("Backing up %s via mysqldump" % db)
         outfilename = os.path.join(backup_dir, db_filename + ".dump.gz")
         outfilename_tmp = outfilename + ".tmp"
+
+        # Add a bit of error checking before freaking out
+        if not os.path.exists(backup_dir):
+            sys.stderr.write("ERROR: '%s' does not exist to backup files into\n" % backup_dir)
+            sys.exit(1)
+        if not os.access(backup_dir, os.W_OK):
+            sys.stderr.write("ERROR: '%s' is not writable\n" % backup_dir)
+            sys.exit(1)
+
         outfile = open(outfilename_tmp, "w")
         dump = subprocess.Popen(['mysqldump',
                                  '--single-transaction',
