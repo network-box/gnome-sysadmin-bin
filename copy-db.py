@@ -58,8 +58,11 @@ cursor.close()
 conn.close()
 
 # Get not-to-be-backed-up list
-list = open(exclude_file)
-for line in list.readlines ():
+try:
+    list = open(exclude_file)
+except IOError:
+    list = []
+for line in list:
     if not line.startswith ('#'):
         dbname, who, when = line.strip ().split ()
         uidbs[dbname] = (who, when)
