@@ -73,7 +73,7 @@ def get_uids_from_sysadmin():
         # Server doesn't have an LDAP connection -- probably the label server
         people = get_uids_from_group('sysadmin')
 
-    return filter (lambda x: x != 'root', people)
+    return filter (lambda x: x != 'root' and x != 'sysadmin', people)
 
 def lookup_user_info(uids, user_data):
     format = '(uid=%s)' * len(uids)
@@ -115,8 +115,12 @@ def build_user_hash(group_list):
     global MANGO
 
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
-    users.update(get_uids_from_wheel())
-    users.update(get_uids_from_sysadmin())
+    wheel = set(get_uids_from_wheel())
+    sysadmin = set(get_uids_from_sysadmin())
+    print_user_list('Sysadmins not in wheel', sysadmin - wheel)
+    print_user_list('Ex-sysadmins to be removed from wheel', wheel - sysadmin)
+    users.update(wheel)
+    users.update(sysadmin)
     for group in group_list:
         users.update(get_uids_from_group(group))
     if GNOMECVS or GNOMEGIT or MANGO:
@@ -196,6 +200,18 @@ def create_directory_structure (user_list):
     return base_directory_name
 
 
+def print_user_list (description, user_list):
+    if not user_list:
+        return
+
+    user_len = len (user_list)
+    if user_len == 1:
+        print description + " %d user:" % user_len
+    else:
+        print description + " %d users:" % user_len
+    for user in user_list:
+        print "\t%s" % user
+    print
 
 def print_comparison (initial_user_hash, post_user_hash):
     removed_users = []
@@ -213,18 +229,6 @@ def print_comparison (initial_user_hash, post_user_hash):
     for user in post_user_hash.iterkeys():
         new_users.append (user)
 
-    def print_user_list (description, user_list):
-        if not user_list:
-            return
-
-        user_len = len (user_list)
-        if user_len == 1:
-            print description + " %d user:" % user_len
-        else:
-            print description + " %d users:" % user_len
-        for user in user_list:
-            print "\t%s" % user
-        print
     print_user_list ("Added", (new_users))
     print_user_list ("Removed", (removed_users))
     print_user_list ("Changed", (changed_users))
