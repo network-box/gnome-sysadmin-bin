@@ -9,7 +9,7 @@ done
 
 if ! $in_gitadmin ; then
     echo 1>&2 "You must be in the gitadmin group to force a push"
-    echo 1>&2 "Please contact contact gitmaster@gnome.org for assistance"
+    echo 1>&2 "For assistance, file a bug at https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=Git"
     exit 1
 fi
 

@@ -17,7 +17,21 @@ export GIT_CONFIG
 
 # Use the directory name with .git stripped as a short identifier
 absdir=$(cd $GIT_DIR && pwd)
+basedir=$(dirname $absdir)
 projectshort=$(basename ${absdir%.git})
+
+if [ $basedir = '/git/archive' ]; then
+    cat <<EOF 1>&2
+---
+$projectshort has been archived. No pushed can be made against this module.
+
+If this module should not have been archived, file a bug for assistance at:
+https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=Git
+---
+EOF
+fi
+
+
 
 # Make sure that the user used --exec=import for importing repositories,
 # and not otherwise. This forces people to be aware of the 'pending'
@@ -41,8 +55,8 @@ if [ \! -e "$GIT_DIR/pending" -a -n "$GNOME_GIT_IMPORT" ] ; then
 ---
 $projectshort is no longer in the process of being imported. You
 can push to $projectshort normally. If you accidentally ran
-finish-import too early, please contact gitmaster@gnome.org
-for assistance.
+finish-import too early, please file a bug for assistance at:
+https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=Git
 ----
 EOF
     exit 1
