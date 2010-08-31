@@ -15,9 +15,9 @@ GNOME = "http://api.gnome.org/doap-extensions#"
 # This is what GIT writes by default, we replace it with something better
 NO_DESCRIPTION = 'Unnamed repository; edit this file to name it for gitweb.'
 
-grouplist = ('Administration Tools', 'Bindings', 'Deprecated', 'Desktop', 'Development Tools',
-             'Infrastructure', 'Platform', 'Productivity Tools', 'Other')
-groupmap = {
+sectionlist = ('Administration Tools', 'Bindings', 'Desktop', 'Development Tools',
+             'Infrastructure', 'Platform', 'Productivity Tools', 'Other', 'Deprecated', 'Archived')
+sectionmap = {
     'admin': 'Administration Tools',
     'bindings': 'Bindings',
     'deprecated': 'Deprecated',
@@ -27,9 +27,9 @@ groupmap = {
     'platform': 'Platform',
     'productivity': 'Productivity Tools'
     }
-groups = {}
-for group in grouplist:
-    groups[group] = []
+sections = {}
+for section in sectionlist:
+    sections[section] = []
 
 class Repo:
     def __init__(self, repopath):
@@ -54,11 +54,11 @@ class Repo:
                 desc = "Please create %s.doap (see http://live.gnome.org/Git/FAQ)" % shortname
         self.desc = pending + desc
 
-        group_file = os.path.join(repopath, 'gnome_group')
-        group = None
-        if os.path.isfile(group_file):
-            group = open(group_file).readline().strip()
-        self.group = groupmap.get(group, 'Other')
+        section_file = os.path.join(repopath, 'gnome_section')
+        section = None
+        if os.path.isfile(section_file):
+            section = open(section_file).readline().strip()
+        self.section = sectionmap.get(section, 'Other')
 
 # Sort alphabetically by name
 def sort_repos(a, b):
@@ -66,7 +66,11 @@ def sort_repos(a, b):
 
 # Call a function on each repository
 def iter_repos (paths, repo_func, include_pending=True):
-    for path in paths:
+    for p in paths:
+        if type(p) is tuple:
+            path, force_section = p
+        else:
+            path, force_section = p, None
         if not os.path.isdir(path):
             continue
         for repo in os.listdir(path):
@@ -78,14 +82,16 @@ def iter_repos (paths, repo_func, include_pending=True):
             repo = Repo(repopath)
             if not include_pending and repo.pending:
                 continue
-            groups[repo.group].append(repo)
+            if force_section:
+                repo.section = force_section
+            sections[repo.section].append(repo)
 
-    for group in grouplist:
-        for repo in sorted(groups[group], sort_repos):
+    for section in sectionlist:
+        for repo in sorted(sections[section], sort_repos):
             repo_func(repo)
 
 def output_cgit(repo):
-    print 'repo.group=%s' % repo.group
+    print 'repo.section=%s' % repo.section
     print 'repo.url=%s' % repo.shortname
     print 'repo.name=%s' % repo.shortname
     print 'repo.desc=%s' % repo.desc
@@ -101,11 +107,12 @@ parser.add_option('', "--output", action='store', choices=['cgit', 'flat', 'doap
 options, args = parser.parse_args()
 
 if len(args) == 0:
-    paths = ('/git', '/git/preview')
+    paths = ['/git', '/git/preview']
 else:
     paths = args
 
 if options.output == 'cgit':
+    paths.append(('/git/archive', 'Archived'))
     iter_repos (paths, output_cgit)
 elif options.output == 'flat':
     iter_repos (paths, output_flat, include_pending=False)
