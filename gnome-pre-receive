@@ -29,6 +29,7 @@ If this module should not have been archived, file a bug for assistance at:
 https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=Git
 ---
 EOF
+    exit 1
 fi
 
 
