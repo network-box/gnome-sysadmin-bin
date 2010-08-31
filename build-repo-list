@@ -16,11 +16,11 @@ GNOME = "http://api.gnome.org/doap-extensions#"
 NO_DESCRIPTION = 'Unnamed repository; edit this file to name it for gitweb.'
 
 sectionlist = ('Administration Tools', 'Bindings', 'Desktop', 'Development Tools',
-             'Infrastructure', 'Platform', 'Productivity Tools', 'Other', 'Deprecated', 'Archived')
+             'Infrastructure', 'Platform', 'Productivity Tools', 'Other', 'Z_Deprecated', 'Z_Archived')
 sectionmap = {
     'admin': 'Administration Tools',
     'bindings': 'Bindings',
-    'deprecated': 'Deprecated',
+    'deprecated': 'Z_Deprecated',
     'desktop': 'Desktop',
     'development': 'Development Tools',
     'infrastructure': 'Infrastructure',
@@ -112,7 +112,7 @@ else:
     paths = args
 
 if options.output == 'cgit':
-    paths.append(('/git/archive', 'Archived'))
+    paths.append(('/git/archive', 'Z_Archived'))
     iter_repos (paths, output_cgit)
 elif options.output == 'flat':
     iter_repos (paths, output_flat, include_pending=False)
