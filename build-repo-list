@@ -54,7 +54,7 @@ class Repo:
                 desc = "Please create %s.doap (see http://live.gnome.org/Git/FAQ)" % shortname
         self.desc = pending + desc
 
-        section_file = os.path.join(repopath, 'gnome_section')
+        section_file = os.path.join(repopath, 'gnome_group')
         section = None
         if os.path.isfile(section_file):
             section = open(section_file).readline().strip()
