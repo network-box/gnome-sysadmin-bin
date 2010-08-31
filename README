@@ -6,4 +6,3 @@ It is only writable by the gitadmin group. (Once the git migration
 is finished the gitadmin group will be removed and the permissions
 switched to the standard sysadmin group.)
 
-
