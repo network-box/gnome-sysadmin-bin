@@ -71,12 +71,12 @@ def iter_repos (paths, repo_func, include_pending=True):
             path, force_section = p
         else:
             path, force_section = p, None
-        if os.path.islink(path) or not os.path.isdir(path):
+        if not os.path.isdir(path):
             continue
         for repo in os.listdir(path):
             repopath = os.path.join (path, repo)
             # We check for ./refs to avoid non-git repository subdirs
-            if not os.path.isdir(os.path.join(repopath, 'refs')):
+            if os.path.islink(repopath) or not os.path.isdir(os.path.join(repopath, 'refs')):
                 continue
 
             repo = Repo(repopath)
