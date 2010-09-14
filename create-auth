@@ -117,9 +117,8 @@ def build_user_hash(group_list):
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
     wheel = set(get_uids_from_wheel())
     sysadmin = set(get_uids_from_sysadmin())
-    # XXX - disable this for now
-    #print_user_list('Sysadmins not in wheel', sysadmin - wheel)
-    #print_user_list('Ex-sysadmins to be removed from wheel', wheel - sysadmin)
+    print_user_list('Sysadmins not in wheel', sysadmin - wheel)
+    print_user_list('Ex-sysadmins to be removed from wheel', wheel - sysadmin)
     users.update(wheel)
     users.update(sysadmin)
     for group in group_list:
