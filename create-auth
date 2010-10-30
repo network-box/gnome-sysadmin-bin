@@ -28,6 +28,7 @@ def get_md5sum_hash():
 
 GNOMECVS=0
 GNOMEGIT=0
+TRANSLATION_USER=0
 MANGO=0
 ## first you must open a connection to the server
 try:
@@ -64,7 +65,7 @@ def get_uids_from_wheel():
 
     people = wheelinfo[3]
     return filter (lambda x: x != 'root', people)
-    
+
 def get_uids_from_sysadmin():
     # XXX 
     try:
@@ -112,6 +113,7 @@ def build_user_hash(group_list):
     gnomecvs_users = set()
     global GNOMECVS
     global GNOMEGIT
+    global TRANSLATION_USER
     global MANGO
 
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
@@ -125,6 +127,8 @@ def build_user_hash(group_list):
         users.update(get_uids_from_group(group))
     if GNOMECVS or GNOMEGIT or MANGO:
         gnomecvs_users = set(get_uids_from_group ('gnomecvs')) - users
+    if TRANSLATION_USER:
+        gnomecvs_users.update(['translations'])
 
     # look up their keys (if we have them)
     lookup_user_info(users, user_data)
@@ -153,6 +157,7 @@ def remove_directory (dir):
 
 def create_directory_structure (user_list):
     global GNOMEGIT
+    global TRANSLATION_USER
     global MANGO
 
     base_directory_name = tempfile.mktemp ('-sshd')
@@ -174,7 +179,10 @@ def create_directory_structure (user_list):
             for key in user['authorizedKey']:
                 if user['cvsOnly']:
                     #file.write ("command=\"/usr/bin/cvs server\",no-pty,no-port-forwarding ")
-                    if GNOMEGIT:
+                    if TRANSLATION_USER and user['uid'] == "translations":
+                        # For damned-lies to commit translations directly to git
+                        file.write ('command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding,host="91.189.93.2" ')
+                    elif GNOMEGIT:
                         file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
                     elif MANGO:
                         file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwarding ")
@@ -244,6 +252,9 @@ if __name__ == '__main__':
     if '--mango' in group_list:
         MANGO=1
         group_list = filter (lambda x: x != '--mango', group_list)
+    if '--translation-user' in group_list:
+        TRANSLATION_USER=1
+        group_list = filter (lambda x: x != '--translation-user', group_list)
 
     if GNOMECVS and GNOMEGIT and MANGO:
         print "--gnomecvs, --gnomegit and --mango are exclusive"
