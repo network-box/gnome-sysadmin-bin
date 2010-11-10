@@ -173,6 +173,14 @@ check_ref_update() {
 			    ;;
 			tag)
 			    # Annotated tag
+					if [ "${tagname}" = "HEAD" ]; then
+						cat <<- EOF >&2
+							---
+							You are trying to push a tag named '$tagname'. This is not allowed.
+							---
+							EOF
+						exit 1
+					fi
 			    ;;
 			*)
 			    # git is happy to allow tagging random objects, we aren't
