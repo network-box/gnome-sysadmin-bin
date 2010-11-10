@@ -29,18 +29,18 @@ check_commit() {
     case "$email" in
 	*localhost.localdomain|*\(none\))
 	    if ! in_import && ! forced ; then
-		cat <<EOF >&2
----
-The commits you are trying to push contain the author email
-address '$email'. Please configure your
-username and email address. See:
+		cat <<- EOF >&2
+			---
+			The commits you are trying to push contain the author email
+			address '$email'. Please configure your
+			username and email address. See:
 
-  http://live.gnome.org/Git/Help/AuthorEmail
+			  http://live.gnome.org/Git/Help/AuthorEmail
 
-For instructions about how to do this and how to fix your
-existing commits.
----
-EOF
+			For instructions about how to do this and how to fix your
+			existing commits.
+			---
+			EOF
 		exit 1
 	    fi
 	    ;;
@@ -49,21 +49,21 @@ EOF
     subject="$(git log $commit -1 --pretty=format:%s)"
     if expr "$subject" : ".*Merge branch.*of.*\(git\|ssh\):" > /dev/null 2>&1; then
 	if ! in_import && ! forced ; then
-	    cat <<EOF >&2
----
-The commit:
+	    cat <<- EOF >&2
+				---
+				The commit:
 
-EOF
+				EOF
 	    git log $commit -1 >&2
-	    cat <<EOF >&2
+	    cat <<- EOF >&2
 
-Looks like it was produced by typing 'git pull' without the --rebase
-option when you had local changes. Running 'git  pull --rebase' now
-will fix the problem. Then please try, 'git push' again. Please see:
+				Looks like it was produced by typing 'git pull' without the --rebase
+				option when you had local changes. Running 'git  pull --rebase' now
+				will fix the problem. Then please try, 'git push' again. Please see:
 
-  http://live.gnome.org/Git/Help/ExtraMergeCommits
----
-EOF
+				  http://live.gnome.org/Git/Help/ExtraMergeCommits
+				---
+				EOF
 	    exit 1
 	fi
     fi
@@ -103,11 +103,11 @@ check_ref_update() {
 		    # branches. Deleting master, however, has no purpose other
 		    # than getting around the no-fast-forward restrictions
 		    if [ "x$branchname" = xmaster ] ; then
-			cat <<EOF >&2
----
-You are trying to delete the branch 'master'.
----
-EOF
+			cat <<- EOF >&2
+				---
+				You are trying to delete the branch 'master'.
+				---
+				EOF
 			exit 1
 		    fi
 		    ;;
@@ -119,14 +119,14 @@ EOF
 		        # our repositories anyways, but catching it here would
 		        # allow overriding without having to change the config
 			# temporarily.
-			cat <<EOF >&2
----
-You are trying to update the branch '$branchname' in a way that is not
-a fast-forward update. Please see:
+			cat <<- EOF >&2
+				---
+				You are trying to update the branch '$branchname' in a way that is not
+				a fast-forward update. Please see:
 
-  http://live.gnome.org/Git/Help/NonFastForward
----
-EOF
+				  http://live.gnome.org/Git/Help/NonFastForward
+				---
+				EOF
 			exit 1
 		    fi
 		    ;;
@@ -135,7 +135,7 @@ EOF
 	    # For new commits introduced with this branch update, we want to run some
 	    # checks to catch common mistakes.
 	    #
-	    # Expression here is same as in post-receive-notify-cia; we take 
+	    # Expression here is same as in post-receive-notify-cia; we take
 	    # all the branches in the repo, as "^/ref/heads/branchname", other than the
             # branch we are actualy committing to, and exclude commits already on those
             # branches from the list of commits between $oldrev and $newrev.
@@ -160,14 +160,14 @@ EOF
 			    # Lightweight tag; we allow an import containing these
 			    # tags, but forbid them in general
 			    if ! in_import && ! forced ; then
-				cat <<EOF >&2
----
-You are trying to push the lightweight tag '$tagname'. You should use
-a signed tag instead. See:
+				cat <<- EOF >&2
+					---
+					You are trying to push the lightweight tag '$tagname'. You should use
+					a signed tag instead. See:
 
-  http://live.gnome.org/Git/Help/LightweightTags
----
-EOF
+					  http://live.gnome.org/Git/Help/LightweightTags
+					---
+					EOF
 				exit 1
 			    fi
 			    ;;
@@ -176,12 +176,12 @@ EOF
 			    ;;
 			*)
 			    # git is happy to allow tagging random objects, we aren't
-			    cat <<EOF >&2
----
-You are trying to push the tag '$tagname', which points to an object
-of type $object_type. (It should point to a commit or tag object.)
----
-EOF
+			    cat <<- EOF >&2
+						---
+						You are trying to push the tag '$tagname', which points to an object
+						of type $object_type. (It should point to a commit or tag object.)
+						---
+						EOF
 			    exit 1
 			    ;;
 		    esac
@@ -193,25 +193,25 @@ EOF
 		    # or whatever. During import we allow the user to clean up
 		    # accidentally pushed tags.
 		    if ! in_import && ! forced ; then
-			cat <<EOF >&2
----
-You are trying to delete the tag '$tagname'.
+			cat <<- EOF >&2
+				---
+				You are trying to delete the tag '$tagname'.
 
-  http://live.gnome.org/Git/Help/TagUpdates
----
-EOF
+				  http://live.gnome.org/Git/Help/TagUpdates
+				---
+				EOF
 			exit 1
 		    fi
 		    ;;
 		update)
 		    if  ! forced ; then
-			cat <<EOF >&2
----
-You are trying to replace the tag '$tagname' with a new tag. Please see:
+			cat <<- EOF >&2
+				---
+				You are trying to replace the tag '$tagname' with a new tag. Please see:
 
-  http://live.gnome.org/Git/Help/TagUpdates
----
-EOF
+				  http://live.gnome.org/Git/Help/TagUpdates
+				---
+				EOF
 			exit 1
 		    fi
 		    ;;
@@ -219,28 +219,28 @@ EOF
 	    ;;
 	refs/remotes/*)
 	    # Remote tracking branch
-	    cat <<EOF >&2
----
-You are trying to push the remote tracking branch:
+	    cat <<- EOF >&2
+				---
+				You are trying to push the remote tracking branch:
 
-  $refname
+				  $refname
 
-to $server.
----
-EOF
+				to $server.
+				---
+				EOF
 	    exit 1
 	    ;;
 	*)
 	    # Something else
-	    cat <<EOF >&2
----
-You are trying to push the ref:
+	    cat <<- EOF >&2
+				---
+				You are trying to push the ref:
 
-  $refname
+				  $refname
 
-to $server. This isn't a branch or tag.
----
-EOF
+				to $server. This isn't a branch or tag.
+				---
+				EOF
 	    exit 1
 	    ;;
     esac
