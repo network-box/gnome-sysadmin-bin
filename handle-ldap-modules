@@ -332,8 +332,9 @@ it probably requires some other setting.""")
 
                 email = maint.find_property((self.FOAF, u'mbox'))
                 if not isinstance(email, semi_rdf.UrlResource) or not email.startswith('mailto:'):
-                    continue
-                email = email[7:]
+                    email = '%s@src.gnome.org' % uid
+                else:
+                    email = email[7:]
 
                 uid = str(uid)
                 email = str(email)
