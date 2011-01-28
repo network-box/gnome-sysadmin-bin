@@ -10,6 +10,7 @@ sys.path.insert(0, script_dir)
 import glob
 import ldap
 import ldap.modlist
+import ldap.filter
 import ldif
 import string
 from random import choice, randrange
