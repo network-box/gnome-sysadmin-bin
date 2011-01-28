@@ -221,6 +221,7 @@ it probably requires some other setting.""")
         self.UID_TO_MAIL = {}
         self.UID_TO_CN = {}
         self.UID_TO_NR = {}
+        self.VCS_UIDS = set(self._get_uids_from_group('gnomecvs'))
 
         l = self._ldap
         results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount", ('uid', 'cn', 'mail', 'userPassword', 'uidNumber'))
@@ -322,8 +323,6 @@ it probably requires some other setting.""")
             UID_TO_MODULES.setdefault(uid, set()).add(modname)
             MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
 
-        vcs_users = set(self._get_uids_from_group('gnomecvs'))
-
         # Get module maintainer data from MAINTAINERS file in Git
         nodes = semi_rdf.read_rdf('http://git.gnome.org/repositories.doap')
         for node in nodes:
@@ -362,7 +361,7 @@ it probably requires some other setting.""")
                 uid = str(uid)
                 email = str(email)
 
-                is_valid_uid = uid in self.UID_TO_CN and uid in vcs_users
+                is_valid_uid = uid in self.UID_TO_CN and uid in self.VCS_UIDS
                 possible_emails = set([
                     "%s@svn.gnome.org" % uid,
                     "%s@gnome.org" % uid,
@@ -580,7 +579,12 @@ if __name__ == '__main__':
                 if uid in ONCE_VALID:
                         continue
 
-                print "\t".join([uid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
+                if uid in m.VCS_UIDS
+                    puid = uid
+                else:
+                    puid = "?%s" % uid
+
+                print "\t".join([puid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
 
         #m.update_ldap_modules(vcs_data[1], remove=True)
         m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff)
