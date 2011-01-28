@@ -241,7 +241,7 @@ it probably requires some other setting.""")
             self.UID_TO_NR[uid] = int(attr['uidNumber'][0])
 
 
-    def _get_uids_from_group(group):
+    def _get_uids_from_group(self, group):
         l = self._ldap
         filter = ldap.filter.filter_format("(cn=%s)", (group, ))
         try:
