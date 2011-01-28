@@ -579,7 +579,7 @@ if __name__ == '__main__':
                 if uid in ONCE_VALID:
                         continue
 
-                if uid in m.VCS_UIDS
+                if uid in m.VCS_UIDS:
                     puid = uid
                 else:
                     puid = "?%s" % uid
