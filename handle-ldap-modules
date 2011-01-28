@@ -241,6 +241,26 @@ it probably requires some other setting.""")
             self.UID_TO_NR[uid] = int(attr['uidNumber'][0])
 
 
+    def _get_uids_from_group(group):
+        l = self._ldap
+        filter = ldap.filter.filter_format("(cn=%s)", (group, ))
+        try:
+            ldap_result_id = l.search ("ou=groups,dc=gnome,dc=org",
+                                       ldap.SCOPE_SUBTREE, filter, None)
+            while 1:
+                result_type, group_data = l.result(ldap_result_id, 0)
+                if (group_data == []):
+                    break
+                else:
+                    group_info = group_data[0][1]
+                    return group_info['memberUid']
+        except ldap.LDAPError, e:
+            print e
+            sys.exit(1)
+
+        return []
+
+
     def get_maintainer_data_ldap(self):
         """Get maintainer data from LDAP (cached)"""
         if hasattr(self, '_maint_ldap'):
@@ -301,6 +321,8 @@ it probably requires some other setting.""")
             UID_TO_MODULES.setdefault(uid, set()).add(modname)
             MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
 
+        vcs_users = set(self._get_uids_from_group('gnomecvs'))
+
         # Get module maintainer data from MAINTAINERS file in Git
         nodes = semi_rdf.read_rdf('http://git.gnome.org/repositories.doap')
         for node in nodes:
@@ -339,7 +361,7 @@ it probably requires some other setting.""")
                 uid = str(uid)
                 email = str(email)
 
-                is_valid_uid = uid in self.UID_TO_CN
+                is_valid_uid = uid in self.UID_TO_CN and uid in vcs_users
                 possible_emails = set([
                     "%s@svn.gnome.org" % uid,
                     "%s@gnome.org" % uid,
