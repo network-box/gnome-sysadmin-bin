@@ -388,8 +388,13 @@ it probably requires some other setting.""")
                     MODULE_TO_UIDS.setdefault(modname, set()).add(uid)
                 if not is_valid_uid or not is_valid_email:
                     if uid not in INVALID:
-                        INVALID[uid] = [email, name, is_valid_uid, is_valid_email]
-                    INVALID[uid].append(modname)
+                        INVALID[uid] = {}
+
+                    invalid_data = (is_valid_uid, email, name)
+                    if invalid_data not in INVALID[uid]:
+                        INVALID[uid][invalid_data] = []
+
+                    INVALID[uid][invalid_data].append(modname)
                 else:
                     ONCE_VALID[uid] = [email, name, is_valid_uid, is_valid_email]
 
@@ -520,6 +525,26 @@ def usage():
     print "Wrong usage"
     sys.exit(1)
 
+def print_invalid(INVALID, filter_valid_uid=None, header=None):
+    printed_header = False
+    if header is None: printed_header=True
+
+    for uid in sorted(INVALID.keys()):
+        if uid in ONCE_VALID:
+                continue
+
+        for invalid_data in sorted(INVALID[uid].keys()):
+            is_valid_uid, email, name = invalid_data
+
+            if filter_valid_uid is not None and is_valid_uid != filter_valid_uid:
+                continue
+
+            if not printed_header:
+                print header
+                printed_header=True
+
+            print "\t".join([uid, email, m.UID_TO_MAIL.get(uid, '???'), name, ", ".join(INVALID[uid][invalid_data])])
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2: usage()
@@ -575,18 +600,9 @@ if __name__ == '__main__':
 #                print sorted(mod_added)
 #                print sorted(mod_removed)
 
-        for uid in sorted(INVALID.keys()):
-                if uid in ONCE_VALID:
-                        continue
+        print_valid(INVALID, False, "Invalid uids:")
+        print_valid(INVALID, True, "Mismatch between email addresses (DOAP vs LDAP):")
 
-                if uid in m.VCS_UIDS:
-                    puid = uid
-                else:
-                    puid = "?%s" % uid
-
-                print "\t".join([puid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
-
-        #m.update_ldap_modules(vcs_data[1], remove=True)
         m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff, remove=True, verbose=True)
 
         uids_give_passwd = set(vcs_data[0].keys()).difference(m.UID_TO_PW.keys())
