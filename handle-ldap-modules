@@ -458,11 +458,12 @@ it probably requires some other setting.""")
             os.umask(prevmask)
  
 
-    def update_ldap_modules(self, vcs_modules, vcs_descs, change=True, remove=False):
+    def update_ldap_modules(self, vcs_modules, vcs_descs, change=True, remove=False, verbose=False):
         ldap_uids, ldap_modules, ldap_desc, ldap_dn = self.get_maintainer_data_ldap()
         l = self._ldap
 
         if not change: remove = False
+        if not change: verbose=True
 
         for modname in sorted(vcs_modules.keys()):
             dn = ldap_dn.get(modname, 'cn=%s,ou=modules,dc=gnome,dc=org' % escape_dn_chars(modname))
@@ -489,28 +490,27 @@ it probably requires some other setting.""")
                 
 
                 ldif_entry = ldap.modlist.addModlist(entry)
+                if verbose:
+                    print "A:", dn, ldif_entry
                 if change:
                     l.add_s(dn, ldif_entry)
-                else:
-                    print "A", dn, ldif_entry
             elif modname in ldap_modules and vcs_modules[modname].symmetric_difference(ldap_modules[modname]):
                 ldif_entry = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
                                              {'maintainerUid': list(vcs_modules[modname])})
+                if verbose:
+                    print "C:", dn, ldif_entry
                 if change:
                     l.modify_s(dn,ldif_entry)
-                else:
-                    print "C:", dn, ldif_entry
 
         if not remove: return
 
         rem_mods = set(ldap_modules.keys()).difference(vcs_modules.keys())
         if len(rem_mods):
-            print "Modules to REALLY remove:"
-            print rem_mods
             for modname in rem_mods:
                 if modname not in ldap_dn:
                     continue
-                print ldap_dn[modname]
+                if verbose:
+                    print "D:", dn, ldap_dn[modname]
                 
                 l.delete_s(ldap_dn[modname])
 
@@ -587,7 +587,7 @@ if __name__ == '__main__':
                 print "\t".join([puid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
 
         #m.update_ldap_modules(vcs_data[1], remove=True)
-        m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff, remove=True)
+        m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff, remove=True, verbose=True)
 
         uids_give_passwd = set(vcs_data[0].keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
