@@ -24,6 +24,7 @@ from email.MIMEText import MIMEText
 import libxml2
 import semi_rdf
 import urllib
+import texttable
 
 try:
     import xml.etree.cElementTree as et
@@ -538,6 +539,11 @@ def print_invalid(INVALID, filter_valid_uid=None, header=None):
     """Print problems in userid or email comparison to stdout"""
     printed_header = False
     if header is None: printed_header=True
+    have_data=False
+
+    table = texttable.Texttable()
+    table.set_deco(0)
+    table.header(('UID', 'DOAP email', 'LDAP email', 'DOAP name', 'Modules'))
 
     for uid in sorted(INVALID.keys()):
         if uid in ONCE_VALID: # XXX -- assumes specific scope
@@ -553,10 +559,12 @@ def print_invalid(INVALID, filter_valid_uid=None, header=None):
                 print header
                 printed_header=True
 
-            print "\t".join([uid, email, m.UID_TO_MAIL.get(uid, '???'), name, ", ".join(INVALID[uid][invalid_data])])
+            have_data=True
+            table.add_row([uid, email, m.UID_TO_MAIL.get(uid, '???'), name, ", ".join(INVALID[uid][invalid_data])])
 
-    if header is not None and printed_header:
-        print ""
+    if have_data:
+        table.draw()
+    return have_data
 
 
 if __name__ == '__main__':
