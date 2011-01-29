@@ -545,6 +545,9 @@ def print_invalid(INVALID, filter_valid_uid=None, header=None):
 
             print "\t".join([uid, email, m.UID_TO_MAIL.get(uid, '???'), name, ", ".join(INVALID[uid][invalid_data])])
 
+    if header is not None and printed_header:
+        print ""
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2: usage()
