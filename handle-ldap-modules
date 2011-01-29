@@ -560,7 +560,7 @@ def print_invalid(INVALID, filter_valid_uid=None, header=None):
                 printed_header=True
 
             have_data=True
-            table.add_row([uid, email, m.UID_TO_MAIL.get(uid, '???'), name, ", ".join(INVALID[uid][invalid_data])])
+            table.add_row((f.encode('latin1') for f in [uid, email, m.UID_TO_MAIL.get(uid, '???'), name, ", ".join(INVALID[uid][invalid_data])]))
 
     if have_data:
         table.draw()
