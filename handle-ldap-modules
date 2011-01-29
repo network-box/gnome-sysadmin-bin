@@ -504,15 +504,15 @@ it probably requires some other setting.""")
         if not remove: return
 
         rem_mods = set(ldap_modules.keys()).difference(vcs_modules.keys())
-
-        print "Modules to REALLY remove:"
-        print rem_mods
-        for modname in rem_mods:
-            if modname not in ldap_dn:
-                continue
-            print ldap_dn[modname]
-            
-            l.delete_s(ldap_dn[modname]) # XXX - doesn't actually work
+        if len(rem_mods):
+            print "Modules to REALLY remove:"
+            print rem_mods
+            for modname in rem_mods:
+                if modname not in ldap_dn:
+                    continue
+                print ldap_dn[modname]
+                
+                l.delete_s(ldap_dn[modname])
 
         
 
@@ -587,7 +587,7 @@ if __name__ == '__main__':
                 print "\t".join([puid, INVALID[uid][0], m.UID_TO_MAIL.get(uid, '???'), ", ".join(INVALID[uid][4:])])
 
         #m.update_ldap_modules(vcs_data[1], remove=True)
-        m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff)
+        m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff, remove=True)
 
         uids_give_passwd = set(vcs_data[0].keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
