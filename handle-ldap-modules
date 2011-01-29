@@ -362,14 +362,17 @@ it probably requires some other setting.""")
                 email = str(email)
 
                 is_valid_uid = uid in self.UID_TO_CN and uid in self.VCS_UIDS
+                # Email comparison is done case insensitive. According to the RFC
+                # this should only be done for the host part, but in practice it
+                # doesn't matter.
                 possible_emails = set([
-                    "%s@svn.gnome.org" % uid,
-                    "%s@gnome.org" % uid,
-                    "%s@cvs.gnome.org" % uid,
-                    "%s@src.gnome.org" % uid
+                    "%s@svn.gnome.org" % uid.lower(),
+                    "%s@gnome.org" % uid.lower(),
+                    "%s@cvs.gnome.org" % uid.lower(),
+                    "%s@src.gnome.org" % uid.lower()
                 ])
                 if is_valid_uid:
-                    possible_emails.add(self.UID_TO_MAIL[uid])
+                    possible_emails.add(self.UID_TO_MAIL[uid].lower())
                 spam_1 = [mail.replace('@', ' ').replace('.', ' ') for mail in possible_emails]
                 spam_2 = [mail.replace('@', ' at ').replace('.', ' dot ') for mail in possible_emails]
                 spam_3 = [mail.replace('@', ' ') for mail in possible_emails]
@@ -380,7 +383,7 @@ it probably requires some other setting.""")
                 possible_emails.update(spam_1 + spam_2 + spam_3 + spam_4 + spam_5 + spam_6)
                 possible_emails.update(['<%s>' % mail for mail in possible_emails])
 
-                is_valid_email = email in possible_emails
+                is_valid_email = email.lower() in possible_emails
 
                 # XXX - not used/needed: self.MAINTAINERS.setdefault(modname, {})[uid] = [email, name, is_valid_uid, is_valid_email]
                 if is_valid_uid:
