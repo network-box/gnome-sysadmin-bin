@@ -152,7 +152,7 @@ class Texttable:
         """
 
         self._check_row_size(array)
-        self._rows.append(map(str, array))
+        self._rows.append(array)
 
     def add_rows(self, rows, header=True):
         """Add several rows in the rows stack
@@ -447,7 +447,7 @@ class Texttable:
         for cell, width in zip(line, self._width):
             array = []
             for c in cell.split('\n'):
-                array.extend(textwrap.wrap(unicode(c, 'utf'), width))
+                array.extend(textwrap.wrap(c, width))
             line_wrapped.append(array)
         max_cell_lines = reduce(max, map(len, line_wrapped))
         for cell, valign in zip(line_wrapped, self._valign):
