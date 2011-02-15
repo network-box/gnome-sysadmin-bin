@@ -133,7 +133,7 @@ elif options.output == 'doap':
                                          semi_rdf.UrlResource("git://git.gnome.org/%s" % repo.shortname))
             repository_node.add_property((DOAP, "browse"),
                                        None,
-                                       semi_rdf.UrlResource("http://git.gnome.org/cgit/%s" % repo.shortname))
+                                       semi_rdf.UrlResource("http://git.gnome.org/browse/%s" % repo.shortname))
             old_repository_node = None
 
             for node in file_nodes:
