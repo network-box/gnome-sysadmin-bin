@@ -45,5 +45,5 @@ case "${FILE##*.}" in
 	;;
 esac
 
-$CAT $FILE | gawk -v MINHITS="$2" '{ IP[$1]++; } END { for (i in IP) { if ( MINHITS == "" || IP[i] > MINHITS ) { print i "\t" IP[i]; } } }' | sort -rnk 2 | head -n25
+$CAT $FILE | gawk -v MINHITS="$2" '{ IP[$1]++; STOP[$1]=$4 " " $5; if ( START[$1] == "" ) { START[$1]=$4 " " $5; } } END { for (i in IP) { if ( MINHITS == "" || IP[i] > MINHITS ) { print i "\t" IP[i] "\t" START[i] "\t" STOP[i]; } } }' | sort -rnk 2 | head -n25
 
