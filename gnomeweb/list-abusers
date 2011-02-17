@@ -7,7 +7,7 @@
 FILE=""
 # Argument given?
 if [ -z "$1" ]; then
-	[ -z "$FILE" -a -e "access_log" ] && FILE="/var/log/httpd/access_log"
+	[ -z "$FILE" -a -e "access_log" ] && FILE="access_log"
 	[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/access_log" ] && FILE="/var/log/httpd/$HOSTNAME/access_log"
 	[ -z "$FILE" -a -e "/var/log/httpd/access_log" ] && FILE="/var/log/httpd/access_log"
 fi
