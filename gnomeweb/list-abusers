@@ -56,8 +56,8 @@ SCRIPT='
 }
 
 END {
-	if ( MINHITS == "" && RS > 100000 ) {
-		MINHITS=( (RS / IPS) - sqrt(RS / IPS) )
+	if ( MINHITS == "" && NR > 100000 ) {
+		MINHITS=( (NR / IPS) + sqrt( ( NR / IPS ) )
 	}
 	for (i in IP) {
 		if ( MINHITS == "" || IP[i] >= MINHITS ) {
