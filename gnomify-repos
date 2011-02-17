@@ -9,6 +9,8 @@ gnomify_repo() {
     git config core.sharedrepository 1
     git config hooks.emailprefix ""
     git config hooks.mailinglist commits-list@gnome.org
+    git config http.getanyfile false
+    git config http.receivepack false
 
     ln -sf /home/admin/gitadmin-bin/gnome-pre-receive $GIT_DIR/hooks/pre-receive
     ln -sf /home/admin/gitadmin-bin/gnome-post-receive $GIT_DIR/hooks/post-receive
