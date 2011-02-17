@@ -4,11 +4,32 @@
 #  list-abusers [APACHE_LOG_FILE] [MINIMUM HITS]
 #
 
-[ -e "$1" ] && FILE="$1"
-[ -z "$1" -a -e "/var/log/httpd/$FILE" ] && FILE="/var/log/httpd/$1"
-[ -z "$1" -a -e "/var/log/httpd/$FILE/access_log" ] && FILE="/var/log/httpd/$1/access_log"
-[ -z "$1" -a -e "/var/log/httpd/$FILE.gnome.org/access_log" ] && FILE="/var/log/httpd/$1.gnome.org/access_log"
-[ -z "$1" ] && FILE="/var/log/httpd/access_log"
+FILE=""
+# Argument given?
+if [ -z "$1" ]; then
+	[ -z "$FILE" -a -e "access_log" ] && FILE="/var/log/httpd/access_log"
+	[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/access_log" ] && FILE="/var/log/httpd/$HOSTNAME/access_log"
+	[ -z "$FILE" -a -e "/var/log/httpd/access_log" ] && FILE="/var/log/httpd/access_log"
+fi
+
+# Current directory / full path
+[ -z "$FILE" -a -e "$1" ] && FILE="$1"
+[ -z "$FILE" -a -e "$1.gz" ] && FILE="$1.gz"
+[ -z "$FILE" -a -e "access_log$1.gz" ] && FILE="access_log$1.gz"
+
+# Hostname directory
+[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/$1" ] && FILE="/var/log/httpd/$HOSTNAME/$1"
+[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/$1.gz" ] && FILE="/var/log/httpd/$HOSTNAME/$1.gz"
+[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/access_log$1.gz" ] && FILE="/var/log/httpd/$HOSTNAME/access_log$1.gz"
+
+# Maybe hostname was given?
+[ -z "$FILE" -a -e "/var/log/httpd/$1/access_log" ] && FILE="/var/log/httpd/$1/access_log"
+
+# Maybe part of hostname was given?
+[ -z "$FILE" -a -e "/var/log/httpd/$1.gnome.org/access_log" ] && FILE="/var/log/httpd/$1.gnome.org/access_log"
+
+[ -z "$FILE" -a -e "/var/log/httpd/$1" ] && FILE="/var/log/httpd/$1"
+[ -z "$FILE" ] && FILE="/var/log/httpd/access_log"
 #FILE=/var/log/httpd/bugzilla.gnome.org/access_log
 
 
