@@ -48,9 +48,9 @@ esac
 SCRIPT='
 {
 	IP[$1]++;
-	STOP[$1]=$4 " " $5;
+	STOP[$1]=$4 "/" $5;
 	if ( START[$1] == "" ) {
-		START[$1]=$4 " " $5;
+		START[$1]=$4 "/" $5;
 		IPS++
 	}
 }
@@ -61,11 +61,23 @@ END {
 	}
 	for (i in IP) {
 		if ( MINHITS == "" || IP[i] >= MINHITS ) {
-			print i "\t" IP[i] "\t" START[i] "\t" STOP[i];
+			print i "\t" IP[i] "\t-\t" START[i] "\t" STOP[i];
 		}
 	}
 }
 '
+$CAT $FILE | gawk -v MINHITS="$2" "$SCRIPT" | sort -rnk 2 | head -n25 | while read ipaddr hits perhour start stop bar; do
+	start=${start//\// }
+	start=${start/:/ }
+	start=${start//[]\[]/}
+	startstamp=`date -d "$start" +%s`
 
-$CAT $FILE | gawk -v MINHITS="$2" "$SCRIPT" | sort -rnk 2 | head -n25
+	stop=${stop//\// }
+	stop=${stop/:/ }
+	stop=${stop//[]\[]/}
+	stopstamp=`date -d "$stop" +%s`
 
+	perhour=$[ ($hits * 60 * 60 ) / ($stopstamp-$startstamp ) ]
+
+	echo -e "$ipaddr\t$hits\t$perhour\t$start\t$stop"
+done
