@@ -1,47 +1,76 @@
 #!/bin/bash
 #
 # Usage:
-#  list-abusers [APACHE_LOG_FILE] [MINIMUM HITS]
+#  list-abusers [APACHE_LOG_FILE] [MINIMUM HITS / IP ADDRESS]
 #
+# Specify an IP address to grep for that IP address
+
 
 FILE=""
-# Argument given?
-if [ -z "$1" ]; then
-	[ -z "$FILE" -a -e "access_log" ] && FILE="access_log"
-	[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/access_log" ] && FILE="/var/log/httpd/$HOSTNAME/access_log"
-	[ -z "$FILE" -a -e "/var/log/httpd/access_log" ] && FILE="/var/log/httpd/access_log"
+
+determine_file () {
+	FILE=""
+
+	if [ -z "$1" ]; then
+		# In case of no argument
+		FILES="\
+access_log
+/var/log/httpd/$HOSTNAME/access_log
+/var/log/httpd/access_log"
+	else
+
+		FILES="\
+$1
+$1
+$1.gz
+access_log$1
+access_log$1.gz
+/var/log/httpd/$HOSTNAME/$1
+/var/log/httpd/$HOSTNAME/$1.gz
+/var/log/httpd/$HOSTNAME/access_log$1
+/var/log/httpd/$HOSTNAME/access_log$1.gz
+/var/log/httpd/$1/access_log
+/var/log/httpd/$1.gnome.org/access_log
+/var/log/httpd/$1"
+	fi
+
+	while read filetest; do
+		if [ -e "$filetest" ]; then
+			FILE="$filetest"
+			return 0
+		fi
+	done <<<"$FILES"
+
+	# Could not determine the file
+	return 1
+}
+
+determine_file "$@" && shift
+if [ -z "$FILE" ]; then
+	determine_file "access_log"
 fi
 
-# Current directory / full path
-[ -z "$FILE" -a -e "$1" ] && FILE="$1"
-[ -z "$FILE" -a -e "$1.gz" ] && FILE="$1.gz"
-[ -z "$FILE" -a -e "access_log$1.gz" ] && FILE="access_log$1.gz"
-
-# Hostname directory
-[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/$1" ] && FILE="/var/log/httpd/$HOSTNAME/$1"
-[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/$1.gz" ] && FILE="/var/log/httpd/$HOSTNAME/$1.gz"
-[ -z "$FILE" -a -e "/var/log/httpd/$HOSTNAME/access_log$1.gz" ] && FILE="/var/log/httpd/$HOSTNAME/access_log$1.gz"
-
-# Maybe hostname was given?
-[ -z "$FILE" -a -e "/var/log/httpd/$1/access_log" ] && FILE="/var/log/httpd/$1/access_log"
-
-# Maybe part of hostname was given?
-[ -z "$FILE" -a -e "/var/log/httpd/$1.gnome.org/access_log" ] && FILE="/var/log/httpd/$1.gnome.org/access_log"
-
-[ -z "$FILE" -a -e "/var/log/httpd/$1" ] && FILE="/var/log/httpd/$1"
-[ -z "$FILE" ] && FILE="/var/log/httpd/access_log"
-#FILE=/var/log/httpd/bugzilla.gnome.org/access_log
-
+if [ -z "$1" ]; then
+	:
+elif [[ "$1" =~ ^[0-9]+$ ]]; then
+	# numeric argument
+	MINHITS=$1
+else
+	IP="$1"
+fi
 
 case "${FILE##*.}" in
 	gz)
 		CAT="zcat"
+		GREP="zgrep"
 	;;
 	bz2)
 		CAT="bzcat"
+		GREP="bzgrep"
 	;;
 	*)
 		CAT="cat"
+		GREP="grep"
 	;;
 esac
 
@@ -66,18 +95,23 @@ END {
 	}
 }
 '
-$CAT $FILE | gawk -v MINHITS="$2" "$SCRIPT" | sort -rnk 2 | head -n25 | while read ipaddr hits perhour start stop bar; do
-	start=${start//\// }
-	start=${start/:/ }
-	start=${start//[]\[]/}
-	startstamp=`date -d "$start" +%s`
+if [ -z "$IP" ]; then
+	echo $CAT $FILE $MINHITS
+	$CAT $FILE | gawk -v MINHITS="$MINHITS" "$SCRIPT" | sort -rnk 2 | head -n25 | while read ipaddr hits perhour start stop bar; do
+		start=${start//\// }
+		start=${start/:/ }
+		start=${start//[]\[]/}
+		startstamp=`date -d "$start" +%s`
 
-	stop=${stop//\// }
-	stop=${stop/:/ }
-	stop=${stop//[]\[]/}
-	stopstamp=`date -d "$stop" +%s`
+		stop=${stop//\// }
+		stop=${stop/:/ }
+		stop=${stop//[]\[]/}
+		stopstamp=`date -d "$stop" +%s`
 
-	perhour=$[ ($hits * 60 * 60 ) / ($stopstamp-$startstamp ) ]
+		perhour=$[ ($hits * 60 * 60 ) / ($stopstamp-$startstamp ) ]
 
-	echo -e "$ipaddr\t$hits\t$perhour\t$start\t$stop"
-done
+		echo -e "$ipaddr\t$hits\t$perhour\t$start\t$stop"
+	done
+else
+	$GREP "^$IP" $FILE | less
+fi
