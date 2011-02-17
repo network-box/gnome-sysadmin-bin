@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# Usage:
+#  list-abusers [APACHE_LOG_FILE] [MINIMUM HITS]
+#
+
+[ -e "$1" ] && FILE="$1"
+[ -z "$1" -a -e "/var/log/httpd/$FILE" ] && FILE="/var/log/httpd/$1"
+[ -z "$1" -a -e "/var/log/httpd/$FILE/access_log" ] && FILE="/var/log/httpd/$1/access_log"
+[ -z "$1" -a -e "/var/log/httpd/$FILE.gnome.org/access_log" ] && FILE="/var/log/httpd/$1.gnome.org/access_log"
+[ -z "$1" ] && FILE="/var/log/httpd/access_log"
+#FILE=/var/log/httpd/bugzilla.gnome.org/access_log
+
+
+case "${FILE##*.}" in
+	gz)
+		CAT="zcat"
+	;;
+	bz2)
+		CAT="bzcat"
+	;;
+	*)
+		CAT="cat"
+	;;
+esac
+
+$CAT $FILE | gawk -v MINHITS="$2" '{ IP[$1]++; } END { for (i in IP) { if ( MINHITS == "" || IP[i] > MINHITS ) { print i "\t" IP[i]; } } }' | sort -rnk 2 | head -n25
+
