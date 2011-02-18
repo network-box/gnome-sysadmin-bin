@@ -146,16 +146,23 @@ if [ -z "$IP" ]; then
 		if [ -n "$BAN" ]; then
 			ADD_TO_HTACCESS=""
 			if [ $hits -gt $MINHITS -a $perhour -gt $MINHITSPERHOUR ]; then
-				baninfo="\tBanned before"
+				baninfo="\tShould be banned"
 				if [ -e "$HTACCESS" ]; then
+					baninfo="\tBanned before"
 					# XXX - IP address is used as-is in the regexp
 					# XXX - should escape characters like . ? [
-					grep -q "deny from $ipaddr" .htaccess || ADD_TO_HTACCESS=1
+					grep -q -- "deny from $ipaddr" "$HTACCESS" || ADD_TO_HTACCESS=1
 				fi
 			fi
 			if [ -n "$ADD_TO_HTACCESS" ]; then
 				baninfo="\tBanned"
-				# XXX - to be implemented
+				# XXX - add mail notification
+				cat >> "$HTACCESS" <<_EOF_
+
+# Automatically banned by list-abusers on `date -R`
+# Hits $hits, hits per hour $perhour
+deny from $ipaddr
+_EOF_
 			fi
 		fi
 
