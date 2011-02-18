@@ -69,6 +69,12 @@ fi
 
 if [ -z "$1" ]; then
 	:
+elif [ "$1" = "-b" ]; then
+	# Ban IP address, requires MINHITS and HITPERHOUR argument
+	BAN=1
+	MINHITS=$2
+	MINHITSPERHOUR=$3
+	HTACCESS=$4
 elif [[ "$1" =~ ^[0-9]+$ ]]; then
 	# numeric argument
 	MINHITS=$1
@@ -135,8 +141,25 @@ if [ -z "$IP" ]; then
 		stopstamp=`date -d "$stop" +%s`
 
 		perhour=$[ ($hits * 60 * 60 ) / ($stopstamp-$startstamp ) ]
+		baninfo=""
 
-		echo -e "$ipaddr\t$hits\t$perhour\t$start\t$stop"
+		if [ -n "$BAN" ]; then
+			ADD_TO_HTACCESS=""
+			if [ $hits -gt $MINHITS -a $perhour -gt $MINHITSPERHOUR ]; then
+				baninfo="\tBanned before"
+				if [ -e "$HTACCESS" ]; then
+					# XXX - IP address is used as-is in the regexp
+					# XXX - should escape characters like . ? [
+					grep -q "deny from $ipaddr" .htaccess || ADD_TO_HTACCESS=1
+				fi
+			fi
+			if [ -n "$ADD_TO_HTACCESS" ]; then
+				baninfo="\tBanned"
+				# XXX - to be implemented
+			fi
+		fi
+
+		echo -e "$ipaddr\t$hits\t$perhour\t$start\t$stop$baninfo"
 	done
 else
 	# Grep logfile for a specific IP address
