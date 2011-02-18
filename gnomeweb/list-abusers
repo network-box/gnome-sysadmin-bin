@@ -42,6 +42,10 @@ access_log$1.gz
 /var/log/httpd/$HN/$1.gz
 /var/log/httpd/$HN/access_log$1
 /var/log/httpd/$HN/access_log$1.gz
+/var/log/httpd/$HN.gnome.org/$1
+/var/log/httpd/$HN.gnome.org/$1.gz
+/var/log/httpd/$HN.gnome.org/access_log$1
+/var/log/httpd/$HN.gnome.org/access_log$1.gz
 /var/log/httpd/$1/access_log
 /var/log/httpd/$1.gnome.org/access_log
 /var/log/httpd/$1"
