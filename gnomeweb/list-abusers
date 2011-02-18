@@ -20,11 +20,15 @@ FILE=""
 determine_file () {
 	FILE=""
 
+	# Change stuff like bugzilla-web to bugzilla
+	HN=${HOSTNAME%-*}
+
 	if [ -z "$1" ]; then
 		# No arguments specified on the command line
 		FILES="\
 access_log
-/var/log/httpd/$HOSTNAME/access_log
+/var/log/httpd/$HN/access_log
+/var/log/httpd/$HN.gnome.org/access_log
 /var/log/httpd/access_log"
 	else
 		# In case an argument was given
@@ -34,10 +38,10 @@ $1
 $1.gz
 access_log$1
 access_log$1.gz
-/var/log/httpd/$HOSTNAME/$1
-/var/log/httpd/$HOSTNAME/$1.gz
-/var/log/httpd/$HOSTNAME/access_log$1
-/var/log/httpd/$HOSTNAME/access_log$1.gz
+/var/log/httpd/$HN/$1
+/var/log/httpd/$HN/$1.gz
+/var/log/httpd/$HN/access_log$1
+/var/log/httpd/$HN/access_log$1.gz
 /var/log/httpd/$1/access_log
 /var/log/httpd/$1.gnome.org/access_log
 /var/log/httpd/$1"
