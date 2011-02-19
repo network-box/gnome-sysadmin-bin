@@ -222,7 +222,7 @@ it probably requires some other setting.""")
         self.UID_TO_MAIL = {}
         self.UID_TO_CN = {}
         self.UID_TO_NR = {}
-        self.VCS_UIDS = set(self._get_uids_from_group('gnomecvs'))
+        self.VCS_UIDS = set(self._get_uids_from_group('gnomecvs') + self._get_uids_from_group('gnomevcs'))
 
         l = self._ldap
         results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount", ('uid', 'cn', 'mail', 'userPassword', 'uidNumber'))

@@ -11,9 +11,9 @@ LDAP_GROUP_BASE='ou=groups,dc=gnome,dc=org'
 LDAP_USER_BASE='ou=people,dc=gnome,dc=org'
 
 ALIASES = [
-    ('/etc/gnome.org/cvs-mail/virtual',    'cvs.gnome.org', 'gnomecvs'),
-    ('/etc/gnome.org/svn-mail/virtual',    'svn.gnome.org', 'gnomecvs'),
-    ('/etc/gnome.org/src-mail/virtual',    'src.gnome.org', 'gnomecvs'),
+    ('/etc/gnome.org/cvs-mail/virtual',    'cvs.gnome.org', ('gnomecvs', 'gnomevcs')),
+    ('/etc/gnome.org/svn-mail/virtual',    'svn.gnome.org', ('gnomecvs', 'gnomevcs')),
+    ('/etc/gnome.org/src-mail/virtual',    'src.gnome.org', ('gnomecvs', 'gnomevcs')),
     ('/etc/gnome.org/master-mail/aliases', '', 'mailusers'),
 ]
 
@@ -61,7 +61,13 @@ if __name__ == '__main__':
 
     for aliasfile, domain, group in ALIASES:
         newaliasfile = '%s.new2' % aliasfile
-        members = fetch_group_members(group)
+        members = set()
+        if type(group) == tuple:
+            members = set()
+            for each gr in group:
+                members.update(fetch_group_members(gr)
+        else:
+            members = fetch_group_members(group)
         emails = fetch_email_addresses(members)
 
         if domain == "":
