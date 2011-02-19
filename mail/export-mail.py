@@ -64,7 +64,7 @@ if __name__ == '__main__':
         members = set()
         if type(group) == tuple:
             members = set()
-            for each gr in group:
+            for gr in group:
                 members.update(fetch_group_members(gr)
         else:
             members = fetch_group_members(group)
