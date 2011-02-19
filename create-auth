@@ -26,7 +26,6 @@ def get_md5sum_hash():
             user_md5sums [file] = m.hexdigest ()
     return user_md5sums
 
-GNOMECVS=0
 GNOMEGIT=0
 TRANSLATION_USER=0
 MANGO=0
@@ -102,7 +101,7 @@ def lookup_user_info(uids, user_data):
             'authorizedKey': key_list,
             'uidNumber': person_info['uidNumber'][0],
             'gidNumber': person_info['gidNumber'][0],
-            'cvsOnly': 0
+            'vcsOnly': 0
         }
 
     return user_data
@@ -110,8 +109,7 @@ def lookup_user_info(uids, user_data):
 def build_user_hash(group_list):
     users = set()
     user_data = {}
-    gnomecvs_users = set()
-    global GNOMECVS
+    gnomevcs_users = set()
     global GNOMEGIT
     global TRANSLATION_USER
     global MANGO
@@ -125,19 +123,19 @@ def build_user_hash(group_list):
     users.update(sysadmin)
     for group in group_list:
         users.update(get_uids_from_group(group))
-    if GNOMECVS or GNOMEGIT or MANGO:
-        gnomecvs_users = set(get_uids_from_group ('gnomecvs')) - users
+    if GNOMEGIT or MANGO:
+        gnomevcs_users = set(get_uids_from_group ('gnomecvs') + get_uids_from_group ('gnomevcs')) - users
     if TRANSLATION_USER:
-        gnomecvs_users.update(['translations'])
+        gnomevcs_users.update(['translations'])
 
     # look up their keys (if we have them)
     lookup_user_info(users, user_data)
 
-    if len(gnomecvs_users):
-        lookup_user_info(gnomecvs_users, user_data)
-        for uid in gnomecvs_users:
+    if len(gnomevcs_users):
+        lookup_user_info(gnomevcs_users, user_data)
+        for uid in gnomevcs_users:
             if uid in user_data:
-                user_data[uid]['cvsOnly'] = 1
+                user_data[uid]['vcsOnly'] = 1
 
     return user_data.values()
 
@@ -177,17 +175,14 @@ def create_directory_structure (user_list):
             os.chown (user_dir_name, int(user['uidNumber']), int (user['gidNumber']))
             file = open (authorized_keys_file, "w")
             for key in user['authorizedKey']:
-                if user['cvsOnly']:
-                    #file.write ("command=\"/usr/bin/cvs server\",no-pty,no-port-forwarding ")
+                if user['vcsOnly']:
                     if TRANSLATION_USER and user['uid'] == "translations":
                         # For damned-lies to commit translations directly to git
                         file.write ('command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding,host="91.189.93.2" ')
-                    elif GNOMEGIT:
-                        file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
                     elif MANGO:
                         file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwarding ")
-                    else:
-                        file.write ("command=\"/home/admin/bin/run-svn-or-special-cmd\",no-pty,no-port-forwarding ")
+                    else: # GNOMEGIT
+                        file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
                 file.write (key)
                 file.write ("\n")
             file.close()
@@ -243,9 +238,6 @@ def print_comparison (initial_user_hash, post_user_hash):
 
 if __name__ == '__main__':
     group_list = sys.argv[1:]
-    if '--gnomecvs' in group_list:
-        GNOMECVS=1
-        group_list = filter (lambda x: x != '--gnomecvs', group_list)
     if '--gnomegit' in group_list:
         GNOMEGIT=1
         group_list = filter (lambda x: x != '--gnomegit', group_list)
@@ -256,8 +248,8 @@ if __name__ == '__main__':
         TRANSLATION_USER=1
         group_list = filter (lambda x: x != '--translation-user', group_list)
 
-    if GNOMECVS and GNOMEGIT and MANGO:
-        print "--gnomecvs, --gnomegit and --mango are exclusive"
+    if GNOMEGIT and MANGO:
+        print "--gnomegit and --mango are exclusive"
         sys.exit(1)
 
     user_list = build_user_hash (group_list)
