@@ -65,7 +65,7 @@ if __name__ == '__main__':
         if type(group) == tuple:
             members = set()
             for gr in group:
-                members.update(fetch_group_members(gr)
+                members.update(fetch_group_members(gr))
         else:
             members = fetch_group_members(group)
         emails = fetch_email_addresses(members)
