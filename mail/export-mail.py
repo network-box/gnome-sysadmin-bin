@@ -60,15 +60,17 @@ if __name__ == '__main__':
     l.protocol_version = ldap.VERSION3
 
     for aliasfile, domain, groups in ALIASES:
-        newaliasfile = '%s.new2' % aliasfile
+        # group argument can be a tuple
         if type(groups) == tuple:
             members = set()
             for group in groups:
                 members.update(fetch_group_members(group))
         else:
             members = fetch_group_members(groups)
-            groups = (group, )
+            groups = (groups, )
+
         emails = fetch_email_addresses(members)
+        newaliasfile = '%s.new2' % aliasfile
 
         if domain == "":
             file_format = "%s%s:\t\t%s\n"
