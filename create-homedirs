@@ -49,16 +49,10 @@ def create_home_directory (uid):
 
 if __name__ == '__main__':
     # Get our list of ftpadmin members
-    user_list = get_uids_from_group ("ftpadmin")
-    for user in user_list:
-        create_home_directory (user)
-    user_list = get_uids_from_group ("gnomeweb")
-    for user in user_list:
-        create_home_directory (user)
-    user_list = get_uids_from_group ("gnomecvs")
-    for user in user_list:
-        create_home_directory (user)
-    user_list = get_uids_from_group ("bugzilla")
+    LOGIN_GROUPS = ['ftpadmin', 'gnomeweb', 'gnomecvs', 'gnomevcs', 'bugzilla']
+    user_list = set()
+    for group in LOGIN_GROUPS:
+        user_list.update(get_uids_from_group(group))
     for user in user_list:
         create_home_directory (user)
 
