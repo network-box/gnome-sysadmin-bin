@@ -108,7 +108,7 @@ END {
 		stopstamp=`date -d "$stop" +%s`
 
 		if [ "$startstamp" = "$stopstamp" ]; then
-			perhour=0
+			perhour=$[ $hits * 60 * 60 ]
 		else
 			perhour=$[ ($hits * 60 * 60 ) / ($stopstamp-$startstamp ) ]
 		fi

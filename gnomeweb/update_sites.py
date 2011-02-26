@@ -47,7 +47,9 @@ parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                           help="Be verbose")
 parser.add_option("-c", "--config", dest="configfile", metavar="FILE",
                                   help="Read list of modules from FILE")
-parser.set_defaults(verbose=False)
+parser.add_option("-d", "--config-dir", dest="configdir", metavar="DIR",
+                                  help="Read *.conf configuration files from DIR")
+parser.set_defaults(verbose=False, configfile=None, configdir=None)
 
 
 def get_git_info(path):
@@ -57,9 +59,15 @@ def get_git_info(path):
 
     return committer, rev
 
-def update_modules(configfile, verbose):
+def update_modules(configfile, configdir, verbose):
+    configfiles = []
+    if configfile is not None:
+        configfiles.append(configfile)
+    if configdir is not None and os.path.exists(configdir):
+        configfiles.extend(glob.glob(os.path.join(configdir, '*.conf')))
+
     cfg = ConfigParser.ConfigParser()
-    cfg.read([configfile])
+    cfg.read([configfiles])
 
     for module in sorted(cfg.sections(),
                          lambda a, b: cmp((cfg.has_option(a, 'order')
@@ -227,7 +235,7 @@ def main():
         parser.print_usage()
         sys.exit(1)
 
-    update_modules(opts.configfile, opts.verbose)
+    update_modules(opts.configfile, opts.configdir, opts.verbose)
 
     if opts.verbose:
         print "Done"
