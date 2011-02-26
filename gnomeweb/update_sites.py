@@ -231,7 +231,7 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
 def main():
     (opts, args) = parser.parse_args()
 
-    if not opts.configfile:
+    if not opts.configfile and not opts.configdir:
         parser.print_usage()
         sys.exit(1)
 
