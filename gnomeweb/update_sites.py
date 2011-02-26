@@ -67,7 +67,7 @@ def update_modules(configfile, configdir, verbose):
         configfiles.extend(glob.glob(os.path.join(configdir, '*.conf')))
 
     cfg = ConfigParser.ConfigParser()
-    cfg.read([configfiles])
+    cfg.read(configfiles)
 
     for module in sorted(cfg.sections(),
                          lambda a, b: cmp((cfg.has_option(a, 'order')
