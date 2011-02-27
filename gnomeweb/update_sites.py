@@ -122,30 +122,37 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
     built_flag = os.path.join(timestamp_dir, checkfile + ".built")
     lock_file  = os.path.join(timestamp_dir, checkfile + '.lock')
 
-    # If the buildflag hasn't been set, ignore this module for now
-    if not os.access(build_flag, os.F_OK):
-        return False
-
-    # Only need to compare if built flag exists
-    t_build = os.stat(build_flag)
+    # Built before?
+    t_build = None
     if os.access(built_flag, os.F_OK):
+        if not os.access(build_flag, os.F_OK):
+            # If the buildflag hasn't been set, it likely means the module was
+            # built once and hasn't yet been updated since that time
+            return False
+
+        # Built and build files exist, so check if module needs to be rebuild
+        t_build = os.stat(build_flag)
         t_built = os.stat(built_flag)
         if t_build.st_mtime <= t_built.st_mtime:
             # No need to build
             return False
+    # If we get here, the module has either not been built before, or we're building again
 
-        # Ensure only one copy will be running
-        fpl = open(lock_file, 'w')
-        try:
-            fcntl.flock(fpl, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except IOError:
-            if verbose:
-                print "Already running"
-            return False
-        fpl.write("%d" % os.getpid())
-        fpl.flush()
+
+    # Ensure only one copy will be running
+    fpl = open(lock_file, 'w')
+    try:
+        fcntl.flock(fpl, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
         if verbose:
-            print "Wrote PID to lock file (PID: %d)" % os.getpid()
+            print "Already running"
+        return False
+    fpl.write("%d" % os.getpid())
+    fpl.flush()
+    if verbose:
+        print "Wrote PID to lock file (PID: %d)" % os.getpid()
+    if t_build is None:
+        t_build = os.stat(lock_file)
 
     # Get the latest git contents
     try:
