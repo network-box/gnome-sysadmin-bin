@@ -192,17 +192,6 @@ if [ -L $LOCATION/LATEST-IS-* ] && [ -z $SAMEVERSION ]; then
 	tar xzf $LOCATION/$OLDTARBALL
 	tar xzf $LOCATION/$FILENAME.tar.gz
 
-	# Generate diff file, ignoring translations
-	diff -Nru -x *.gmo -x *.mo --speed-large-files --minimal $MODULE-$OLDVERSION $MODULE-$VERSION > diff
-	# If there are binary differences, skip this process
-	if grep -q "^Binary files" diff; then
-		echo "Binary files differ, discarding diff file..."
-	else
-		DIFFFILE=$MODULE-$OLDVERSION-$VERSION.diff.gz
-		gzip -9 diff
-		mv -f diff.gz $LOCATION/$DIFFFILE
-	fi
-
 	# Generate NEWS diff
 	diff -U 0 $MODULE-$OLDVERSION/NEWS $MODULE-$VERSION/NEWS | \
 		sed '1,/^@@/d;/^@@/,$d;/^[^+]/d;s/^+//;${/^$/d}' > news 2> /dev/null
