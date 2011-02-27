@@ -1,0 +1,15 @@
+#!/bin/sh
+# This script is called to signal the remote host that it is time to
+# mirror the archive.
+
+if [ "`whoami`" != gnomeftp ] ; then
+    cd / && exec sudo -u gnomeftp /usr/local/bin/signal-ftp-sync "$@"
+fi
+
+signal () {
+    echo Signalling $1
+    ssh -o"BatchMode yes" -o"ForwardAgent no" -o"ForwardX11 no" -o"user $2" -f "$1" sleep 1
+}
+
+signal churchill.acc.umu.se ftp-gnom
+#signal tiktok.planetmirror.com mirror
