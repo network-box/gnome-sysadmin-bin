@@ -212,7 +212,7 @@ def print_user_list (description, user_list):
         print description + " %d user:" % user_len
     else:
         print description + " %d users:" % user_len
-    for user in user_list:
+    for user in sorted(user_list):
         print "\t%s" % user
     print
 
