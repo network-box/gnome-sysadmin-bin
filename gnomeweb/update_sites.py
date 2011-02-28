@@ -118,6 +118,9 @@ def update_modules(configfile, configdir, verbose):
                 b_url = moduleroot
                 update_module(module, b_checkfile, b_moduleroot, b_url, owner, branch=branch, 
                               real_remote_url=url, verbose=verbose)
+            if lock:
+                lock.close()
+                lock = None
         else:
             update_module(module, module, moduleroot, url, owner, verbose=verbose)
 
@@ -208,6 +211,14 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
         # Update the original module first, then update this module
         if not update_module_real(url, real_remote_url, verbose=verbose):
             return False
+        if branch != 'master':
+            try:
+                os.chdir(url)
+                git.branch(branch, 'origin/%branch')
+            except CalledProcessError, e:
+                # local branch probably exists already
+                pass
+
     if not update_module_real(moduleroot, url, branch, verbose=verbose):
         return False
 
