@@ -113,6 +113,21 @@ def update_modules(configfile, configdir, verbose):
             url = checkout_url % { 'module' : module }
             update_module(module, module, moduleroot, url, owner, verbose=verbose)
 
+def try_lock(lock_file, verbose=False):
+    # Ensure only one copy will be running
+    fpl = open(lock_file, 'w')
+    try:
+        fcntl.flock(fpl, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        if verbose:
+            print "Already running"
+        return None
+    fpl.write("%d" % os.getpid())
+    fpl.flush()
+    if verbose:
+        print "Wrote PID to lock file (PID: %d)" % os.getpid()
+
+    return fpl
 
 def update_module(module, checkfile, moduleroot, url, owner, branch='master', verbose=False):
     # Compare timestamps
@@ -139,18 +154,9 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
     # If we get here, the module has either not been built before, or we're building again
 
 
-    # Ensure only one copy will be running
-    fpl = open(lock_file, 'w')
-    try:
-        fcntl.flock(fpl, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError:
-        if verbose:
-            print "Already running"
+    lock = try_lock(lock_file, verbose)
+    if lock is None:
         return False
-    fpl.write("%d" % os.getpid())
-    fpl.flush()
-    if verbose:
-        print "Wrote PID to lock file (PID: %d)" % os.getpid()
     if t_build is None:
         t_build = os.stat(lock_file)
 
