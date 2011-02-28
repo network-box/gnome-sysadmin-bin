@@ -91,29 +91,38 @@ def update_modules(configfile, configdir, verbose):
         else:
             owner = None
         if cfg.has_option(module, 'branches'):
-            branches = cfg.getboolean(module, 'branches')
+            check_branches = cfg.getboolean(module, 'branches')
         else:
-            branches = False
+            check_branches = False
 
-        if branches:
-            # FIXME: Add branches support
-            files = glob.glob(os.path.join(timestamp_dir, module + "!*.buildflag"))
-            for fn in sorted(files, reverse=True):
-                branch = re.sub(r'^' + re.escape(module) + r'!(.*)\.buildflag', 
-                                r'\1', os.path.basename(fn))
+        checkfile = module
+        url = checkout_url % { 'module' : module }
 
-                checkfile = '%s!%s' % (module, branch) # Merge again for update_module
+        if check_branches:
+            lock = try_lock(checkfile, verbose)
+            if not lock:
+                continue
+
+            if not update_module_real(moduleroot, url, clone_only=True, verbose=verbose):
+                continue
+
+            os.chdir(moduleroot)
+            branches = [l.strip()[7:] for l in git.branch('-r', '--no-color', '--no-merged', _split_lines=True) if l.strip().startswith('origin/')]
+
+            for branch in branches:
+                b_checkfile = '%s!%s' % (module, branch)
                 # Transform gnome-x-y to x.y
                 version = re.sub(re_branch_versioned, r'\1.\2', branch)
 
-                url = checkout_url % { 'module' : module }
                 b_moduleroot = '%s-%s' % (moduleroot, version)
-                update_module(module, checkfile, b_moduleroot, url, owner, branch=branch, verbose=verbose)
+                b_url = moduleroot
+                update_module(module, b_checkfile, b_moduleroot, b_url, owner, branch=branch, 
+                              real_remote_url=url, verbose=verbose)
         else:
-            url = checkout_url % { 'module' : module }
             update_module(module, module, moduleroot, url, owner, verbose=verbose)
 
-def try_lock(lock_file, verbose=False):
+def try_lock(checkfile, verbose=False):
+    lock_file  = os.path.join(timestamp_dir, checkfile + '.lock')
     # Ensure only one copy will be running
     fpl = open(lock_file, 'w')
     try:
@@ -129,13 +138,46 @@ def try_lock(lock_file, verbose=False):
 
     return fpl
 
-def update_module(module, checkfile, moduleroot, url, owner, branch='master', verbose=False):
+def update_module_real(moduleroot, url, branch='master', clone_only=False, verbose=False):
+    # Get the latest git contents
+    try:
+        retval = 0
+        if not os.path.exists(moduleroot):
+            # Path does not exist.. so check it out of GIT
+            if verbose:
+                print "Running 'git clone' to create " + moduleroot
+            git.clone(url, moduleroot)
+            os.chdir(moduleroot)
+            if branch != 'master':
+                if verbose:
+                    print "Running git checkout -b", branch, "origin/" + branch
+                git.checkout('-b', branch, 'origin/' + branch)
+        elif clone_only:
+            pass
+        else:
+            if not os.path.exists(os.path.join(moduleroot, ".git")):
+                print "%s exists and is not a git clone" % moduleroot
+                return False
+            os.chdir(moduleroot)
+            if verbose:
+                print "Running 'git fetch' to update " + moduleroot
+            git.fetch("origin")
+            if verbose:
+                print "Resetting to latest content"
+            git.reset('origin/' + branch, hard=True)
+    except CalledProcessError, e:
+        print str(e)
+        return False
+
+    return True
+
+
+def update_module(module, checkfile, moduleroot, url, owner, branch='master', verbose=False, real_remote_url=None):
     # Compare timestamps
     if verbose:
         print "Checking '" + module + "'..."
     build_flag = os.path.join(timestamp_dir, checkfile + ".buildflag")
     built_flag = os.path.join(timestamp_dir, checkfile + ".built")
-    lock_file  = os.path.join(timestamp_dir, checkfile + '.lock')
 
     # Built before?
     t_build = None
@@ -158,34 +200,15 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
     if lock is None:
         return False
     if t_build is None:
-        t_build = os.stat(lock_file)
+        t_build = os.stat(lock.name)
 
-    # Get the latest git contents
-    try:
-        retval = 0
-        if not os.path.exists(moduleroot):
-            # Path does not exist.. so check it out of GIT
-            if verbose:
-                print "Running 'git clone' to create " + moduleroot
-            git.clone(url, moduleroot)
-            os.chdir(moduleroot)
-            if branch != 'master':
-                if verbose:
-                    print "Running git checkout -b", branch, "origin/" + branch
-                git.checkout('-b', branch, 'origin/' + branch)
-        else:
-            if not os.path.exists(os.path.join(moduleroot, ".git")):
-                print "%s exists and is not a git clone" % moduleroot
-                return False
-            os.chdir(moduleroot)
-            if verbose:
-                print "Running 'git fetch' to update " + moduleroot
-            git.fetch("origin")
-            if verbose:
-                print "Resetting to latest content"
-            git.reset('origin/' + branch, hard=True)
-    except CalledProcessError, e:
-        print str(e)
+
+    if real_remote_url is not None:
+        # This git module is hard linked to another git module
+        # Update the original module first, then update this module
+        if not update_module_real(url, real_remote_url, verbose=verbose):
+            return False
+    if not update_module_real(moduleroot, url, branch, verbose=verbose):
         return False
 
     # We're done if there isn't a post-update hook to run
