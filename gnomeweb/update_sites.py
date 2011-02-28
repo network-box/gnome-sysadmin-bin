@@ -214,7 +214,7 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
         if branch != 'master':
             try:
                 os.chdir(url)
-                git.branch(branch, 'origin/%branch')
+                git.branch(branch, 'origin/%s' %branch)
             except CalledProcessError, e:
                 # local branch probably exists already
                 pass
