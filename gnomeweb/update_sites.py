@@ -199,7 +199,7 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
     # If we get here, the module has either not been built before, or we're building again
 
 
-    lock = try_lock(lock_file, verbose)
+    lock = try_lock(checkfile, verbose)
     if lock is None:
         return False
     if t_build is None:
