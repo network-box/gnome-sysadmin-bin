@@ -58,7 +58,7 @@ def write_stat_file(cursor, queue):
         tickets[ticket]['CC'] = msg['RT-Send-CC'].replace('@', ' ').replace('.', u'·')
 
 
-    table = u'<table border=1><tr><th>Ticket</th><th>State</th><th>Waiting for</th></tr>%s</table>' % u''.join([u'<tr><td><a href="http://www.gnome.org/rt3/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], tickets[ticket].get('CC', '')) for ticket in sorted(tickets)])
+    table = u'<table border=1><tr><th>Ticket</th><th>State</th><th>Waiting for</th></tr>%s</table>' % u''.join([u'<tr><td><a href="https://rt.gnome.org/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], tickets[ticket].get('CC', '')) for ticket in sorted(tickets)])
 
     output = codecs.open (OUTPUT, 'w', 'utf-8')
 
