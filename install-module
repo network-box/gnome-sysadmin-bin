@@ -322,7 +322,8 @@ echo "done."
 # Send ftp-release-list email
 #
 echo "Informing ftp-release-list..."
-(echo "From: \"$WHO\" <install-module@master.gnome.org>";
+(
+ echo "From: \"$WHO\" <install-module@master.gnome.org>";
  echo "To: FTP Releases <ftp-release-list@gnome.org>";
  echo "Subject: $MODULE $VERSION";
  echo "Reply-To: desktop-devel-list@gnome.org";
@@ -352,9 +353,7 @@ echo "Informing ftp-release-list..."
 	cat $LOCATION/$CHANGESFILE;
 	echo;
  fi
- echo "-- ";
- echo "An RSS 2.0 feed of ftp-release-list is available at:";
- echo "$URLROOT/LATEST.xml";) | /usr/sbin/sendmail ftp-release-list@gnome.org
+) | /usr/sbin/sendmail ftp-release-list@gnome.org
 
 
 #
