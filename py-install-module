@@ -1,0 +1,222 @@
+#!/usr/bin/python
+
+import sys
+import os
+import os.path
+import grp
+import pwd
+import ldap
+import ldap.filter
+import re
+import tempfile
+import tarfile
+from optparse import OptionParser
+
+
+GROUP='ftpadmin'
+LDAP_BASE='ou=modules,dc=gnome,dc=org'
+re_file = re.compile(r'^(?P<module>.*)[_-](?P<version>([0-9]+[\.\-])*[0-9]+)?\.(?P<format>tar.*)$')
+re_version = re.compile(r'^([0-9]+\.[0-9]+).*')
+
+usage = "usage: %prog [options] TARBALL"
+description = """Install new tarball to GNOME FTP master and mirrors.
+
+Example: install-module -u metacity-2.4.1.tar.gz
+
+Report bugs to gnome-sysadmin@gnome.org"""
+
+parser = OptionParser(usage=usage, description=description)
+parser.add_option("-f", "--force", action="store_true", dest="clobber",
+                          help="Overwrite the original tarball")
+parser.add_option("-u", "--unattended", action="store_true",
+        help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
+        "will not provide any extra information to help you avoid an invalid " +
+        "(and potentially messy) installation. It is recommended that you do not " +
+        "use this unless you are *very* sure.")
+
+parser.set_defaults(clobber=False, unattended=False)
+
+# COPY/PASTE from releng/convert-to-tarballs.py
+def _bigger_version(a, b):
+    a_nums = a.split('.')
+    b_nums = b.split('.')
+    num_fields = min(len(a_nums), len(b_nums))
+    for i in range(0,num_fields):
+        if   int(a_nums[i]) > int(b_nums[i]):
+            return a
+        elif int(a_nums[i]) < int(b_nums[i]):
+            return b
+    if len(a_nums) > len(b_nums):
+        return a
+    else:
+        return b
+
+# This is nearly the same as _bigger_version, except that
+#   - It returns a boolean value
+#   - If max_version is None, it just returns False
+#   - It treats 2.13 as == 2.13.0 instead of 2.13 as < 2.13.0
+# The second property is particularly important with directory hierarchies
+def _version_greater_or_equal_to_max(a, max_version):
+    if not max_version:
+        return False
+    a_nums = a.split('.')
+    b_nums = max_version.split('.')
+    num_fields = min(len(a_nums), len(b_nums))
+    for i in range(0,num_fields):
+        if   int(a_nums[i]) > int(b_nums[i]):
+            return True
+        elif int(a_nums[i]) < int(b_nums[i]):
+            return False
+    return True
+
+def get_latest_version(versions, max_version):
+    biggest = versions[0]
+    for version in versions[1:]:
+        if (version == _bigger_version(biggest, version) and \
+            not _version_greater_or_equal_to_max(version, max_version)):
+            biggest = version
+    return biggest
+# END COPY/PASTE
+
+
+class InstallModule(object):
+    FTPROOT='/ftp/pub/test'
+    URLROOT='http://download.gnome.org'
+
+    FORMATS = ('tar.gz', 'tar.bz2')
+
+    def __init__(self, file):
+        self.file = file
+
+        self.uid = os.getuid()
+        self.pw = pwd.getpwuid(self.uid)
+
+        self.dirname, self.basename = os.path.split(file)
+        r = re_file.match(self.basename)
+        if r:
+            fileinfo = r.groupdict()
+
+            self.module = fileinfo['module']
+            self.version = fileinfo['version']
+            self.format = fileinfo['format']
+            self.majmin = re_version.sub(r'\1', fileinfo['version'])
+            self.destination = '%s/sources/%s/%s' % (self.FTPROOT, fileinfo['module'], self.majmin)
+        else:
+            self.module = None
+
+        # Determine maintainers
+        self.maintainers = None
+        if self.module:
+            data = get_module_info(self.module)
+            if len(data):
+                self.maintainers = data[0][1]['maintainerUid']
+
+
+    def confirm_install(self):
+        print """      Module: %s
+     Version: %s
+     Maj.Min: %s
+ Destination: %s/""" % (self.module, self.version, self.majmin, self.destination)
+
+        # Check if the module directory already exists. If not, the module name might contain a typo
+        if not os.path.isdir('%s/sources/%s' % (self.FTPROOT, self.module)):
+            print """
+WARNING: %s is not present in the archive!
+   Are you sure that it is new and/or the correct module name?""" % self.module
+
+        print """
+Install %s? [Y/n]""" % self.module,
+        response = raw_input()
+
+        if response != '' and response[0] != 'y' and response[0] != 'Y':
+            print """Module installation cancelled. Please report any problems with this
+script to gnome-sysadmin@gnome.org. Thanks."""
+
+            return False
+
+        # install the module
+        return True
+
+    def validate(self):
+        if self.module is None:
+            print 'ERROR: Unrecognized module/version/file format. Make sure to follow a sane naming scheme (MAJOR.MINOR.MICRO)'
+            return False
+
+        # Don't allow an existing tarball to be overwritten
+        if os.path.exists(os.path.join(self.destination, self.basename)):
+            print """
+ERROR: %s already exists in the archive!""" % self.basename
+            return False
+
+        # CHECK FOR CONSISTENCY
+        tar = tarfile.open(self.file)
+
+        # CHECK 1: Make sure tarball contains a directory called $MODULE-$VERSION
+        dir = None
+        try:
+            dir = tar.getmember('%s-%s' % (self.module, self.version))
+        except KeyError:
+            pass
+        if dir and not dir.isdir():
+            dir = None
+        if dir is None:
+            print 'ERROR: Cannot find expected directory within tarball, aborting!'
+            return False
+
+        # Valid file
+        return True
+
+    def install(self, unattended=False):
+        # Validate the file
+        if not self.validate():
+            return False
+
+        # XXX - verify if tarball is being installed by a maintainer
+
+        # Ask user if tarball should be installed
+        if not unattended:
+            if not self.confirm_install():
+                return False
+
+
+        for k, v in self.__dict__.iteritems():
+            print k, v
+
+#        if not os.path.isdir(self.destination):
+#            os.makedirs(self.destination, 042775) # drwxrwsr-x
+        # XXX - install the tarball
+        # XXX - change ownership of the tarball
+
+l = None
+def get_module_info(module):
+    global l # evil
+
+    if l is None:
+        l = ldap.open('ldap-back')
+        l.protocol_version = ldap.VERSION3
+
+    filter = ldap.filter.filter_format("(cn=%s)", (module, ))
+    data = l.search_s (LDAP_BASE, ldap.SCOPE_SUBTREE, filter, None)
+
+    return data
+
+
+
+if __name__ == "__main__":
+    (options, args) = parser.parse_args()
+    tarballs = [file for file in args if os.path.exists(file)]
+
+    if not len(tarballs):
+        parser.print_usage()
+        sys.exit(2)
+
+    old_mask = os.umask(0002)
+    groupid = grp.getgrnam(GROUP)[2]
+    if groupid not in os.getgroups():
+        print 'ERROR: Script requires membership of the %s group' % GROUP
+        sys.exit(1)
+
+
+    for file in tarballs:
+        handler = InstallModule(file)
+        handler.install(unattended=options.unattended)
