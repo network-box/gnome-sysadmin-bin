@@ -48,6 +48,18 @@ def version_cmp(a, b):
             return 1
     return cmp(len(a_nums), len(b_nums))
 
+def get_latest_version(versions, max_version=None):
+    """Gets the latest version number
+
+    if max_version is specified, gets the latest version number before
+    max_version"""
+    latest = None
+    for version in versions:
+        if ( latest is None or version_cmp(version, latest) > 0 ) \
+           and ( max_version is None or version_cmp(version, max_version) < 0 ):
+            latest = version
+    return latest
+
 # COPY/PASTE from releng/convert-to-tarballs.py
 def _bigger_version(a, b):
     a_nums = a.split('.')
@@ -81,7 +93,7 @@ def _version_greater_or_equal_to_max(a, max_version):
             return False
     return True
 
-def get_latest_version(versions, max_version):
+def get_latest_version_orig(versions, max_version):
     biggest = versions[0]
     for version in versions[1:]:
         if (version == _bigger_version(biggest, version) and \
@@ -97,8 +109,9 @@ class ModuleInfo(object):
         self.module = modulename
 
         self.read_json()
+
         # Determine maintainers
-        self.maintainers = None
+        self.maintainers = []
         if self.module:
             data = get_module_info(self.module)
             if len(data):
@@ -106,7 +119,10 @@ class ModuleInfo(object):
 
 
     def refresh(self):
+        if self.module is None: return False
+
         info = {}
+        majmins = {}
 
         top = os.path.join(self.FTPROOT, 'sources', self.module)
         for root, dirs, files in os.walk(top, topdown=False):
@@ -123,22 +139,28 @@ class ModuleInfo(object):
                         continue
 
                     info.setdefault(version, {})[format] = filename
+                    majmins.setdefault(majmin, set()).add(version)
 
         # XXX - maybe remove versions where there are no .tar.*
 
         self.info = info
-        self.sorted = sorted(info, version_cmp)
+        self.majmin = majmins
+        self.versions = sorted(info, version_cmp)
 
     def read_json(self):
+        if self.module is None: return False
+
         self.refresh()
 
 
     def write_json(self): # XXX - should write json
+        if self.module is None: return False
+
         info = self.info
         pprint.pprint(info)
-        pprint.pprint(self.sorted)
+        pprint.pprint(self.versions)
+        pprint.pprint(self.majmin)
         #self.info = info
-
 
 
 class InstallModule(object):
@@ -163,24 +185,25 @@ class InstallModule(object):
             self.format = fileinfo['format']
             self.majmin = re_version.sub(r'\1', fileinfo['version'])
             self.destination = '%s/sources/%s/%s' % (self.FTPROOT, fileinfo['module'], self.majmin)
-
-            self.moduleinfo = ModuleInfo(self.module)
         else:
             self.module = None
 
+        self.moduleinfo = ModuleInfo(self.module)
 
 
     def confirm_install(self):
+        prevversion = get_latest_version(self.moduleinfo.versions, self.version)
+
         print """      Module: %s
-     Version: %s
+     Version: %s   (previous version: %s)
      Maj.Min: %s
- Destination: %s/""" % (self.module, self.version, self.majmin, self.destination)
+ Destination: %s/""" % (self.module, self.version, prevversion or 'N/A', self.majmin, self.destination)
 
         # Check if the module directory already exists. If not, the module name might contain a typo
         if not os.path.isdir('%s/sources/%s' % (self.FTPROOT, self.module)):
             print """
 WARNING: %s is not present in the archive!
-   Are you sure that it is new and/or the correct module name?""" % self.module
+         Are you sure that it is new and/or the correct module name?""" % self.module
 
         print """
 Install %s? [Y/n]""" % self.module,
@@ -202,9 +225,9 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
         # Don't allow an existing tarball to be overwritten
         if os.path.exists(os.path.join(self.destination, self.basename)):
-            print """
-ERROR: %s already exists in the archive!""" % self.basename
-            return False
+            print """ERROR: %s already exists in the archive!""" % self.basename
+            # XXX - continuing anyway
+            #return False
 
         # CHECK FOR CONSISTENCY
         tar = tarfile.open(self.file)
@@ -275,8 +298,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
 
-    mi = ModuleInfo("gtk+")
-    mi.write_json()
     for file in tarballs:
         handler = InstallModule(file)
         handler.install(unattended=options.unattended)
