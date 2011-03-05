@@ -108,8 +108,6 @@ class ModuleInfo(object):
     def __init__(self, modulename):
         self.module = modulename
 
-        self.read_json()
-
         # Determine maintainers
         self.maintainers = []
         if self.module:
@@ -117,40 +115,54 @@ class ModuleInfo(object):
             if len(data):
                 self.maintainers = data[0][1]['maintainerUid']
 
+            self.jsonfile = os.path.join(self.FTPROOT, 'sources', self.module, '%s.json' % self.module)
+
+        self.read_json()
 
     def refresh(self):
+        if self.module is None: return False
+
+        self.read_json(force_refresh=True)
+
+    def read_json(self, force_refresh=False):
         if self.module is None: return False
 
         info = {}
         majmins = {}
 
-        top = os.path.join(self.FTPROOT, 'sources', self.module)
-        for root, dirs, files in os.walk(top, topdown=False):
-            for filename in files:
-                r = re_file.match(filename)
-                if r:
-                    fileinfo = r.groupdict()
-                    module = fileinfo['module']
-                    version = fileinfo['version']
-                    format = fileinfo['format']
-                    majmin = re_version.sub(r'\1', fileinfo['version'])
+        if force_refresh or not os.path.exists(self.jsonfile):
+            top = os.path.join(self.FTPROOT, 'sources', self.module)
+            for root, dirs, files in os.walk(top, topdown=False):
+                for filename in files:
+                    r = re_file.match(filename)
+                    if r:
+                        fileinfo = r.groupdict()
+                        module = fileinfo['module']
+                        version = fileinfo['version']
+                        format = fileinfo['format']
 
-                    if module != self.module:
-                        continue
+                        if module != self.module:
+                            continue
 
-                    info.setdefault(version, {})[format] = filename
-                    majmins.setdefault(majmin, set()).add(version)
+                        info.setdefault(version, {})[format] = filename
+        else:
+            # XXX - actually load the json file..
+            pass
 
         # XXX - maybe remove versions where there are no .tar.*
+
+
+        # Group versions by major and minor number
+        for version in info:
+            majmin = re_version.sub(r'\1', fileinfo['version'])
+            if majmin not in majmins:
+                majmins[majmin] = set()
+
+            majmins[majmin].add(version)
 
         self.info = info
         self.majmin = majmins
         self.versions = sorted(info, version_cmp)
-
-    def read_json(self):
-        if self.module is None: return False
-
-        self.refresh()
 
 
     def write_json(self): # XXX - should write json
