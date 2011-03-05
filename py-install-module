@@ -10,12 +10,13 @@ import ldap.filter
 import re
 import tempfile
 import tarfile
+import pprint
 from optparse import OptionParser
 
 
 GROUP='ftpadmin'
 LDAP_BASE='ou=modules,dc=gnome,dc=org'
-re_file = re.compile(r'^(?P<module>.*)[_-](?P<version>([0-9]+[\.\-])*[0-9]+)?\.(?P<format>tar.*)$')
+re_file = re.compile(r'^(?P<module>.*?)[_-](?:(?P<oldversion>([0-9]+[\.])*[0-9]+)-)?(?P<version>([0-9]+[\.\-])*[0-9]+)\.(?P<format>(?:tar\.|diff\.)?[a-z][a-z0-9]*)$')
 re_version = re.compile(r'^([0-9]+\.[0-9]+).*')
 
 usage = "usage: %prog [options] TARBALL"
@@ -35,6 +36,17 @@ parser.add_option("-u", "--unattended", action="store_true",
         "use this unless you are *very* sure.")
 
 parser.set_defaults(clobber=False, unattended=False)
+
+def version_cmp(a, b):
+    a_nums = a.replace('-', '.0.').split('.')
+    b_nums = b.replace('-', '.0.').split('.')
+    num_fields = min(len(a_nums), len(b_nums))
+    for i in range(0,num_fields):
+        if   int(a_nums[i]) < int(b_nums[i]):
+            return -1
+        elif int(a_nums[i]) > int(b_nums[i]):
+            return 1
+    return cmp(len(a_nums), len(b_nums))
 
 # COPY/PASTE from releng/convert-to-tarballs.py
 def _bigger_version(a, b):
@@ -78,9 +90,59 @@ def get_latest_version(versions, max_version):
     return biggest
 # END COPY/PASTE
 
+class ModuleInfo(object):
+    FTPROOT='/ftp/pub/GNOME'
+
+    def __init__(self, modulename):
+        self.module = modulename
+
+        self.read_json()
+        # Determine maintainers
+        self.maintainers = None
+        if self.module:
+            data = get_module_info(self.module)
+            if len(data):
+                self.maintainers = data[0][1]['maintainerUid']
+
+
+    def refresh(self):
+        info = {}
+
+        top = os.path.join(self.FTPROOT, 'sources', self.module)
+        for root, dirs, files in os.walk(top, topdown=False):
+            for filename in files:
+                r = re_file.match(filename)
+                if r:
+                    fileinfo = r.groupdict()
+                    module = fileinfo['module']
+                    version = fileinfo['version']
+                    format = fileinfo['format']
+                    majmin = re_version.sub(r'\1', fileinfo['version'])
+
+                    if module != self.module:
+                        continue
+
+                    info.setdefault(version, {})[format] = filename
+
+        # XXX - maybe remove versions where there are no .tar.*
+
+        self.info = info
+        self.sorted = sorted(info, version_cmp)
+
+    def read_json(self):
+        self.refresh()
+
+
+    def write_json(self): # XXX - should write json
+        info = self.info
+        pprint.pprint(info)
+        pprint.pprint(self.sorted)
+        #self.info = info
+
+
 
 class InstallModule(object):
-    FTPROOT='/ftp/pub/test'
+    FTPROOT='/ftp/pub/GNOME'
     URLROOT='http://download.gnome.org'
 
     FORMATS = ('tar.gz', 'tar.bz2')
@@ -101,15 +163,11 @@ class InstallModule(object):
             self.format = fileinfo['format']
             self.majmin = re_version.sub(r'\1', fileinfo['version'])
             self.destination = '%s/sources/%s/%s' % (self.FTPROOT, fileinfo['module'], self.majmin)
+
+            self.moduleinfo = ModuleInfo(self.module)
         else:
             self.module = None
 
-        # Determine maintainers
-        self.maintainers = None
-        if self.module:
-            data = get_module_info(self.module)
-            if len(data):
-                self.maintainers = data[0][1]['maintainerUid']
 
 
     def confirm_install(self):
@@ -217,6 +275,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
 
+    mi = ModuleInfo("gtk+")
+    mi.write_json()
     for file in tarballs:
         handler = InstallModule(file)
         handler.install(unattended=options.unattended)
