@@ -11,6 +11,7 @@ import re
 import tempfile
 import tarfile
 import pprint
+import difflib
 from optparse import OptionParser
 
 
@@ -102,6 +103,65 @@ def get_latest_version_orig(versions, max_version):
     return biggest
 # END COPY/PASTE
 
+
+class TarInfo(object):
+
+    def __init__(self, path, files=set()):
+        self.path = path
+        self.file = {}
+
+        self.dirname, self.basename = os.path.split(path)
+
+        tarinfo_files = files.copy()
+
+        r = re_file.match(self.basename)
+        if r:
+            fileinfo = r.groupdict()
+
+            self.module = fileinfo['module']
+            self.version = fileinfo['version']
+            self.format = fileinfo['format']
+            self.majmin = re_version.sub(r'\1', fileinfo['version'])
+
+            tarinfo_files.add('%s-%s/ChangeLog' % (self.module, self.version))
+            tarinfo_files.add('%s-%s/NEWS' % (self.module, self.version))
+        else:
+            self.module = None
+            self.version = None
+            self.format = None
+            self.majmin = None
+
+        self.files = tarinfo_files
+
+    def check(self):
+        """Check tarball consistency"""
+        files = self.files
+
+        t = tarfile.open(self.path, 'r', errors=2)
+        size_files = 0
+        file_count = 0
+        for info in t:
+            if info.name in files:
+                self.file[os.path.basename(info.name)] = t.extractfile(info).readlines()
+
+            size_files += info.size
+            file_count += 1
+
+
+        # Now determine the current position in the tar file
+        tar_end_of_data_pos = t.fileobj.tell()
+        # as well as the last position in the tar file
+        #t.fileobj.seek(0, os.SEEK_END)
+        t.fileobj.read()
+        tar_end_of_file_pos = t.fileobj.tell()
+        t.close()
+
+        self.size_files = size_files
+        self.file_count = file_count
+        self.tar_end_of_data_pos = tar_end_of_data_pos
+        self.tar_end_of_file_pos = tar_end_of_file_pos
+
+
 class ModuleInfo(object):
     FTPROOT='/ftp/pub/GNOME'
 
@@ -125,7 +185,12 @@ class ModuleInfo(object):
         self.read_json(force_refresh=True)
 
     def read_json(self, force_refresh=False):
-        if self.module is None: return False
+        if self.module is None:
+            self.info = {}
+            self.majmin = {}
+            self.versions = []
+
+            return False
 
         info = {}
         majmins = {}
@@ -144,7 +209,7 @@ class ModuleInfo(object):
                         if module != self.module:
                             continue
 
-                        info.setdefault(version, {})[format] = filename
+                        info.setdefault(version, {})[format] = os.path.join(root, filename)
         else:
             # XXX - actually load the json file..
             pass
@@ -154,7 +219,7 @@ class ModuleInfo(object):
 
         # Group versions by major and minor number
         for version in info:
-            majmin = re_version.sub(r'\1', fileinfo['version'])
+            majmin = re_version.sub(r'\1', version)
             if majmin not in majmins:
                 majmins[majmin] = set()
 
@@ -169,9 +234,6 @@ class ModuleInfo(object):
         if self.module is None: return False
 
         info = self.info
-        pprint.pprint(info)
-        pprint.pprint(self.versions)
-        pprint.pprint(self.majmin)
         #self.info = info
 
 
@@ -188,28 +250,28 @@ class InstallModule(object):
         self.pw = pwd.getpwuid(self.uid)
 
         self.dirname, self.basename = os.path.split(file)
-        r = re_file.match(self.basename)
-        if r:
-            fileinfo = r.groupdict()
+        self.fileinfo = TarInfo(file)
 
-            self.module = fileinfo['module']
-            self.version = fileinfo['version']
-            self.format = fileinfo['format']
-            self.majmin = re_version.sub(r'\1', fileinfo['version'])
-            self.destination = '%s/sources/%s/%s' % (self.FTPROOT, fileinfo['module'], self.majmin)
-        else:
-            self.module = None
+        if self.fileinfo.module is not None:
+            self.module = self.fileinfo.module
+            self.majmin = self.fileinfo.majmin
+            self.version = self.fileinfo.version
+            self.format = self.fileinfo.format
 
-        self.moduleinfo = ModuleInfo(self.module)
+            self.destination = '%s/sources/%s/%s' % (self.FTPROOT, self.fileinfo.module, self.majmin)
+
+        self.moduleinfo = ModuleInfo(self.fileinfo.module)
+        self.moduleinfo.write_json()
+        self.prevversion = get_latest_version(self.moduleinfo.versions, self.version)
+
 
 
     def confirm_install(self):
-        prevversion = get_latest_version(self.moduleinfo.versions, self.version)
 
         print """      Module: %s
      Version: %s   (previous version: %s)
      Maj.Min: %s
- Destination: %s/""" % (self.module, self.version, prevversion or 'N/A', self.majmin, self.destination)
+ Destination: %s/""" % (self.module, self.version, self.prevversion or 'N/A', self.majmin, self.destination)
 
         # Check if the module directory already exists. If not, the module name might contain a typo
         if not os.path.isdir('%s/sources/%s' % (self.FTPROOT, self.module)):
@@ -241,7 +303,12 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             # XXX - continuing anyway
             #return False
 
+        # XXX - verify if tarball is being installed by a maintainer
+
         # CHECK FOR CONSISTENCY
+
+        errors = self.fileinfo.check()
+
         tar = tarfile.open(self.file)
 
         # CHECK 1: Make sure tarball contains a directory called $MODULE-$VERSION
@@ -264,7 +331,6 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         if not self.validate():
             return False
 
-        # XXX - verify if tarball is being installed by a maintainer
 
         # Ask user if tarball should be installed
         if not unattended:
@@ -274,6 +340,26 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
         for k, v in self.__dict__.iteritems():
             print k, v
+
+        if self.prevversion:
+            prev_fileinfo = TarInfo(self.moduleinfo.info[self.prevversion]['tar.bz2'])
+            prev_errors = prev_fileinfo.check()
+
+            for fn in self.fileinfo.file:
+                if fn in prev_fileinfo.file:
+                    context = 0
+                    a = prev_fileinfo.file[fn]
+                    b = self.fileinfo.file[fn]
+                    for group in difflib.SequenceMatcher(None,a,b).get_grouped_opcodes(context):
+                        i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
+                        for tag, i1, i2, j1, j2 in group:
+                            if tag == 'replace' or tag == 'insert':
+                                for line in b[j1:j2]:
+                                    print line,
+
+                else:
+                    print "No %s in %s!" % (fn, self.moduleinfo.info[self.prevversion]['tar.bz2'])
+
 
 #        if not os.path.isdir(self.destination):
 #            os.makedirs(self.destination, 042775) # drwxrwsr-x
