@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -u
 
 import sys
 import os
@@ -336,7 +336,7 @@ class ModuleInfo(BasicInfo):
 
 class InstallModule(BasicInfo):
 
-    INSTALL_FORMATS = ('tar.gz', 'tar.bz2', 'tar.xz')
+    INSTALL_FORMATS = ('tar.gz', 'tar.bz2')
 
     def __init__(self, file):
         self.file = file
@@ -439,10 +439,11 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 #        for k, v in self.__dict__.iteritems():
 #            print k, v
 
-        tmpdir = tempfile.mkdtemp()
+        tmpdir = tempfile.mkdtemp(prefix='install_module')
         try:
+            print "Creating new files:"
             # do we have a previous version?
-            prev_errors = None
+            prev_errors = True # pretend there are error unless proved otherwise
             if self.prevversion:
                 prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar')
             else:
@@ -451,12 +452,15 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             if prev_file:
                 # validate the previous file
                 prev_fileinfo = TarInfo(prev_file)
+                sys.stdout.write(" - Checking previous tarball")
                 prev_errors = prev_fileinfo.check()
+                print ", done"
                 if prev_errors:
                     # only diff against the previous version is there are no errors
                     prev_file = None
 
             for fn in self.fileinfo.file:
+                sys.stdout.write(" - %s" % fn)
                 with self._make_tmp_file(tmpdir, fn) as f:
                     if prev_file is not None and fn in prev_fileinfo.file:
                         context = 0
@@ -467,26 +471,37 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                             for tag, i1, i2, j1, j2 in group:
                                 if tag == 'replace' or tag == 'insert':
                                     f.writelines(b[j1:j2])
+                        print ", done (diff)"
                     elif not prev_errors:
                         # succesfully read previous tarball, didn't find a 'NEWS' / 'ChangeLog'
                         # assume file has been added in this release and no diff is needed
                         f.writelines(self.fileinfo.file[fn])
+                        print ", done (new file)"
+                    else:
+                        print ", ignored (previous tarball is not valid)"
+
 
             # Create tarball(s) according to INSTALL_FORMATS
             if self.format in self.INSTALL_FORMATS:
+                sys.stdout.write(" - %s" % self.format)
                 with open(self.file, 'rb') as f1:
                     with self._make_tmp_file(tmpdir, self.format) as f2:
                         shutil.copyfileobj(f1, f2)
+                print ", done"
 
-            f2 = []
-            for format in self.INSTALL_FORMATS:
-                if format == self.format:
-                    continue
+            formats = [format for format in self.INSTALL_FORMATS if format != self.format]
+            if len(formats):
+                if len(formats) == 1:
+                    sys.stdout.write(" - Compressing %s: " % formats[0])
+                else:
+                    sys.stdout.write(" - Compressing (at the same time): ")
+                f2 = []
+                for format in formats:
+                    if len(formats) > 1:
+                        sys.stdout.write("%s " % format)
+                    f = self._make_tmp_file(tmpdir, format, constructor=self.FORMATS[format])
+                    f2.append(f)
 
-                f = self._make_tmp_file(tmpdir, format, constructor=self.FORMATS[format])
-                f2.append(f)
-
-            if len(f2):
                 BLOCKSIZE=5248000 # 5MB
                 f1 = self.FORMATS[self.format](self.file, 'rb')
                 while 1:
@@ -495,6 +510,11 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                         break
                     for fdst in f2:
                         fdst.write(buf)
+                        sys.stdout.write(".")
+                for fdst in f2:
+                    fdst.close()
+                    f2 = []
+                print ", done"
 
 
         #        if not os.path.isdir(self.destination):
@@ -514,8 +534,6 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
     def _make_tmp_file(self, tmpdir, format, constructor=open):
         fn = os.path.join(tmpdir, '%s-%s.%s' % (self.module, self.version, format))
-        if DEBUG:
-            print "DEBUG: Creating: %s" % fn
         f = constructor(fn, 'w')
         if self.GROUPID is not None:
             os.chown(fn, -1, self.GROUPID)
@@ -523,11 +541,12 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
     def inform(self):
         """Inform regarding the new release"""
+        print "Doing notifications:"
         if self.version in self.moduleinfo.info:
             sha256sum = {}
+            sys.stdout.write(" - Informing ftp-release-list")
 
             mail = StringIO()
-
 
             info = self.moduleinfo.info_detailed(self.version, 'sha256sum')
             if info is not None:
@@ -589,6 +608,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             s.sendmail('install-module@master.gnome.org', ['olav@vitters.nl'], msg.as_string())
             s.quit()
 
+            print ", done"
 
 
 
