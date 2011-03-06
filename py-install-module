@@ -327,7 +327,7 @@ class ModuleInfo(BasicInfo):
         return (info, realpath, human_size(stat.st_size), stat)
 
 
-    def write_json(self): # XXX - should write json
+    def write_json(self):
         if self.module is None: return False
 
         info = self.info
@@ -347,6 +347,8 @@ class InstallModule(BasicInfo):
         self.pw = pwd.getpwuid(self.uid)
         self.who = self.pw.pw_gecos
         self.who = re_who.sub("", self.who)
+        if self.who == "":
+            self.who = self.pw.pw_name
 
         self.dirname, self.basename = os.path.split(file)
         self.fileinfo = TarInfo(file)
@@ -368,8 +370,7 @@ class InstallModule(BasicInfo):
 
         print """      Module: %s
      Version: %s   (previous version: %s)
-     Maj.Min: %s
- Destination: %s/""" % (self.module, self.version, self.prevversion or 'N/A', self.majmin, self.destination)
+ Destination: %s/""" % (self.module, self.version, self.prevversion or 'N/A', self.destination)
 
         # Check if the module directory already exists. If not, the module name might contain a typo
         if not os.path.isdir('%s/sources/%s' % (self.FTPROOT, self.module)):
@@ -639,7 +640,19 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         sys.stdout.write(" - Triggering ftp.gnome.org update")
         syncscript = ['/usr/local/bin/signal-ftp-sync']
         if self._call_progress(cmd):
-            pass
+            print ""
+            print "Your tarball will appear in the following location on ftp.gnome.org:"
+            print ""
+            print "  %s" % "/".join((self.URLROOT, 'sources', self.module, self.majmin, ""))
+            print ""
+            print "It is important to retain the trailing slash for compatibility with"
+            print "broken http clients, and to use http as it is less taxing on the server."
+            info = self.moduleinfo.info_detailed(self.version, 'sha256sum')
+            if info is not None:
+                print ""
+                path, realpath, size, stat = info
+                with open(realpath, "r") as f:
+                    shutil.copyfileobj(f, sys.stdout)
 
 
     def _call_progress(self, cmd):
