@@ -12,12 +12,14 @@ import tempfile
 import tarfile
 import pprint
 import difflib
+import shutil
+import gzip
+import bz2
 import lzma # pyliblzma
 from optparse import OptionParser
 from email.mime.text import MIMEText
 import smtplib
 import json
-import tempfile
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -119,6 +121,14 @@ class BasicInfo(object):
     FTPROOT='/ftp/pub/GNOME'
     URLROOT='http://download.gnome.org'
 
+    # Note: this defines the formats install-module can read
+    #       formats install-module creates is defined in 
+    #       ModuleInstall.INSTALL_FORMATS
+    FORMATS = {
+        'tar.gz': gzip.GzipFile,
+        'tar.bz2': bz2.BZ2File,
+        'tar.xz': lzma.LZMAFile
+    }
 
 class TarInfo(BasicInfo):
 
@@ -172,7 +182,7 @@ class TarInfo(BasicInfo):
         # Now determine the current position in the tar file
         tar_end_of_data_pos = t.fileobj.tell()
         # as well as the last position in the tar file
-        #t.fileobj.seek(0, os.SEEK_END)
+        # Note: doing a read as seeking is often not supported :-(
         t.fileobj.read()
         tar_end_of_file_pos = t.fileobj.tell()
         t.close()
@@ -277,7 +287,7 @@ class ModuleInfo(BasicInfo):
 
         if changed:
             # save the new information
-            self.moduleinfo.write_json()
+            self.write_json()
 
     def determine_file(self, version, format):
         """Determine file using version and format
@@ -325,7 +335,8 @@ class ModuleInfo(BasicInfo):
 
 
 class InstallModule(BasicInfo):
-    FORMATS = ('tar.gz', 'tar.bz2')
+
+    INSTALL_FORMATS = ('tar.gz', 'tar.bz2', 'tar.xz')
 
     def __init__(self, file):
         self.file = file
@@ -428,38 +439,87 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 #        for k, v in self.__dict__.iteritems():
 #            print k, v
 
-        if self.prevversion:
-            prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar')
+        tmpdir = tempfile.mkdtemp()
+        try:
+            # do we have a previous version?
+            prev_errors = None
+            if self.prevversion:
+                prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar')
+            else:
+                prev_file = None
+
             if prev_file:
+                # validate the previous file
                 prev_fileinfo = TarInfo(prev_file)
                 prev_errors = prev_fileinfo.check()
                 if prev_errors:
+                    # only diff against the previous version is there are no errors
                     prev_file = None
 
             for fn in self.fileinfo.file:
-                if prev_file is not None and fn in prev_fileinfo.file:
-                    context = 0
-                    a = prev_fileinfo.file[fn]
-                    b = self.fileinfo.file[fn]
-                    for group in difflib.SequenceMatcher(None,a,b).get_grouped_opcodes(context):
-                        i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
-                        for tag, i1, i2, j1, j2 in group:
-                            if tag == 'replace' or tag == 'insert':
-                                for line in b[j1:j2]:
-                                    # XXX - write correct file
-#                                    print line,
-                                    pass
-                else:
-                    for line in self.fileinfo.file[fn]:
-                        # XXX - write correct file
-                        print line,
+                with self._make_tmp_file(tmpdir, fn) as f:
+                    if prev_file is not None and fn in prev_fileinfo.file:
+                        context = 0
+                        a = prev_fileinfo.file[fn]
+                        b = self.fileinfo.file[fn]
+                        for group in difflib.SequenceMatcher(None,a,b).get_grouped_opcodes(context):
+                            i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
+                            for tag, i1, i2, j1, j2 in group:
+                                if tag == 'replace' or tag == 'insert':
+                                    f.writelines(b[j1:j2])
+                    elif not prev_errors:
+                        # succesfully read previous tarball, didn't find a 'NEWS' / 'ChangeLog'
+                        # assume file has been added in this release and no diff is needed
+                        f.writelines(self.fileinfo.file[fn])
 
-#        if not os.path.isdir(self.destination):
-#            os.makedirs(self.destination, 042775) # drwxrwsr-x
-        # XXX - install the tarball
-        # XXX - change ownership of the tarball
+            # Create tarball(s) according to INSTALL_FORMATS
+            if self.format in self.INSTALL_FORMATS:
+                with open(self.file, 'rb') as f1:
+                    with self._make_tmp_file(tmpdir, self.format) as f2:
+                        shutil.copyfileobj(f1, f2)
 
-            self.inform()
+            f2 = []
+            for format in self.INSTALL_FORMATS:
+                if format == self.format:
+                    continue
+
+                f = self._make_tmp_file(tmpdir, format, constructor=self.FORMATS[format])
+                f2.append(f)
+
+            if len(f2):
+                BLOCKSIZE=5248000 # 5MB
+                f1 = self.FORMATS[self.format](self.file, 'rb')
+                while 1:
+                    buf = f1.read(BLOCKSIZE)
+                    if not buf:
+                        break
+                    for fdst in f2:
+                        fdst.write(buf)
+
+
+        #        if not os.path.isdir(self.destination):
+        #            os.makedirs(self.destination, 042775) # drwxrwsr-x
+                # XXX - install the tarball
+                # XXX - change ownership of the tarball
+                # XXX - refresh version information
+                # self.moduleinfo.refresh(force_refresh=True)
+        finally:
+            # cleanup temporary directory
+            if not DEBUG:
+                shutil.rmtree(tmpdir)
+            else:
+                print "DEBUG: Not removing temporary directory: %s" % tmpdir
+
+        self.inform()
+
+    def _make_tmp_file(self, tmpdir, format, constructor=open):
+        fn = os.path.join(tmpdir, '%s-%s.%s' % (self.module, self.version, format))
+        if DEBUG:
+            print "DEBUG: Creating: %s" % fn
+        f = constructor(fn, 'w')
+        if self.GROUPID is not None:
+            os.chown(fn, -1, self.GROUPID)
+        return f
 
     def inform(self):
         """Inform regarding the new release"""
@@ -514,7 +574,8 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                     if stat.st_size > 50000:
                         mail.write("%s/%s" % (self.URLROOT, path))
                     else:
-                        mail.write(open(realpath, 'r').read())
+                        with open(realpath, 'r') as f:
+                            shutil.copyfileobj(f, mail)
                     print >>mail, ""
 
 
