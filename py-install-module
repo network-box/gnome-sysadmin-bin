@@ -16,6 +16,7 @@ import shutil
 import gzip
 import bz2
 import lzma # pyliblzma
+import subprocess
 from optparse import OptionParser
 from email.mime.text import MIMEText
 import smtplib
@@ -348,6 +349,8 @@ class InstallModule(BasicInfo):
         self.who = self.pw.pw_gecos
         self.who = re_who.sub("", self.who)
 
+        self._tmp_files = []
+
         self.dirname, self.basename = os.path.split(file)
         self.fileinfo = TarInfo(file)
 
@@ -511,6 +514,14 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                 print ", done"
 
 
+
+            sys.stdout.write(" - Creating sha256sum")
+            with self._make_tmp_file(tmpdir, 'sha256sum', ignore=True) as f:
+                cmd = ['sha256sum', '--']
+                cmd.extend([os.path.basename(fn) for fn in self._tmp_files])
+                subprocess.call(cmd, stdout=f, cwd=tmpdir)
+            print ", done"
+
         #        if not os.path.isdir(self.destination):
         #            os.makedirs(self.destination, 042775) # drwxrwsr-x
                 # XXX - install the tarball
@@ -526,8 +537,10 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
         self.inform()
 
-    def _make_tmp_file(self, tmpdir, format, constructor=open):
+    def _make_tmp_file(self, tmpdir, format, constructor=open, ignore=False):
         fn = os.path.join(tmpdir, '%s-%s.%s' % (self.module, self.version, format))
+        if not ignore:
+            self._tmp_files.append(fn)
         f = constructor(fn, 'w')
         if self.GROUPID is not None:
             os.chown(fn, -1, self.GROUPID)
@@ -585,7 +598,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                     print >>mail, "-" * len(formatname)
                     print >>mail, ""
                     if stat.st_size > 50000:
-                        mail.write("%s/%s" % (self.URLROOT, path))
+                        mail.write("%s/%s  (%s)" % (self.URLROOT, path, size))
                     else:
                         with open(realpath, 'rb') as f:
                             shutil.copyfileobj(f, mail)
