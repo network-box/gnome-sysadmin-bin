@@ -19,7 +19,6 @@ import lzma # pyliblzma
 import subprocess
 from optparse import OptionParser
 from email.mime.text import MIMEText
-import smtplib
 import json
 try:
     from cStringIO import StringIO
@@ -349,8 +348,6 @@ class InstallModule(BasicInfo):
         self.who = self.pw.pw_gecos
         self.who = re_who.sub("", self.who)
 
-        self._tmp_files = []
-
         self.dirname, self.basename = os.path.split(file)
         self.fileinfo = TarInfo(file)
 
@@ -435,6 +432,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         tmpdir = tempfile.mkdtemp(prefix='install_module')
         try:
             print "Creating new files:"
+            created_files = []
             # do we have a previous version?
             prev_errors = True # pretend there are error unless proved otherwise
             if self.prevversion:
@@ -460,19 +458,27 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                         a = prev_fileinfo.file[fn]
                         b = self.fileinfo.file[fn]
                         break_for = False
+                        lines = 0
                         for group in difflib.SequenceMatcher(None,a,b).get_grouped_opcodes(context):
                             i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
                             for tag, i1, i2, j1, j2 in group:
                                 if tag == 'replace' or tag == 'insert':
+                                    lines += j2 - j1
                                     f.writelines(b[j1:j2])
                                     break_for = True
                             if break_for:
                                 break
-                        print ", done (diff)"
+                        if lines > 2:
+                            created_files.append(f.name)
+                            print ", done (diff, %s lines)" % lines
+                        else:
+                            print ", ignored (no change)"
+                            os.remove(f.name)
                     elif not prev_errors:
                         # succesfully read previous tarball, didn't find a 'NEWS' / 'ChangeLog'
                         # assume file has been added in this release and no diff is needed
                         f.writelines(self.fileinfo.file[fn])
+                        created_files.append(f.name)
                         print ", done (new file)"
                     else:
                         print ", ignored (previous tarball is not valid)"
@@ -483,6 +489,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                 sys.stdout.write(" - Copying %s" % self.format)
                 with open(self.file, 'rb') as f1:
                     with self._make_tmp_file(tmpdir, self.format) as f2:
+                        created_files.append(f2.name)
                         shutil.copyfileobj(f1, f2)
                 print ", done"
 
@@ -497,9 +504,10 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                     if len(formats) > 1:
                         sys.stdout.write("%s " % format)
                     f = self._make_tmp_file(tmpdir, format, constructor=self.FORMATS[format])
+                    created_files.append(f.name)
                     f2.append(f)
 
-                BLOCKSIZE=5248000 # 5MB
+                BLOCKSIZE=5248000 # 5MB (dot will be printed per block)
                 f1 = self.FORMATS[self.format](self.file, 'rb')
                 while 1:
                     buf = f1.read(BLOCKSIZE)
@@ -516,9 +524,9 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
 
             sys.stdout.write(" - Creating sha256sum")
-            with self._make_tmp_file(tmpdir, 'sha256sum', ignore=True) as f:
+            with self._make_tmp_file(tmpdir, 'sha256sum') as f:
                 cmd = ['sha256sum', '--']
-                cmd.extend([os.path.basename(fn) for fn in self._tmp_files])
+                cmd.extend([os.path.basename(fn) for fn in created_files if os.path.isfile(fn)])
                 subprocess.call(cmd, stdout=f, cwd=tmpdir)
             print ", done"
 
@@ -537,10 +545,8 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
         self.inform()
 
-    def _make_tmp_file(self, tmpdir, format, constructor=open, ignore=False):
+    def _make_tmp_file(self, tmpdir, format, constructor=open):
         fn = os.path.join(tmpdir, '%s-%s.%s' % (self.module, self.version, format))
-        if not ignore:
-            self._tmp_files.append(fn)
         f = constructor(fn, 'w')
         if self.GROUPID is not None:
             os.chown(fn, -1, self.GROUPID)
@@ -549,73 +555,126 @@ script to gnome-sysadmin@gnome.org. Thanks."""
     def inform(self):
         """Inform regarding the new release"""
         print "Doing notifications:"
-        if self.version in self.moduleinfo.info:
-            sha256sum = {}
-            sys.stdout.write(" - Informing ftp-release-list")
+        if self.version not in self.moduleinfo.info:
+            return False
 
-            mail = StringIO()
+        sha256sum = {}
+        sys.stdout.write(" - Informing ftp-release-list")
 
-            info = self.moduleinfo.info_detailed(self.version, 'sha256sum')
-            if info is not None:
-                path, realpath, size, stat = info
-                with open(realpath, "r") as f:
-                    for line in f.read().splitlines():
-                        # XXX - the checksum filed could look differently (binary indicator)
-                        if '  ' in line:
-                            checksum, file = line.partition('  ')[::2]
-                            sha256sum[file] = checksum
-                        else:
-                            print "WARN: Strange sha256sum line: %s" % line
-            else:
-                print "WARN: Couldn't determine sha256sum file?!?"
+        mail = StringIO()
 
-            print >>mail, """       Module: %s
+        info = self.moduleinfo.info_detailed(self.version, 'sha256sum')
+        if info is not None:
+            path, realpath, size, stat = info
+            with open(realpath, "r") as f:
+                for line in f.read().splitlines():
+                    # XXX - the checksum filed could look differently (binary indicator)
+                    if '  ' in line:
+                        checksum, file = line.partition('  ')[::2]
+                        sha256sum[file] = checksum
+                    else:
+                        print "WARN: Strange sha256sum line: %s" % line
+        else:
+            print "WARN: Couldn't determine sha256sum file?!?"
+
+        print >>mail, """       Module: %s
       Version: %s
   Uploaded by: %s
 """ % (self.module, self.version, self.who)
 
-            for format in self.FORMATS:
-                info = self.moduleinfo.info_detailed(self.version, format)
-                if info is not None:
-                    path, realpath, size, stat = info
-                    dirname, basename = os.path.split(path)
-                    print >>mail, "%s/%s" % (self.URLROOT, path)
-                    if basename in sha256sum:
-                        print >>mail, " sha256sum: %s" % sha256sum[basename]
-                    print >>mail, "      size: %s" % size
-                    print >>mail, ""
+        for format in self.FORMATS:
+            info = self.moduleinfo.info_detailed(self.version, format)
+            if info is not None:
+                path, realpath, size, stat = info
+                dirname, basename = os.path.split(path)
+                print >>mail, "%s/%s" % (self.URLROOT, path)
+                if basename in sha256sum:
+                    print >>mail, " sha256sum: %s" % sha256sum[basename]
+                print >>mail, "      size: %s" % size
+                print >>mail, ""
 
-            dump_files = [
-                ('news', 'News'),
-                ('changes', 'ChangeLog')
-            ]
-
-            for format, formatname in dump_files:
-                info = self.moduleinfo.info_detailed(self.version, format)
-                if info is not None:
-                    path, realpath, size, stat = info
+        dump_files = [
+            ('news', 'News'),
+            ('changes', 'ChangeLog')
+        ]
+        show_contents = True
+        for format, formatname in dump_files:
+            info = self.moduleinfo.info_detailed(self.version, format)
+            if info is not None:
+                path, realpath, size, stat = info
+                if show_contents and stat.st_size < 50000:
+                    with open(realpath, 'r') as f:
+                        line = f.readline()
+                        if not self.version in line:
+                            print >>mail, formatname
+                            print >>mail, "-" * len(formatname)
+                            print >>mail, ""
+                        mail.write(line)
+                        shutil.copyfileobj(f, mail)
+                else:
                     print >>mail, formatname
                     print >>mail, "-" * len(formatname)
-                    print >>mail, ""
-                    if stat.st_size > 50000:
-                        mail.write("%s/%s  (%s)" % (self.URLROOT, path, size))
-                    else:
-                        with open(realpath, 'rb') as f:
-                            shutil.copyfileobj(f, mail)
-                    print >>mail, ""
+                    mail.write("%s/%s  (%s)" % (self.URLROOT, path, size))
+                print >>mail, ""
+                # Only show the contents of the first found file, URLs for the rest
+                show_contents = False
 
 
-            mail.seek(0)
-            msg = MIMEText(mail.read(), _charset='utf-8')
-            msg['Subject'] = '%s %s' % (self.module, self.version)
-            msg['From'] = '"%s" <install-module@master.gnome.org>' % self.who
-            msg['To'] = "FTP Releases <ftp-release-list@gnome.org>"
-            s = smtplib.SMTP()
-            s.connect()
-            s.sendmail('install-module@master.gnome.org', ['olav@vitters.nl'], msg.as_string())
-            s.quit()
+        mail.seek(0)
+        subject = '%s %s' % (self.module, self.version)
+        to = "FTP Releases <ftp-release-list@gnome.org>"
+        retcode = self._send_email(mail.read(), subject, to, ['olav@vitters.nl'])
+        print ", done"
 
-            print ", done"
+        sys.stdout.write(" - Triggering GNOME library update")
+        subject = 'GNOME_GIT library-web'
+        to = "gnomeweb@www.gnome.org"
+        retcode = self._send_email("forced", subject, to, ['olav@vitters.nl'])
+        print ", done"
+
+        sys.stdout.write(" - Adding new version to GNOME Bugzilla")
+        cmd = ['/usr/bin/curl', '-L', 'https://bugzilla.gnome.org/add-version.cgi?%s|%s' % (self.module, self.version)]
+        self._call_progress(cmd)
+
+        sys.stdout.write(" - Triggering ftp.gnome.org update")
+        syncscript = ['/usr/local/bin/signal-ftp-sync']
+        if self._call_progress(cmd):
+            pass
+
+
+    def _call_progress(self, cmd):
+        status = False
+        if os.path.isfile(cmd[0]):
+            status = True
+            if not DEBUG:
+                retcode = subprocess.call(cmd)
+                print "done (exit code %s)" % retcode
+            else:
+                print ", ignored (debug mode)"
+        else:
+            print ", FAILED (cannot find %s)" % cmd[0]
+            print "PLEASE INFORM gnome-sysadmin@gnome.org ASAP!!!"
+
+        return status
+
+
+    def _send_email(self, contents, subject, to, smtp_to):
+        msg = MIMEText(contents, _charset='utf-8')
+        msg['Subject'] = subject
+        msg['From'] = '"%s" <install-module@master.gnome.org>' % self.who
+        msg['To'] = to
+
+        if DEBUG:
+            smtp_to = ['olav@vitters.nl']
+
+        cmd = ['/usr/sbin/sendmail', '-oi', '-f', 'install-module@master.gnome.org', '--']
+        cmd.extend(smtp_to)
+        p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+        p.stdin.write(msg.as_string())
+        p.stdin.flush()
+        p.stdin.close()
+        return p.wait()
+
 
 
 
