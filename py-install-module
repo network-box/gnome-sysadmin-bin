@@ -162,46 +162,63 @@ class TarInfo(BasicInfo):
 
     def check(self, progress=False):
         """Check tarball consistency"""
+        errors = {}
         files = self.files
 
         # XXX  - this will automatically decompress bz2 and gz tarballs.. However,
         #        xz is NOT handled. Should wrap this using self.FORMATS
         t = tarfile.open(self.path, 'r', errors=2)
-        size_files = 0
-        file_count = 0
-        uniq_dir = None
-        dots_shown = 0
-        for info in t:
-            file_count += 1
-            size_files += info.size
+        try:
+            size_files = 0
+            file_count = 0
+            uniq_dir = None
+            dots_shown = 0
+            for info in t:
+                file_count += 1
+                size_files += info.size
 
-            if info.name in files:
-                self.file[os.path.basename(info.name)] = t.extractfile(info).readlines()
+                if info.name in files:
+                    self.file[os.path.basename(info.name)] = t.extractfile(info).readlines()
 
-            if file_count == 1 and info.isdir():
-                uniq_dir = info.name
-            elif uniq_dir is not None and not info.name.startswith(uniq_dir):
-                uniq_dir = None
-            if progress:
-                dots_to_show = t.offset / self.BLOCKSIZE
-                if dots_to_show > dots_shown:
-                    sys.stdout.write("." * (dots_to_show - dots_shown))
-                    dots_shown = dots_to_show
+                if file_count == 1 and info.isdir():
+                    uniq_dir = "%s/" % info.name
+                elif uniq_dir is not None and not info.name.startswith(uniq_dir):
+                    uniq_dir = None
+                if progress:
+                    dots_to_show = t.offset / self.BLOCKSIZE
+                    if dots_to_show > dots_shown:
+                        sys.stdout.write("." * (dots_to_show - dots_shown))
+                        dots_shown = dots_to_show
 
-        # Now determine the current position in the tar file
-        tar_end_of_data_pos = t.fileobj.tell()
-        # as well as the last position in the tar file
-        # Note: doing a read as seeking is often not supported :-(
-        t.fileobj.read()
-        tar_end_of_file_pos = t.fileobj.tell()
-        t.close()
+            # Now determine the current position in the tar file
+            tar_end_of_data_pos = t.fileobj.tell()
+            # as well as the last position in the tar file
+            # Note: doing a read as seeking is often not supported :-(
+            t.fileobj.read()
+            tar_end_of_file_pos = t.fileobj.tell()
 
-        self.size_files = size_files
-        self.file_count = file_count
-        self.tar_end_of_data_pos = tar_end_of_data_pos
-        self.tar_end_of_file_pos = tar_end_of_file_pos
-        self.uniq_dir = None
+
+            test_uniq_dir = '%s-%s/' % (self.module, self.version)
+            if uniq_dir is None:
+                errors['NO_UNIQ_DIR'] = 'Files should all be in one directory (%s)' % test_uniq_dir
+            elif uniq_dir != test_uniq_dir:
+                errors['UNIQ_DIR'] = 'Files not in the correct directory (expected %s, found %s)' % (test_uniq_dir, uniq_dir)
+
+            test_eof_data = (tar_end_of_file_pos - tar_end_of_data_pos)
+            MAX_EXTRA_DATA=8192
+            if test_eof_data > MAX_EXTRA_DATA:
+                errors['EXTRA_DATA'] = 'Tarball has too much extra data (expected max %s, found %s)' % (human_size(MAX_EXTRA_DATA), human_size(test_eof_data))
+
+            self.size_files = size_files
+            self.file_count = file_count
+            self.tar_end_of_data_pos = tar_end_of_data_pos
+            self.tar_end_of_file_pos = tar_end_of_file_pos
+            self.uniq_dir = uniq_dir
+        finally:
+            t.close()
+
         # XXX  - actually validate the tarball and return errors
+        return errors
 
 
 class ModuleInfo(BasicInfo):
@@ -414,13 +431,17 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         # XXX - verify if tarball is being installed by a maintainer
 
         # CHECK FOR CONSISTENCY
-
         sys.stdout.write("Checking consistency %s: " % self.file)
         errors = self.fileinfo.check(progress=True)
+        if not errors:
+            print ", done"
+        else:
+            print ", failed"
+            for k, v in errors.iteritems():
+                print "ERROR: %s" % v
 
-        print ", done"
-        # Valid file
-        return errors is None
+        # True if there are no errors
+        return len(errors) == 0
 
     def install(self, unattended=False):
         # Validate the file
@@ -453,8 +474,10 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                 prev_fileinfo = TarInfo(prev_file)
                 sys.stdout.write(" - Checking previous tarball: ")
                 prev_errors = prev_fileinfo.check(progress=True)
-                print ", done"
-                if prev_errors:
+                if not prev_errors:
+                    print ", done"
+                else:
+                    print ", failed (ignoring previous tarball!)"
                     # only diff against the previous version is there are no errors
                     prev_file = None
 
