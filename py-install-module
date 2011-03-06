@@ -216,6 +216,7 @@ class ModuleInfo(BasicInfo):
 
         info = {}
         majmins = {}
+        changed = False
 
         if not os.path.exists(self.jsonfile):
             force_refresh = True
@@ -224,6 +225,8 @@ class ModuleInfo(BasicInfo):
             json_ver, json_info = json.load(open(self.jsonfile, 'r'))[:2]
             if json_ver == self.JSONVERSION:
                 info = json_info
+                if not len(info):
+                    force_refresh=True
             elif json_ver > self.JSONVERSION:
                 print "ERROR: Json newer than supported version, ignoring json"
                 force_refresh=True
@@ -234,7 +237,7 @@ class ModuleInfo(BasicInfo):
             print "DEBUG: Forcing refresh of json (debug mode)"
             force_refresh = True
 
-        if force_refresh:
+        if force_refresh and os.path.exists(self.FTPROOT):
             curdir = os.getcwd()
             try:
                 # Ensures paths are relative to the FTPROOT
@@ -244,6 +247,8 @@ class ModuleInfo(BasicInfo):
                     for filename in files:
                         r = re_file.match(filename)
                         if r:
+                            changed = True
+
                             fileinfo = r.groupdict()
                             module = fileinfo['module']
                             version = fileinfo['version']
@@ -270,6 +275,9 @@ class ModuleInfo(BasicInfo):
         self.majmin = majmins
         self.versions = sorted(info, version_cmp)
 
+        if changed:
+            # save the new information
+            self.moduleinfo.write_json()
 
     def determine_file(self, version, format):
         """Determine file using version and format
@@ -339,7 +347,6 @@ class InstallModule(BasicInfo):
             self.destination = '%s/sources/%s/%s' % (self.FTPROOT, self.fileinfo.module, self.majmin)
 
         self.moduleinfo = ModuleInfo(self.fileinfo.module)
-        self.moduleinfo.write_json()
         self.prevversion = get_latest_version(self.moduleinfo.versions, self.version)
 
 
