@@ -163,6 +163,8 @@ class TarInfo(BasicInfo):
         """Check tarball consistency"""
         files = self.files
 
+        # XXX  - this will automatically decompress bz2 and gz tarballs.. However,
+        #        xz is NOT handled. Should wrap this using self.FORMATS
         t = tarfile.open(self.path, 'r', errors=2)
         size_files = 0
         file_count = 0
@@ -192,6 +194,7 @@ class TarInfo(BasicInfo):
         self.tar_end_of_data_pos = tar_end_of_data_pos
         self.tar_end_of_file_pos = tar_end_of_file_pos
         self.uniq_dir = None
+        # XXX  - actually validate the tarball and return errors
 
 
 class ModuleInfo(BasicInfo):
@@ -232,7 +235,7 @@ class ModuleInfo(BasicInfo):
             force_refresh = True
 
         if not force_refresh:
-            json_ver, json_info = json.load(open(self.jsonfile, 'r'))[:2]
+            json_ver, json_info = json.load(open(self.jsonfile, 'rb'))[:2]
             if json_ver == self.JSONVERSION:
                 info = json_info
                 if not len(info):
@@ -244,7 +247,6 @@ class ModuleInfo(BasicInfo):
                 force_refresh=True
 
         if DEBUG and not force_refresh:
-            print "DEBUG: Forcing refresh of json (debug mode)"
             force_refresh = True
 
         if force_refresh and os.path.exists(self.FTPROOT):
@@ -405,24 +407,12 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
         # CHECK FOR CONSISTENCY
 
+        sys.stdout.write("Checking consistency %s: " % self.file)
         errors = self.fileinfo.check()
 
-        tar = tarfile.open(self.file)
-
-        # CHECK 1: Make sure tarball contains a directory called $MODULE-$VERSION
-        dir = None
-        try:
-            dir = tar.getmember('%s-%s' % (self.module, self.version))
-        except KeyError:
-            pass
-        if dir and not dir.isdir():
-            dir = None
-        if dir is None:
-            print 'ERROR: Cannot find expected directory within tarball, aborting!'
-            return False
-
+        print "done"
         # Valid file
-        return True
+        return errors is None
 
     def install(self, unattended=False):
         # Validate the file
@@ -483,7 +473,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
             # Create tarball(s) according to INSTALL_FORMATS
             if self.format in self.INSTALL_FORMATS:
-                sys.stdout.write(" - %s" % self.format)
+                sys.stdout.write(" - Copying %s" % self.format)
                 with open(self.file, 'rb') as f1:
                     with self._make_tmp_file(tmpdir, self.format) as f2:
                         shutil.copyfileobj(f1, f2)
@@ -492,9 +482,9 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             formats = [format for format in self.INSTALL_FORMATS if format != self.format]
             if len(formats):
                 if len(formats) == 1:
-                    sys.stdout.write(" - Compressing %s: " % formats[0])
+                    sys.stdout.write(" - Creating %s from %s: " % (formats[0], self.format))
                 else:
-                    sys.stdout.write(" - Compressing (at the same time): ")
+                    sys.stdout.write(" - Creating tarballs from %s: " % self.format)
                 f2 = []
                 for format in formats:
                     if len(formats) > 1:
@@ -593,7 +583,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                     if stat.st_size > 50000:
                         mail.write("%s/%s" % (self.URLROOT, path))
                     else:
-                        with open(realpath, 'r') as f:
+                        with open(realpath, 'rb') as f:
                             shutil.copyfileobj(f, mail)
                     print >>mail, ""
 
@@ -645,5 +635,7 @@ if __name__ == "__main__":
     BasicInfo.GROUPID = groupid
 
     for file in tarballs:
+        sys.stdout.write("Checking versions %s" % file)
         handler = InstallModule(file)
+        print "done"
         handler.install(unattended=options.unattended)
