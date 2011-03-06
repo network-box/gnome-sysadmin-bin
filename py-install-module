@@ -456,11 +456,15 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                         context = 0
                         a = prev_fileinfo.file[fn]
                         b = self.fileinfo.file[fn]
+                        break_for = False
                         for group in difflib.SequenceMatcher(None,a,b).get_grouped_opcodes(context):
                             i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
                             for tag, i1, i2, j1, j2 in group:
                                 if tag == 'replace' or tag == 'insert':
                                     f.writelines(b[j1:j2])
+                                    break_for = True
+                            if break_for:
+                                break
                         print ", done (diff)"
                     elif not prev_errors:
                         # succesfully read previous tarball, didn't find a 'NEWS' / 'ChangeLog'
@@ -635,7 +639,7 @@ if __name__ == "__main__":
     BasicInfo.GROUPID = groupid
 
     for file in tarballs:
-        sys.stdout.write("Checking versions %s" % file)
+        sys.stdout.write("Checking for info about %s" % file)
         handler = InstallModule(file)
-        print "done"
+        print ", done"
         handler.install(unattended=options.unattended)
