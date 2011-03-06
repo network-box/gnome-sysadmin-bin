@@ -230,6 +230,25 @@ class ModuleInfo(object):
         self.versions = sorted(info, version_cmp)
 
 
+    def determine_file(self, version, format):
+        """Determine file using version and format
+
+        Might return a compressed verison of the given format.
+
+        Returns None if format cannot be found"""
+        if version not in self.info:
+            return None
+
+        formats = [format]
+        formats.extend(("%s.%s" % (format, compression) for compression in ("gz", "bz2", "xz")))
+
+        info_formats = self.info[version]
+        for f in formats:
+            if f in info_formats:
+                return info_formats[f]
+
+        return None
+
     def write_json(self): # XXX - should write json
         if self.module is None: return False
 
@@ -342,11 +361,15 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             print k, v
 
         if self.prevversion:
-            prev_fileinfo = TarInfo(self.moduleinfo.info[self.prevversion]['tar.bz2'])
-            prev_errors = prev_fileinfo.check()
+            prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar')
+            if prev_file:
+                prev_fileinfo = TarInfo(prev_file)
+                prev_errors = prev_fileinfo.check()
+                if prev_errors:
+                    prev_file = None
 
             for fn in self.fileinfo.file:
-                if fn in prev_fileinfo.file:
+                if prev_file is not None and fn in prev_fileinfo.file:
                     context = 0
                     a = prev_fileinfo.file[fn]
                     b = self.fileinfo.file[fn]
@@ -356,9 +379,9 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                             if tag == 'replace' or tag == 'insert':
                                 for line in b[j1:j2]:
                                     print line,
-
                 else:
-                    print "No %s in %s!" % (fn, self.moduleinfo.info[self.prevversion]['tar.bz2'])
+                    for line in self.fileinfo.file[fn]:
+                        print line,
 
 
 #        if not os.path.isdir(self.destination):
