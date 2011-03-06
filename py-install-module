@@ -14,6 +14,13 @@ import pprint
 import difflib
 import lzma # pyliblzma
 from optparse import OptionParser
+from email.mime.text import MIMEText
+import smtplib
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
+
 
 script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
 script_dir = os.path.dirname(script_path) + '/../gitadmin-bin'
@@ -31,6 +38,7 @@ GROUP='ftpadmin'
 LDAP_BASE='ou=modules,dc=gnome,dc=org'
 re_file = re.compile(r'^(?P<module>.*?)[_-](?:(?P<oldversion>([0-9]+[\.])*[0-9]+)-)?(?P<version>([0-9]+[\.\-])*[0-9]+)\.(?P<format>(?:tar\.|diff\.)?[a-z][a-z0-9]*)$')
 re_version = re.compile(r'^([0-9]+\.[0-9]+).*')
+re_who = re.compile(r' <[^>]+>$')
 
 usage = "usage: %prog [options] TARBALL"
 description = """Install new tarball to GNOME FTP master and mirrors.
@@ -293,6 +301,8 @@ class InstallModule(object):
 
         self.uid = os.getuid()
         self.pw = pwd.getpwuid(self.uid)
+        self.who = self.pw.pw_gecos
+        self.who = re_who.sub("", self.who)
 
         self.dirname, self.basename = os.path.split(file)
         self.fileinfo = TarInfo(file)
@@ -383,8 +393,8 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                 return False
 
 
-        for k, v in self.__dict__.iteritems():
-            print k, v
+#        for k, v in self.__dict__.iteritems():
+#            print k, v
 
         if self.prevversion:
             prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar')
@@ -422,12 +432,17 @@ script to gnome-sysadmin@gnome.org. Thanks."""
     def inform(self):
         """Inform regarding the new release"""
         if self.version in self.moduleinfo.info:
-            info = self.moduleinfo.info[self.version]
-            # XXX - the checksum filed could look differently (binary indicator)
             sha256sum = {}
-            if 'sha256sum' in info:
-                with open(os.path.join(self.moduleinfo.FTPROOT, info['sha256sum']), "r") as f:
+
+            mail = StringIO()
+
+
+            info = self.moduleinfo.info_detailed(self.version, 'sha256sum')
+            if info is not None:
+                path, realpath, size, stat = info
+                with open(realpath, "r") as f:
                     for line in f.read().splitlines():
+                        # XXX - the checksum filed could look differently (binary indicator)
                         if '  ' in line:
                             checksum, file = line.partition('  ')[::2]
                             sha256sum[file] = checksum
@@ -435,16 +450,52 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                             print "WARN: Strange sha256sum line: %s" % line
             else:
                 print "WARN: Couldn't determine sha256sum file?!?"
+
+            print >>mail, """       Module: %s
+      Version: %s
+  Uploaded by: %s
+""" % (self.module, self.version, self.who)
+
             for format in self.FORMATS:
-                i = self.moduleinfo.info_detailed(self.version, format)
-                if i is not None:
-                    path, realpath, size, stat = i
+                info = self.moduleinfo.info_detailed(self.version, format)
+                if info is not None:
+                    path, realpath, size, stat = info
                     dirname, basename = os.path.split(path)
-                    print "%s/%s" % (self.URLROOT, path)
+                    print >>mail, "%s/%s" % (self.URLROOT, path)
                     if basename in sha256sum:
-                        print " sha256sum: %s" % sha256sum[basename]
-                    print "      size: %s" % size
-                    print ""
+                        print >>mail, " sha256sum: %s" % sha256sum[basename]
+                    print >>mail, "      size: %s" % size
+                    print >>mail, ""
+
+            dump_files = [
+                ('news', 'News'),
+                ('changes', 'ChangeLog')
+            ]
+
+            for format, formatname in dump_files:
+                info = self.moduleinfo.info_detailed(self.version, format)
+                if info is not None:
+                    path, realpath, size, stat = info
+                    print >>mail, formatname
+                    print >>mail, "-" * len(formatname)
+                    print >>mail, ""
+                    if stat.st_size > 50000:
+                        mail.write("%s/%s" % (self.URLROOT, path))
+                    else:
+                        mail.write(open(realpath, 'r').read())
+                    print >>mail, ""
+
+
+            mail.seek(0)
+            msg = MIMEText(mail.read(), _charset='utf-8')
+            msg['Subject'] = '%s %s' % (self.module, self.version)
+            msg['From'] = '"%s" <install-module@master.gnome.org>' % self.who
+            msg['To'] = "FTP Releases <ftp-release-list@gnome.org>"
+            s = smtplib.SMTP()
+            s.connect()
+            s.sendmail('install-module@master.gnome.org', ['olav@vitters.nl'], msg.as_string())
+            s.quit()
+
 
 
 l = None
