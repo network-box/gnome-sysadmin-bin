@@ -120,6 +120,7 @@ class BasicInfo(object):
 
     FTPROOT='/ftp/pub/GNOME'
     URLROOT='http://download.gnome.org'
+    BLOCKSIZE=5248000 # 5MB (dot will be printed per block)
 
     # Note: this defines the formats install-module can read
     #       formats install-module creates is defined in 
@@ -159,7 +160,7 @@ class TarInfo(BasicInfo):
 
         self.files = tarinfo_files
 
-    def check(self):
+    def check(self, progress=False):
         """Check tarball consistency"""
         files = self.files
 
@@ -169,6 +170,7 @@ class TarInfo(BasicInfo):
         size_files = 0
         file_count = 0
         uniq_dir = None
+        dots_shown = 0
         for info in t:
             file_count += 1
             size_files += info.size
@@ -180,6 +182,11 @@ class TarInfo(BasicInfo):
                 uniq_dir = info.name
             elif uniq_dir is not None and not info.name.startswith(uniq_dir):
                 uniq_dir = None
+            if progress:
+                dots_to_show = t.offset / self.BLOCKSIZE
+                if dots_to_show > dots_shown:
+                    sys.stdout.write("." * (dots_to_show - dots_shown))
+                    dots_shown = dots_to_show
 
         # Now determine the current position in the tar file
         tar_end_of_data_pos = t.fileobj.tell()
@@ -409,9 +416,9 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         # CHECK FOR CONSISTENCY
 
         sys.stdout.write("Checking consistency %s: " % self.file)
-        errors = self.fileinfo.check()
+        errors = self.fileinfo.check(progress=True)
 
-        print "done"
+        print ", done"
         # Valid file
         return errors is None
 
@@ -444,8 +451,8 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             if prev_file:
                 # validate the previous file
                 prev_fileinfo = TarInfo(prev_file)
-                sys.stdout.write(" - Checking previous tarball")
-                prev_errors = prev_fileinfo.check()
+                sys.stdout.write(" - Checking previous tarball: ")
+                prev_errors = prev_fileinfo.check(progress=True)
                 print ", done"
                 if prev_errors:
                     # only diff against the previous version is there are no errors
@@ -508,10 +515,9 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                     created_files.append(f.name)
                     f2.append(f)
 
-                BLOCKSIZE=5248000 # 5MB (dot will be printed per block)
                 f1 = self.FORMATS[self.format](self.file, 'rb')
                 while 1:
-                    buf = f1.read(BLOCKSIZE)
+                    buf = f1.read(self.BLOCKSIZE)
                     if not buf:
                         break
                     for fdst in f2:
