@@ -16,6 +16,8 @@ import lzma # pyliblzma
 from optparse import OptionParser
 from email.mime.text import MIMEText
 import smtplib
+import json
+import tempfile
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -34,6 +36,8 @@ import semi_rdf
 
 
 
+DEBUG=True
+#DEBUG=False
 GROUP='ftpadmin'
 LDAP_BASE='ou=modules,dc=gnome,dc=org'
 re_file = re.compile(r'^(?P<module>.*?)[_-](?:(?P<oldversion>([0-9]+[\.])*[0-9]+)-)?(?P<version>([0-9]+[\.\-])*[0-9]+)\.(?P<format>(?:tar\.|diff\.)?[a-z][a-z0-9]*)$')
@@ -109,8 +113,14 @@ def human_size(size):
 
     return fmt % (size/float(lim/2**10), suf)
 
+class BasicInfo(object):
+    GROUPID = None
 
-class TarInfo(object):
+    FTPROOT='/ftp/pub/GNOME'
+    URLROOT='http://download.gnome.org'
+
+
+class TarInfo(BasicInfo):
 
     def __init__(self, path, files=set()):
         self.path = path
@@ -174,8 +184,8 @@ class TarInfo(object):
         self.uniq_dir = None
 
 
-class ModuleInfo(object):
-    FTPROOT='/ftp/pub/GNOME'
+class ModuleInfo(BasicInfo):
+    JSONVERSION = 0
 
     def __init__(self, modulename):
         self.module = modulename
@@ -207,7 +217,24 @@ class ModuleInfo(object):
         info = {}
         majmins = {}
 
-        if force_refresh or not os.path.exists(self.jsonfile):
+        if not os.path.exists(self.jsonfile):
+            force_refresh = True
+
+        if not force_refresh:
+            json_ver, json_info = json.load(open(self.jsonfile, 'r'))[:2]
+            if json_ver == self.JSONVERSION:
+                info = json_info
+            elif json_ver > self.JSONVERSION:
+                print "ERROR: Json newer than supported version, ignoring json"
+                force_refresh=True
+            else:
+                force_refresh=True
+
+        if DEBUG and not force_refresh:
+            print "DEBUG: Forcing refresh of json (debug mode)"
+            force_refresh = True
+
+        if force_refresh:
             curdir = os.getcwd()
             try:
                 # Ensures paths are relative to the FTPROOT
@@ -228,9 +255,6 @@ class ModuleInfo(object):
                             info.setdefault(version, {})[format] = os.path.join(root, filename)
             finally:
                 os.chdir(curdir)
-        else:
-            # XXX - actually load the json file..
-            pass
 
         # XXX - maybe remove versions which lack tar.*
 
@@ -287,13 +311,12 @@ class ModuleInfo(object):
         if self.module is None: return False
 
         info = self.info
-        #self.info = info
+        json.dump((self.JSONVERSION, info), open(self.jsonfile, 'w'))
+        if self.GROUPID is not None:
+            os.chown(self.jsonfile, -1, self.GROUPID)
 
 
-class InstallModule(object):
-    FTPROOT='/ftp/pub/GNOME'
-    URLROOT='http://download.gnome.org'
-
+class InstallModule(BasicInfo):
     FORMATS = ('tar.gz', 'tar.bz2')
 
     def __init__(self, file):
@@ -355,8 +378,10 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         # Don't allow an existing tarball to be overwritten
         if os.path.exists(os.path.join(self.destination, self.basename)):
             print """ERROR: %s already exists in the archive!""" % self.basename
-            # XXX - continuing anyway
-            #return False
+            if DEBUG:
+                print "DEBUG: Continuing anyway in debug mode"
+            else:
+                return False
 
         # XXX - verify if tarball is being installed by a maintainer
 
@@ -498,6 +523,8 @@ script to gnome-sysadmin@gnome.org. Thanks."""
 
 
 
+
+
 l = None
 def get_module_info(module):
     global l # evil
@@ -527,6 +554,7 @@ if __name__ == "__main__":
         print 'ERROR: Script requires membership of the %s group' % GROUP
         sys.exit(1)
 
+    BasicInfo.GROUPID = groupid
 
     for file in tarballs:
         handler = InstallModule(file)
