@@ -848,7 +848,7 @@ if __name__ == "__main__":
         print 'FATAL: Please inform gnome-sysadmin@gnome.org!'
         sys.exit(1)
 
-    if groupid is None or groupid not in os.getgroups():
+    if groupid is None or (os.getgid() != groupid and groupid not in os.getgroups()):
         print 'FATAL: Script requires membership of the %s group' % GROUP
         sys.exit(1)
 
@@ -864,7 +864,7 @@ Report bugs to gnome-sysadmin@gnome.org"""
     parser.add_option("-f", "--force", action="store_true", dest="clobber",
                               help="Overwrite the original tarball")
     parser.add_option("-s", "--section", type="choice", choices=SECTIONS,
-                              help="Section to install the file to")
+                              help="Section to install the file to [default: %default]")
     parser.add_option("-u", "--unattended", action="store_true",
             help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
             "will not provide any extra information to help you avoid an invalid " +
@@ -877,7 +877,7 @@ Report bugs to gnome-sysadmin@gnome.org"""
     tarballs = [file for file in args if os.path.exists(file)]
 
     if not len(tarballs):
-        parser.print_usage()
+        parser.print_help()
         sys.exit(2)
 
     old_mask = os.umask(0002)
