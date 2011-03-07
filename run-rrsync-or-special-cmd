@@ -12,6 +12,8 @@ use File::Glob ':glob';
 # You may configure these values to your liking.  See also the section
 # of options if you want to disable any options that rsync accepts.
 use constant RSYNC => '/usr/bin/rsync';
+use constant SUDO => '/usr/bin/sudo';
+use constant INSTALL_MODULE => '/usr/local/bin/py-install-module';
 use constant LOGFILE => '/tmp/rrsync.log';
 
 my $Usage = <<EOM;
@@ -38,6 +40,12 @@ die "$0: Restricted directory does not exist!\n" if $subdir ne '/' && !-d $subdi
 
 my $command = $ENV{SSH_ORIGINAL_COMMAND};
 die "$0: Not invoked via sshd\n$Usage"	unless defined $command;
+
+if ( $command =~ s/^install-module\s+// ) {
+    my @im_opts = ('-g', 'ftpadmin', INSTALL_MODULE, '--sudo')
+    exec(SUDO, @im_opts) or die "exec(install-module) failed!";
+}
+
 die "$0: SSH_ORIGINAL_COMMAND='$command' is not rsync\n" unless $command =~ s/^rsync\s+//;
 die "$0: --server option is not first\n" unless $command =~ /^--server\s/;
 our $am_sender = $command =~ /^--server\s+--sender\s/; # Restrictive on purpose!
