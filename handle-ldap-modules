@@ -223,6 +223,7 @@ it probably requires some other setting.""")
         self.UID_TO_CN = {}
         self.UID_TO_NR = {}
         self.VCS_UIDS = set(self._get_uids_from_group('gnomecvs') + self._get_uids_from_group('gnomevcs'))
+        self.FTPBASIC_UIDS = set(self._get_uids_from_group('ftpbasic'))
 
         l = self._ldap
         results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount", ('uid', 'cn', 'mail', 'userPassword', 'uidNumber'))
@@ -257,7 +258,7 @@ it probably requires some other setting.""")
                     break
                 else:
                     group_info = group_data[0][1]
-                    return group_info['memberUid']
+                    return group_info.get('memberUid', [])
         except ldap.LDAPError, e:
             print e
             sys.exit(1)
@@ -290,7 +291,7 @@ it probably requires some other setting.""")
             for uid in uids:
                 UID_TO_MODULES.setdefault(uid, set()).add(modname)
 
-        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, MODULE_TO_DN)
+        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, MODULE_TO_DN, self.FTPBASIC_UIDS)
         return self._maint_ldap
 
 
@@ -468,13 +469,35 @@ it probably requires some other setting.""")
                 s.sendmail('accounts@gnome.org', [mail], mime.as_string())
         finally:
             os.umask(prevmask)
- 
+
+    def update_ldap_ftpbasic(self, vcs_users, change=True, remove=False, verbose=False):
+        """Updates LDAP module
+
+        Used to synchronize information from VCS/l10n."""
+        ldap_uids, ldap_modules, ldap_desc, ldap_dn, ldap_ftpbasic = self.get_maintainer_data_ldap()
+        l = self._ldap
+
+        if not change: remove = False
+        if not change: verbose=True
+
+        dn = 'cn=%s,ou=groups,dc=gnome,dc=org' % escape_dn_chars('ftpbasic')
+
+        vcs_ftpbasic  = set(vcs_users.keys())
+
+        if ldap_ftpbasic != vcs_ftpbasic:
+            ldif_entry = ldap.modlist.modifyModlist({'memberUid': list(ldap_ftpbasic)},
+                    {'memberUid': list(vcs_ftpbasic)})
+            if verbose:
+                print "C:", dn, ldif_entry
+            if change:
+                l.modify_s(dn,ldif_entry)
+
 
     def update_ldap_modules(self, vcs_modules, vcs_descs, change=True, remove=False, verbose=False):
         """Updates LDAP module
 
         Used to synchronize information from VCS/l10n."""
-        ldap_uids, ldap_modules, ldap_desc, ldap_dn = self.get_maintainer_data_ldap()
+        ldap_uids, ldap_modules, ldap_desc, ldap_dn, ftpbasic = self.get_maintainer_data_ldap()
         l = self._ldap
 
         if not change: remove = False
@@ -608,6 +631,7 @@ if __name__ == '__main__':
         print_invalid(INVALID, True, "Mismatch between email addresses (DOAP vs LDAP):")
 
         m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff, remove=True, verbose=True)
+        m.update_ldap_ftpbasic(vcs_data[0], change=False, remove=False, verbose=True)
 
         uids_give_passwd = set(vcs_data[0].keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
