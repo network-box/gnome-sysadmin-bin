@@ -41,7 +41,7 @@ die "$0: Restricted directory does not exist!\n" if $subdir ne '/' && !-d $subdi
 my $command = $ENV{SSH_ORIGINAL_COMMAND};
 die "$0: Not invoked via sshd\n$Usage"	unless defined $command;
 
-if ( $command =~ s/^install-module\s+// ) {
+if ( $command =~ s/^install-module(?:\s+|$)// ) {
     my @im_opts = ('-g', 'ftpadmin', INSTALL_MODULE, '--sudo');
     exec(SUDO, @im_opts) or die "exec(install-module) failed!";
 }
