@@ -307,8 +307,9 @@ class TarInfo(BasicInfo):
 class ModuleInfo(BasicInfo):
     JSONVERSION = 0
 
-    def __init__(self, modulename):
+    def __init__(self, modulename, section=DEFAULT_SECTION):
         self.module = modulename
+        self.section = section
 
         # Determine maintainers
         self.maintainers = []
@@ -317,7 +318,7 @@ class ModuleInfo(BasicInfo):
             if len(data):
                 self.maintainers = data[0][1]['maintainerUid']
 
-            self.jsonfile = os.path.join(self.FTPROOT, 'sources', self.module, '%s.json' % self.module)
+            self.jsonfile = os.path.join(self.FTPROOT, self.section, self.module, '%s.json' % self.module)
 
         self.read_json()
 
@@ -361,7 +362,7 @@ class ModuleInfo(BasicInfo):
             try:
                 # Ensures paths are relative to the FTPROOT
                 os.chdir(self.FTPROOT)
-                top = os.path.join('sources', self.module)
+                top = os.path.join(self.section, self.module)
                 for root, dirs, files in os.walk(top, topdown=False):
                     for filename in files:
                         r = re_file.match(filename)
@@ -447,7 +448,7 @@ class InstallModule(BasicInfo):
 
     INSTALL_FORMATS = ('tar.gz', 'tar.bz2')
 
-    def __init__(self, file):
+    def __init__(self, file, section=DEFAULT_SECTION):
         self.file = file
 
         self.uid = os.getuid()
@@ -457,6 +458,7 @@ class InstallModule(BasicInfo):
         if self.who == "":
             self.who = self.pw.pw_name
 
+        self.section = section
         self.dirname, self.basename = os.path.split(file)
         self.fileinfo = TarInfo(file)
 
@@ -466,9 +468,9 @@ class InstallModule(BasicInfo):
             self.version = self.fileinfo.version
             self.format = self.fileinfo.format
 
-            self.destination = '%s/sources/%s/%s' % (self.FTPROOT, self.fileinfo.module, self.majmin)
+            self.destination = '%s/%s/%s/%s' % (self.FTPROOT, self.section, self.fileinfo.module, self.majmin)
 
-        self.moduleinfo = ModuleInfo(self.fileinfo.module)
+        self.moduleinfo = ModuleInfo(self.fileinfo.module, section=self.section)
         self.prevversion = get_latest_version(self.moduleinfo.versions, self.version)
 
 
@@ -480,7 +482,7 @@ class InstallModule(BasicInfo):
  Destination: %s/""" % (self.module, self.version, self.prevversion or 'N/A', self.destination)
 
         # Check if the module directory already exists. If not, the module name might contain a typo
-        if not os.path.isdir('%s/sources/%s' % (self.FTPROOT, self.module)):
+        if not os.path.isdir('%s/%s/%s' % (self.FTPROOT, self.section, self.module)):
             print """
 WARNING: %s is not present in the archive!
          Are you sure that it is new and/or the correct module name?""" % self.module
@@ -756,7 +758,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             print ""
             print "Your tarball will appear in the following location on ftp.gnome.org:"
             print ""
-            print "  %s" % "/".join((self.URLROOT, 'sources', self.module, self.majmin, ""))
+            print "  %s" % "/".join((self.URLROOT, self.section, self.module, self.majmin, ""))
             print ""
             print "It is important to retain the trailing slash for compatibility with"
             print "broken http clients, and to use http as it is less taxing on the server."
