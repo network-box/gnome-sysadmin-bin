@@ -631,7 +631,7 @@ if __name__ == '__main__':
         print_invalid(INVALID, True, "Mismatch between email addresses (DOAP vs LDAP):")
 
         m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff, remove=True, verbose=True)
-        m.update_ldap_ftpbasic(vcs_data[0], change=False, remove=False, verbose=True)
+        m.update_ldap_ftpbasic(vcs_data[0], change=change_stuff, remove=True, verbose=True)
 
         uids_give_passwd = set(vcs_data[0].keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
