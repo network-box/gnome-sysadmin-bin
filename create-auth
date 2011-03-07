@@ -29,6 +29,7 @@ def get_md5sum_hash():
 GNOMEGIT=0
 TRANSLATION_USER=0
 MANGO=0
+RRSYNC=0
 ## first you must open a connection to the server
 try:
     l = ldap.open("ldap-back")
@@ -113,6 +114,7 @@ def build_user_hash(group_list):
     global GNOMEGIT
     global TRANSLATION_USER
     global MANGO
+    global RRSYNC
 
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
     wheel = set(get_uids_from_wheel())
@@ -125,6 +127,8 @@ def build_user_hash(group_list):
         users.update(get_uids_from_group(group))
     if GNOMEGIT or MANGO:
         gnomevcs_users = set(get_uids_from_group ('gnomecvs') + get_uids_from_group ('gnomevcs')) - users
+    if RRSYNC: # XXX - HACK TO TEST MASTER-VM SETUP
+        gnomevcs_users = get_uids_from_group ('testuser') - users
     if TRANSLATION_USER:
         gnomevcs_users.update(['translations'])
 
@@ -157,6 +161,7 @@ def create_directory_structure (user_list):
     global GNOMEGIT
     global TRANSLATION_USER
     global MANGO
+    global RRSYNC
 
     base_directory_name = tempfile.mktemp ('-sshd')
     sshd_directory_name = base_directory_name + "/sshd"
@@ -181,6 +186,8 @@ def create_directory_structure (user_list):
                         file.write ('command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding,host="91.189.93.2" ')
                     elif MANGO:
                         file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwarding ")
+                    elif RRSYNC:
+                        file.write ("command=\"run-rrsync-or-special-cmd\",no-user-rc,no-pty,no-port-forwarding ")
                     else: # GNOMEGIT
                         file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
                 file.write (key)
@@ -241,6 +248,9 @@ if __name__ == '__main__':
     if '--gnomegit' in group_list:
         GNOMEGIT=1
         group_list = filter (lambda x: x != '--gnomegit', group_list)
+    if '--rrsync' in group_list:
+        RRSYNC=1
+        group_list = filter (lambda x: x != '--rrsync', group_list)
     if '--mango' in group_list:
         MANGO=1
         group_list = filter (lambda x: x != '--mango', group_list)
@@ -248,8 +258,8 @@ if __name__ == '__main__':
         TRANSLATION_USER=1
         group_list = filter (lambda x: x != '--translation-user', group_list)
 
-    if GNOMEGIT and MANGO:
-        print "--gnomegit and --mango are exclusive"
+    if (GNOMEGIT + MANGO + RRSYNC) > 1:
+        print "--gnomegit, --mango and --rsync are exclusive"
         sys.exit(1)
 
     user_list = build_user_hash (group_list)
