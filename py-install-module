@@ -337,6 +337,7 @@ class ModuleInfo(BasicInfo):
 
         info = {}
         majmins = {}
+        ignored = {}
         changed = False
 
         if not os.path.exists(self.jsonfile):
@@ -374,10 +375,14 @@ class ModuleInfo(BasicInfo):
                             version = fileinfo['version']
                             format = fileinfo['format']
 
-                            if module != self.module:
+                            if module == self.module:
+                                info.setdefault(version, {})[format] = os.path.join(root, filename)
                                 continue
 
-                            info.setdefault(version, {})[format] = os.path.join(root, filename)
+                        # If we arrive here, it means we ignored the file for some reason
+                        if root not in ignored:
+                            ignored[root] = []
+                        ignored[root].append(filename)
             finally:
                 os.chdir(curdir)
 
@@ -394,6 +399,10 @@ class ModuleInfo(BasicInfo):
         self.info = info
         self.majmin = majmins
         self.versions = sorted(info, version_cmp)
+        self.ignored = ignored
+
+#        if DEBUG:
+#            pprint.pprint(ignored)
 
         if changed:
             # save the new information
@@ -439,7 +448,7 @@ class ModuleInfo(BasicInfo):
         if self.module is None: return False
 
         info = self.info
-        json.dump((self.JSONVERSION, info), open(self.jsonfile, 'w'))
+        json.dump((self.JSONVERSION, info, self.versions), open(self.jsonfile, 'w'))
         if self.GROUPID is not None:
             os.chown(self.jsonfile, -1, self.GROUPID)
 
@@ -872,6 +881,9 @@ Report bugs to gnome-sysadmin@gnome.org"""
         sys.exit(2)
 
     old_mask = os.umask(0002)
+
+    if DEBUG:
+        print "WARNING: Running in DEBUG MODE!"
 
     for file in tarballs:
         sys.stdout.write("Checking for info about %s" % file)
