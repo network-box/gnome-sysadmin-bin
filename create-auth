@@ -127,8 +127,8 @@ def build_user_hash(group_list):
         users.update(get_uids_from_group(group))
     if GNOMEGIT or MANGO:
         gnomevcs_users = set(get_uids_from_group ('gnomecvs') + get_uids_from_group ('gnomevcs')) - users
-    if RRSYNC: # XXX - HACK TO TEST MASTER-VM SETUP
-        gnomevcs_users = set(get_uids_from_group ('testuser')) - users
+    if RRSYNC: # XXX - bit ugly to pretend they're gnomevcs users
+        gnomevcs_users = set(get_uids_from_group ('ftpbasic')) - users
     if TRANSLATION_USER:
         gnomevcs_users.update(['translations'])
 
