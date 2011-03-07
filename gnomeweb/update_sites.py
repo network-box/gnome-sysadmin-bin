@@ -211,7 +211,7 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
         # Update the original module first, then update this module
         if not update_module_real(url, real_remote_url, verbose=verbose):
             return False
-        if branch != 'master':
+        if branch != 'master' and not os.path.exists(os.path.join(moduleroot, .git)):
             try:
                 os.chdir(url)
                 git.branch(branch, 'origin/%s' %branch)
