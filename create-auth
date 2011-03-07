@@ -187,7 +187,7 @@ def create_directory_structure (user_list):
                     elif MANGO:
                         file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwarding ")
                     elif RRSYNC:
-                        file.write ("command=\"/home/admin/bin/run-rrsync-or-special-cmd\",no-user-rc,no-pty,no-port-forwarding ")
+                        file.write ("command=\"/home/admin/bin/run-rrsync-or-special-cmd /ftp/scratch\",no-user-rc,no-pty,no-port-forwarding ")
                     else: # GNOMEGIT
                         file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
                 file.write (key)

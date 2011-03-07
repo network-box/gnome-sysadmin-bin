@@ -12,7 +12,7 @@ use File::Glob ':glob';
 # You may configure these values to your liking.  See also the section
 # of options if you want to disable any options that rsync accepts.
 use constant RSYNC => '/usr/bin/rsync';
-use constant LOGFILE => 'rrsync.log';
+use constant LOGFILE => '/tmp/rrsync.log';
 
 my $Usage = <<EOM;
 Use 'command="$0 [-ro] SUBDIR"'
