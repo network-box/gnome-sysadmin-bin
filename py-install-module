@@ -210,6 +210,10 @@ class BasicInfo(object):
     # Note: this defines the formats install-module can read
     #       formats install-module creates is defined in 
     #       ModuleInstall.INSTALL_FORMATS
+    #
+    # WARNING: When extending this, make sure tarfile.TarFile
+    #          actually also supports the new compression!
+    #          See e.g. XzTarFile class
     FORMATS = {
         'tar.gz': gzip.GzipFile,
         'tar.bz2': bz2.BZ2File,
@@ -250,8 +254,6 @@ class TarInfo(BasicInfo):
         errors = {}
         files = self.files
 
-        # XXX  - this will automatically decompress bz2 and gz tarballs.. However,
-        #        xz is NOT handled. Should wrap this using self.FORMATS
         t = None
         try:
             t = tarfile.open(self.path, 'r', errors=2)
@@ -295,6 +297,9 @@ class TarInfo(BasicInfo):
             MAX_EXTRA_DATA=8192
             if test_eof_data > MAX_EXTRA_DATA:
                 errors['EXTRA_DATA'] = 'Tarball has too much extra data (expected max %s, found %s)' % (human_size(MAX_EXTRA_DATA), human_size(test_eof_data))
+
+            if not isinstance(t.fileobj, self.FORMATS.get(self.format, "")):
+                errors['WRONG_EXT'] = 'Compression used is different than what extension suggests'
 
             self.size_files = size_files
             self.file_count = file_count
