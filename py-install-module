@@ -115,6 +115,91 @@ def human_size(size):
 
     return fmt % (size/float(lim/2**10), suf)
 
+class _LZMAProxy(object):
+    """Small proxy class that enables external file object
+       support for "r:lzma" and "w:lzma" modes. This is actually
+       a workaround for a limitation in lzma module's LZMAFile
+       class which (unlike gzip.GzipFile) has no support for
+       a file object argument.
+    """
+
+    blocksize = 16 * 1024
+
+    def __init__(self, fileobj, mode):
+        self.fileobj = fileobj
+        self.mode = mode
+        self.name = getattr(self.fileobj, "name", None)
+        self.init()
+
+    def init(self):
+#        import lzma
+        self.pos = 0
+        if self.mode == "r":
+            self.lzmaobj = lzma.LZMADecompressor()
+            self.fileobj.seek(0)
+            self.buf = ""
+        else:
+            self.lzmaobj = lzma.LZMACompressor()
+
+    def read(self, size):
+        b = [self.buf]
+        x = len(self.buf)
+        while x < size:
+            raw = self.fileobj.read(self.blocksize)
+            if not raw:
+                break
+            try:
+                data = self.lzmaobj.decompress(raw)
+            except EOFError:
+                break
+            b.append(data)
+            x += len(data)
+        self.buf = "".join(b)
+
+        buf = self.buf[:size]
+        self.buf = self.buf[size:]
+        self.pos += len(buf)
+        return buf
+
+    def seek(self, pos):
+        if pos < self.pos:
+            self.init()
+        self.read(pos - self.pos)
+
+
+class XzTarFile(tarfile.TarFile):
+
+    OPEN_METH = tarfile.TarFile.OPEN_METH.copy()
+    OPEN_METH["xz"] = "xzopen"
+
+    @classmethod
+    def xzopen(cls, name, mode="r", fileobj=None, **kwargs):
+        """Open gzip compressed tar archive name for reading or writing.
+           Appending is not allowed.
+        """
+        if len(mode) > 1 or mode not in "rw":
+            raise ValueError("mode must be 'r' or 'w'")
+
+        if fileobj is not None:
+            fileobj = _LMZAProxy(fileobj, mode)
+        else:
+            fileobj = lzma.LZMAFile(name, mode)
+
+        try:
+            fileobj.read(_LZMAProxy.blocksize)
+            fileobj.seek(0)
+            t = cls.taropen(name, mode, fileobj, **kwargs)
+        except IOError:
+            raise tarfile.ReadError("not a xz file")
+        except lzma.error:
+            raise tarfile.ReadError("not a xz file")
+        t._extfileobj = False
+        return t
+
+if not hasattr(tarfile.TarFile, 'xvopen'):
+    tarfile.open = XzTarFile.open
+
+
 class BasicInfo(object):
     GROUPID = None
 
@@ -167,8 +252,10 @@ class TarInfo(BasicInfo):
 
         # XXX  - this will automatically decompress bz2 and gz tarballs.. However,
         #        xz is NOT handled. Should wrap this using self.FORMATS
-        t = tarfile.open(self.path, 'r', errors=2)
+        t = None
         try:
+            t = tarfile.open(self.path, 'r', errors=2)
+
             size_files = 0
             file_count = 0
             uniq_dir = None
@@ -214,8 +301,11 @@ class TarInfo(BasicInfo):
             self.tar_end_of_data_pos = tar_end_of_data_pos
             self.tar_end_of_file_pos = tar_end_of_file_pos
             self.uniq_dir = uniq_dir
+        except tarfile.ReadError:
+            errors['INVALID_FILE'] = 'Tarball cannot be read'
         finally:
-            t.close()
+            if t:
+                t.close()
 
         # XXX  - actually validate the tarball and return errors
         return errors
@@ -574,6 +664,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                 print "DEBUG: Not removing temporary directory: %s" % tmpdir
 
         self.inform()
+        return True
 
     def _make_tmp_file(self, tmpdir, format, constructor=open):
         fn = os.path.join(tmpdir, '%s-%s.%s' % (self.module, self.version, format))
