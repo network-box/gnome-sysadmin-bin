@@ -46,23 +46,11 @@ re_file = re.compile(r'^(?P<module>.*?)[_-](?:(?P<oldversion>([0-9]+[\.])*[0-9]+
 re_version = re.compile(r'^([0-9]+\.[0-9]+).*')
 re_who = re.compile(r' <[^>]+>$')
 
-usage = "usage: %prog [options] TARBALL"
-description = """Install new tarball to GNOME FTP master and mirrors.
+SECTIONS = (
+        'sources',
+)
+DEFAULT_SECTION='sources'
 
-Example: install-module -u metacity-2.4.1.tar.gz
-
-Report bugs to gnome-sysadmin@gnome.org"""
-
-parser = OptionParser(usage=usage, description=description)
-parser.add_option("-f", "--force", action="store_true", dest="clobber",
-                          help="Overwrite the original tarball")
-parser.add_option("-u", "--unattended", action="store_true",
-        help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
-        "will not provide any extra information to help you avoid an invalid " +
-        "(and potentially messy) installation. It is recommended that you do not " +
-        "use this unless you are *very* sure.")
-
-parser.set_defaults(clobber=False, unattended=False)
 
 def version_cmp(a, b):
     """Compares two versions
@@ -841,8 +829,39 @@ def get_module_info(module):
     return data
 
 
-
 if __name__ == "__main__":
+    try:
+        groupid = grp.getgrnam(GROUP)[2]
+    except KeyError:
+        print 'FATAL: Group %s does NOT exist!' % GROUP
+        print 'FATAL: Please inform gnome-sysadmin@gnome.org!'
+        sys.exit(1)
+
+    if groupid is None or groupid not in os.getgroups():
+        print 'FATAL: Script requires membership of the %s group' % GROUP
+        sys.exit(1)
+
+    BasicInfo.GROUPID = groupid
+
+    usage = "usage: %prog [options] TARBALL"
+    description = """Install new tarball to GNOME FTP master and mirrors.
+
+Example: install-module -u metacity-2.4.1.tar.gz
+
+Report bugs to gnome-sysadmin@gnome.org"""
+    parser = OptionParser(usage=usage, description=description)
+    parser.add_option("-f", "--force", action="store_true", dest="clobber",
+                              help="Overwrite the original tarball")
+    parser.add_option("-s", "--section", type="choice", choices=SECTIONS,
+                              help="Section to install the file to")
+    parser.add_option("-u", "--unattended", action="store_true",
+            help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
+            "will not provide any extra information to help you avoid an invalid " +
+            "(and potentially messy) installation. It is recommended that you do not " +
+            "use this unless you are *very* sure.")
+
+    parser.set_defaults(clobber=False, unattended=False, section=DEFAULT_SECTION)
+
     (options, args) = parser.parse_args()
     tarballs = [file for file in args if os.path.exists(file)]
 
@@ -851,12 +870,6 @@ if __name__ == "__main__":
         sys.exit(2)
 
     old_mask = os.umask(0002)
-    groupid = grp.getgrnam(GROUP)[2]
-    if groupid not in os.getgroups():
-        print 'ERROR: Script requires membership of the %s group' % GROUP
-        sys.exit(1)
-
-    BasicInfo.GROUPID = groupid
 
     for file in tarballs:
         sys.stdout.write("Checking for info about %s" % file)
