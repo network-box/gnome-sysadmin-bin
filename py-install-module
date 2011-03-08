@@ -305,7 +305,7 @@ class TarInfo(BasicInfo):
 
 
 class ModuleInfo(BasicInfo):
-    JSONVERSION = 0
+    JSONVERSION = 2
 
     def __init__(self, modulename, section=DEFAULT_SECTION):
         self.module = modulename
@@ -344,9 +344,10 @@ class ModuleInfo(BasicInfo):
             force_refresh = True
 
         if not force_refresh:
-            json_ver, json_info = json.load(open(self.jsonfile, 'rb'))[:2]
+            j = json.load(open(self.jsonfile, 'rb'))
+            json_ver = j[0]
             if json_ver == self.JSONVERSION:
-                info = json_info
+                json_ver, info, json_versions, ignored = j
                 if not len(info):
                     force_refresh=True
             elif json_ver > self.JSONVERSION:
@@ -355,8 +356,8 @@ class ModuleInfo(BasicInfo):
             else:
                 force_refresh=True
 
-        if DEBUG and not force_refresh:
-            force_refresh = True
+#        if DEBUG and not force_refresh:
+#            force_refresh = True
 
         if force_refresh and os.path.exists(self.FTPROOT):
             curdir = os.getcwd()
@@ -448,7 +449,7 @@ class ModuleInfo(BasicInfo):
         if self.module is None: return False
 
         info = self.info
-        json.dump((self.JSONVERSION, info, self.versions), open(self.jsonfile, 'w'))
+        json.dump((self.JSONVERSION, info, self.versions, self.ignored), open(self.jsonfile, 'w'))
         if self.GROUPID is not None:
             os.chown(self.jsonfile, -1, self.GROUPID)
 
@@ -839,8 +840,52 @@ def get_module_info(module):
 
     return data
 
+def cmd_install(options, args, parser):
+    tarballs = [file for file in args if os.path.exists(file)]
 
-if __name__ == "__main__":
+    if not len(tarballs):
+        parser.print_help()
+        sys.exit(2)
+
+    for file in tarballs:
+        sys.stdout.write("Checking for info about %s" % file)
+        handler = InstallModule(file)
+        print ", done"
+        handler.install(unattended=options.unattended)
+
+def cmd_show_info(options, args, parser):
+    import glob
+    import datetime
+    if len(args):
+        print "ERROR: This option should NOT be used in combination with tarball!"
+        parser.print_help()
+        sys.exit(2)
+
+    modules = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
+    for module in modules:
+        moduleinfo = ModuleInfo(module, options.section)
+        if len(moduleinfo.versions):
+            version= moduleinfo.versions[-1]
+        else:
+            version = ""
+        changed = ""
+        if version:
+            info = moduleinfo.info_detailed(version, 'tar.gz')
+            if info:
+                path, realpath, size, stat = info
+                changed = datetime.date.fromtimestamp(stat.st_ctime).isoformat()
+
+        print "\t".join((module, version, changed, ", ".join(moduleinfo.maintainers)))
+
+
+DEFAULT_COMMAND='install'
+COMMANDS={
+    'install': cmd_install,
+    'show-info': cmd_show_info
+}
+
+
+def main():
     try:
         groupid = grp.getgrnam(GROUP)[2]
     except KeyError:
@@ -854,7 +899,7 @@ if __name__ == "__main__":
 
     BasicInfo.GROUPID = groupid
 
-    usage = "usage: %prog [options] TARBALL"
+    usage = "usage: %prog [options] TARBALL [TARBALL ...]"
     description = """Install new tarball to GNOME FTP master and mirrors.
 
 Example: install-module -u metacity-2.4.1.tar.gz
@@ -865,28 +910,26 @@ Report bugs to gnome-sysadmin@gnome.org"""
                               help="Overwrite the original tarball")
     parser.add_option("-s", "--section", type="choice", choices=SECTIONS,
                               help="Section to install the file to [default: %default]")
+    parser.add_option("-c", "--command", type="choice", choices=COMMANDS.keys(),
+                              help="Special command to run [default: %default]")
     parser.add_option("-u", "--unattended", action="store_true",
             help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
             "will not provide any extra information to help you avoid an invalid " +
             "(and potentially messy) installation. It is recommended that you do not " +
             "use this unless you are *very* sure.")
 
-    parser.set_defaults(clobber=False, unattended=False, section=DEFAULT_SECTION)
+    parser.set_defaults(clobber=False, unattended=False, section=DEFAULT_SECTION,
+                        command=DEFAULT_COMMAND)
 
     (options, args) = parser.parse_args()
-    tarballs = [file for file in args if os.path.exists(file)]
-
-    if not len(tarballs):
-        parser.print_help()
-        sys.exit(2)
 
     old_mask = os.umask(0002)
 
     if DEBUG:
         print "WARNING: Running in DEBUG MODE!"
 
-    for file in tarballs:
-        sys.stdout.write("Checking for info about %s" % file)
-        handler = InstallModule(file)
-        print ", done"
-        handler.install(unattended=options.unattended)
+    COMMANDS[options.command](options, args, parser)
+
+
+if __name__ == "__main__":
+    main()
