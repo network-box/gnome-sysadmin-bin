@@ -356,9 +356,6 @@ class ModuleInfo(BasicInfo):
             else:
                 force_refresh=True
 
-#        if DEBUG and not force_refresh:
-#            force_refresh = True
-
         if force_refresh and os.path.exists(self.FTPROOT):
             curdir = os.getcwd()
             try:
@@ -668,6 +665,10 @@ script to gnome-sysadmin@gnome.org. Thanks."""
             else:
                 print "DEBUG: Not removing temporary directory: %s" % tmpdir
 
+        sys.stdout.write(" - Updating known versions")
+        self.moduleinfo.refresh()
+        print ", done"
+
         self.inform()
         return True
 
@@ -759,7 +760,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         print ", done"
 
         sys.stdout.write(" - Adding new version to GNOME Bugzilla")
-        cmd = ['/usr/bin/curl', '-L', 'https://bugzilla.gnome.org/add-version.cgi?%s|%s' % (self.module, self.version)]
+        cmd = ['/usr/bin/curl', '-q', '-L', 'https://bugzilla.gnome.org/add-version.cgi?%s|%s' % (self.module, self.version)]
         self._call_cmd(cmd)
 
         sys.stdout.write(" - Triggering ftp.gnome.org update")
@@ -877,11 +878,17 @@ def cmd_show_info(options, args, parser):
 
         print "\t".join((module, version, changed, ", ".join(moduleinfo.maintainers)))
 
+def cmd_sudo(options, args, parser):
+    print "ERROR: Not yet implemented!"
+    sys.exit(2)
+
+
 
 DEFAULT_COMMAND='install'
 COMMANDS={
     'install': cmd_install,
-    'show-info': cmd_show_info
+    'show-info': cmd_show_info,
+    'sudo': cmd_sudo
 }
 
 
