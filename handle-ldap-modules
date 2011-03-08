@@ -359,11 +359,11 @@ it probably requires some other setting.""")
                     continue
 
                 uid = maint.find_property((self.GNOME, u'userid'))
-                if uid.__class__.__name__ != "unicode":
+                if not isinstance(uid, basestring):
                     continue
 
                 name = maint.find_property((self.FOAF, u'name'))
-                if name.__class__.__name__ != "unicode":
+                if not isinstance(name, basestring):
                     continue
 
                 email = maint.find_property((self.FOAF, u'mbox'))
