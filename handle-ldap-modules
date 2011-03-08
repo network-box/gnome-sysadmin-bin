@@ -541,8 +541,8 @@ it probably requires some other setting.""")
                     print "A:", dn, ldif_entry
                 if change:
                     l.add_s(dn, ldif_entry)
-            elif (modname in ldap_modules and vcs_modules[modname].symmetric_difference(ldap_modules[modname])
-                  modname in vcs_tarballs and vcs_tarballs[modname].symmetric_difference(ldap_tarballs[modname])):
+            elif ((modname in ldap_modules and vcs_modules[modname].symmetric_difference(ldap_modules[modname])) \
+                  or (modname in vcs_tarballs and vcs_tarballs[modname].symmetric_difference(ldap_tarballs[modname]))):
                 oldattrs = {
                     'maintainerUid': list(ldap_modules[modname]),
                     'tarballName': list(ldap_tarballs[modname])
