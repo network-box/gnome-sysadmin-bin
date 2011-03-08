@@ -516,7 +516,7 @@ it probably requires some other setting.""")
             dn = ldap_dn.get(modname, 'cn=%s,ou=modules,dc=gnome,dc=org' % escape_dn_chars(modname))
             maints = vcs_modules[modname]
 
-            if len(modname) > 14:
+            if len(modname) > 40:
                 continue
 
             if modname not in ldap_modules: # add
