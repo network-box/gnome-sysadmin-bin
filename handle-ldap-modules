@@ -121,6 +121,7 @@ class Mango(object):
     GNOME = "http://api.gnome.org/doap-extensions#"
 
     GNOME_REPO = 'git://git.gnome.org/'
+    GNOME_FTP = 'http://download.gnome.org/sources/'
 
     EMAIL_TEMPLATE = string.Template("""Hello $cn,
 
@@ -275,23 +276,26 @@ it probably requires some other setting.""")
         MODULE_TO_UIDS = {}
         MODULE_TO_DN = {}
         MODULE_TO_DESC = {}
+        MODULE_TO_TARBALLS = {}
 
         l = self._ldap
-        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "(objectClass=gnomeModule)", ('cn', 'description','maintainerUid'))
+        results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "(objectClass=gnomeModule)", ('cn', 'description','maintainerUid','tarballName'))
         for entry in results:
             id = entry[0]
             attr = entry[1]
 
             modname = attr['cn'][0]
             uids = attr['maintainerUid']
+            tarballs = attr.get('tarballName', [])
 
             MODULE_TO_DN[modname] = id
             MODULE_TO_DESC[modname] = attr['description'][0]
             MODULE_TO_UIDS.setdefault(modname, set()).update(uids)
+            MODULE_TO_TARBALLS.setdefault(modname, set()).update(tarballs)
             for uid in uids:
                 UID_TO_MODULES.setdefault(uid, set()).add(modname)
 
-        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, MODULE_TO_DN, self.FTPBASIC_UIDS)
+        self._maint_ldap = (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, MODULE_TO_DN, MODULE_TO_TARBALLS, self.FTPBASIC_UIDS)
         return self._maint_ldap
 
 
@@ -302,6 +306,7 @@ it probably requires some other setting.""")
         MODULE_TO_DESC = {}
         INVALID = {}
         ONCE_VALID = {}
+        MODULE_TO_TARBALLS = {}
 
         # Get l10n coordinators from damned-lies
         root = et.fromstring(get_remote_file("http://l10n.gnome.org/teams/?format=xml"))
@@ -344,6 +349,10 @@ it probably requires some other setting.""")
 
             if not modname:
                 continue
+
+            tarballs = [str(download)[len(self.GNOME_FTP):].split('/')[0] for download in node.find_properties((self.DOAP, u'download-page')) \
+                        if isinstance(download, semi_rdf.UrlResource) and str(download).startswith(self.GNOME_FTP)]
+            MODULE_TO_TARBALLS.setdefault(modname, set()).update(tarballs)
 
             for maint in node.find_properties((self.DOAP, u'maintainer')):
                 if not isinstance(maint, semi_rdf.Node):
@@ -406,7 +415,7 @@ it probably requires some other setting.""")
                 else:
                     ONCE_VALID[uid] = [email, name, is_valid_uid, is_valid_email]
 
-        return (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, INVALID, ONCE_VALID)
+        return (UID_TO_MODULES, MODULE_TO_UIDS, MODULE_TO_DESC, MODULE_TO_TARBALLS, INVALID, ONCE_VALID)
 
 
     def set_passwds(self, uids):
@@ -474,7 +483,7 @@ it probably requires some other setting.""")
         """Updates LDAP module
 
         Used to synchronize information from VCS/l10n."""
-        ldap_uids, ldap_modules, ldap_desc, ldap_dn, ldap_ftpbasic = self.get_maintainer_data_ldap()
+        ldap_uids, ldap_modules, ldap_desc, ldap_dn, ldap_tarballs, ldap_ftpbasic = self.get_maintainer_data_ldap()
         l = self._ldap
 
         if not change: remove = False
@@ -493,11 +502,11 @@ it probably requires some other setting.""")
                 l.modify_s(dn,ldif_entry)
 
 
-    def update_ldap_modules(self, vcs_modules, vcs_descs, change=True, remove=False, verbose=False):
+    def update_ldap_modules(self, vcs_modules, vcs_descs, vcs_tarballs, change=True, remove=False, verbose=False):
         """Updates LDAP module
 
         Used to synchronize information from VCS/l10n."""
-        ldap_uids, ldap_modules, ldap_desc, ldap_dn, ftpbasic = self.get_maintainer_data_ldap()
+        ldap_uids, ldap_modules, ldap_desc, ldap_dn, ldap_tarballs, ftpbasic = self.get_maintainer_data_ldap()
         l = self._ldap
 
         if not change: remove = False
@@ -515,9 +524,10 @@ it probably requires some other setting.""")
                     'cn': modname,
                     'sn': modname,
                     'description': vcs_descs.get(modname, '%s module' % modname),
-                    'maintainerUid': list(vcs_modules[modname])
+                    'maintainerUid': list(vcs_modules[modname]),
+                    'tarballName': list(vcs_tarballs[modname])
                 }
-                
+
                 classes = ['gnomeModule', 'inetOrgPerson']
                 # XXX - Fucking ugly hack
                 if modname.startswith('l10n-') and modname in vcs_descs:
@@ -525,16 +535,24 @@ it probably requires some other setting.""")
                     entry['localizationTeam'] = ' '
 
                 entry['objectClass'] = classes
-                
 
                 ldif_entry = ldap.modlist.addModlist(entry)
                 if verbose:
                     print "A:", dn, ldif_entry
                 if change:
                     l.add_s(dn, ldif_entry)
-            elif modname in ldap_modules and vcs_modules[modname].symmetric_difference(ldap_modules[modname]):
-                ldif_entry = ldap.modlist.modifyModlist({'maintainerUid': list(ldap_modules[modname])},
-                                             {'maintainerUid': list(vcs_modules[modname])})
+            elif modname in ldap_modules \
+                 and (vcs_modules[modname].symmetric_difference(ldap_modules[modname]) \
+                      or vcs_tarballs[modname].symmetric_difference(ldap_tarballs[modname]))
+                oldattrs = {
+                    'maintainerUid': list(ldap_modules[modname]),
+                    'tarballName': list(ldap_tarballs[modname])
+                }
+                newattrs = {
+                    'maintainerUid': list(vcs_modules[modname]),
+                    'tarballName': list(vcs_tarballs[modname])
+                }
+                ldif_entry = ldap.modlist.modifyModlist(oldattrs, newattrs)
                 if verbose:
                     print "C:", dn, ldif_entry
                 if change:
@@ -621,19 +639,15 @@ if __name__ == '__main__':
     if cmd == 'sync' or cmd == 'show-diffs':
         change_stuff = cmd == 'sync'
 
-        vcs_data = m.get_maintainer_data_vcs()
-
-        desc_vcs = vcs_data[2]
-        INVALID = vcs_data[3]
-        ONCE_VALID = vcs_data[4]
+        vcs_uids, vcs_modules, vcs_descs, vcs_tarballs, INVALID, ONCE_VALID = m.get_maintainer_data_vcs()
 
         print_invalid(INVALID, False, "Invalid uids:")
         print_invalid(INVALID, True, "Mismatch between email addresses (DOAP vs LDAP):")
 
-        m.update_ldap_modules(vcs_data[1], vcs_data[2], change=change_stuff, remove=True, verbose=True)
-        m.update_ldap_ftpbasic(vcs_data[0], change=change_stuff, remove=True, verbose=True)
+        m.update_ldap_modules(vcs_modules, vcs_descs, vcs_tarballs, change=change_stuff, remove=True, verbose=True)
+        m.update_ldap_ftpbasic(vcs_uids, change=change_stuff, remove=True, verbose=True)
 
-        uids_give_passwd = set(vcs_data[0].keys()).difference(m.UID_TO_PW.keys())
+        uids_give_passwd = set(vcs_uids.keys()).difference(m.UID_TO_PW.keys())
         if uids_give_passwd:
             print "UIDs to give/reset passwords:"
             print ", ".join(uids_give_passwd)
@@ -663,7 +677,7 @@ if __name__ == '__main__':
             passwds = m.set_passwds(uids)
             m.store_passwds(passwds)
     elif cmd =='ldap-maints':
-        ldap_uids, ldap_modules, ldap_desc, ldap_dn = m.get_maintainer_data_ldap()
+        ldap_uids, ldap_modules, ldap_desc, ldap_dn, ldap_tarballs, ftpbasic = m.get_maintainer_data_ldap()
 
         for uid in sorted(ldap_uids.keys()):
             print uid, ", ".join(ldap_uids[uid])
