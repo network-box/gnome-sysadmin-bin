@@ -3,7 +3,7 @@
 # mirror the archive.
 
 if [ "`whoami`" != gnomeftp ] ; then
-    cd / && exec sudo -n -u gnomeftp /usr/local/bin/signal-ftp-sync "$@"
+    cd / && exec sudo -n -u gnomeftp -i /home/admin/secret/gnomeftp/id_rsa /usr/local/bin/signal-ftp-sync "$@"
 fi
 
 signal () {
