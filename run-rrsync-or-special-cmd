@@ -42,7 +42,7 @@ my $command = $ENV{SSH_ORIGINAL_COMMAND};
 die "$0: Not invoked via sshd\n$Usage"	unless defined $command;
 
 if ( $command =~ s/^install-module(?:\s+|$)// ) {
-    my @im_opts = ('-g', 'ftpadmin', INSTALL_MODULE, '--sudo');
+    my @im_opts = ('-g', 'ftpadmin', INSTALL_MODULE, '-c sudo');
     exec(SUDO, @im_opts) or die "exec(install-module) failed!";
 }
 
