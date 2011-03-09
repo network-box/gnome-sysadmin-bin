@@ -282,7 +282,7 @@ class TarInfo(BasicInfo):
                 errors['UNIQ_DIR'] = 'Files not in the correct directory (expected %s, found %s)' % (test_uniq_dir, uniq_dir)
 
             test_eof_data = (tar_end_of_file_pos - tar_end_of_data_pos)
-            MAX_EXTRA_DATA=8192
+            MAX_EXTRA_DATA=10240
             if test_eof_data > MAX_EXTRA_DATA:
                 errors['EXTRA_DATA'] = 'Tarball has too much extra data (expected max %s, found %s)' % (human_size(MAX_EXTRA_DATA), human_size(test_eof_data))
 
@@ -876,15 +876,28 @@ def cmd_sudo(options, parser):
     print "ERROR: Not yet implemented!"
     sys.exit(2)
 
+def cmd_gnome_news(options, parser):
+    print ""
 
+def cmd_validate_tarballs(options, parser):
+    print options.module, options.section
+    moduleinfo = ModuleInfo(options.module, section=options.section)
+    for version in moduleinfo.versions:
+        print "Version: %s" % version
+        for format in BasicInfo.FORMATS:
+            info = moduleinfo.info_detailed(version, format)
+            if info is not None:
+                path, realpath, size, stat = info
 
-DEFAULT_COMMAND='install'
-COMMANDS={
-    'install': cmd_install,
-    'show-info': cmd_show_info,
-    'sudo': cmd_sudo
-}
-
+                prev_fileinfo = TarInfo(realpath)
+                sys.stdout.write(" - Checking %s: " % format)
+                errors = prev_fileinfo.check(progress=True)
+                if errors:
+                    print ", FAILED"
+                    for k, v in errors.iteritems():
+                        print "ERROR: %s" % v
+                else:
+                    print ", success"
 
 def main():
     try:
@@ -906,11 +919,10 @@ def main():
     epilog="""Report bugs to gnome-sysadmin@gnome.org"""
     parser = argparse.ArgumentParser(description=description,epilog=epilog)
 
-    parser.add_argument("-s", "--section", choices=SECTIONS,
-                              help="Section to install the file to")
 
+    # SUBPARSERS
     subparsers = parser.add_subparsers(title='subcommands')
-
+    #   install
     parser_install = subparsers.add_parser('install', help='install a module to %s' % BasicInfo.URLROOT)
     parser_install.add_argument("-f", "--force", action="store_true", dest="clobber",
                               help="Overwrite the original tarball")
@@ -920,12 +932,33 @@ def main():
             "(and potentially messy) installation. It is recommended that you do not " +
             "use this unless you are *very* sure.")
     parser_install.add_argument('tarball', nargs='+', help='Tarball(s) to install')
-    parser_install.set_defaults(func=cmd_install, clobber=False, unattended=False)
-
+    parser_install.add_argument("-s", "--section", choices=SECTIONS,
+                              help="Section to install the file to")
+    parser_install.set_defaults(
+        func=cmd_install, clobber=False, unattended=False, section=DEFAULT_SECTION
+    )
+    #   show-info
     parser_show_info = subparsers.add_parser('show-info', help='show module information')
     parser_show_info.set_defaults(func=cmd_show_info)
+    #   sudo
+    parser_sudo = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
+    parser_sudo.set_defaults(func=cmd_sudo)
+    #   gnome-news
+    parser_gnome_news = subparsers.add_parser('gnome-news', help='show news between two GNOME versions')
+    parser_gnome_news.add_argument('suite', metavar='SUITE', help='Suite to check (e.g. core or apps)')
+    parser_gnome_news.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
+    parser_gnome_news.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
+    parser_gnome_news.set_defaults(func=cmd_gnome_news)
+    #   validate-tarballs
+    parser_validate_tarballs = subparsers.add_parser('validate-tarballs', help='validate all tarballs for a given module')
+    parser_validate_tarballs.add_argument("-s", "--section", choices=SECTIONS,
+                              help="Section to install the file to")
+    parser_validate_tarballs.add_argument('module', help='Module to validate')
+    parser_validate_tarballs.set_defaults(func=cmd_validate_tarballs, section=DEFAULT_SECTION)
 
-    parser.set_defaults(section=DEFAULT_SECTION)
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(2)
 
     options = parser.parse_args()
 
