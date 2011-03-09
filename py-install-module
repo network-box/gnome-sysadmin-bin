@@ -17,7 +17,7 @@ import gzip
 import bz2
 import lzma # pyliblzma
 import subprocess
-from optparse import OptionParser
+import argparse
 from email.mime.text import MIMEText
 import json
 try:
@@ -46,9 +46,9 @@ re_file = re.compile(r'^(?P<module>.*?)[_-](?:(?P<oldversion>([0-9]+[\.])*[0-9]+
 re_version = re.compile(r'^([0-9]+\.[0-9]+).*')
 re_who = re.compile(r' <[^>]+>$')
 
-SECTIONS = (
+SECTIONS = [
         'sources',
-)
+]
 DEFAULT_SECTION='sources'
 
 
@@ -656,8 +656,6 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         #            os.makedirs(self.destination, 042775) # drwxrwsr-x
                 # XXX - install the tarball
                 # XXX - change ownership of the tarball
-                # XXX - refresh version information
-                # self.moduleinfo.refresh(force_refresh=True)
         finally:
             # cleanup temporary directory
             if not DEBUG:
@@ -841,8 +839,8 @@ def get_module_info(module):
 
     return data
 
-def cmd_install(options, args, parser):
-    tarballs = [file for file in args if os.path.exists(file)]
+def cmd_install(options, parser):
+    tarballs = [file for file in options.tarball if os.path.exists(file)]
 
     if not len(tarballs):
         parser.print_help()
@@ -854,13 +852,9 @@ def cmd_install(options, args, parser):
         print ", done"
         handler.install(unattended=options.unattended)
 
-def cmd_show_info(options, args, parser):
+def cmd_show_info(options, parser):
     import glob
     import datetime
-    if len(args):
-        print "ERROR: This option should NOT be used in combination with tarball!"
-        parser.print_help()
-        sys.exit(2)
 
     modules = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
     for module in modules:
@@ -878,7 +872,7 @@ def cmd_show_info(options, args, parser):
 
         print "\t".join((module, version, changed, ", ".join(moduleinfo.maintainers)))
 
-def cmd_sudo(options, args, parser):
+def cmd_sudo(options, parser):
     print "ERROR: Not yet implemented!"
     sys.exit(2)
 
@@ -907,35 +901,40 @@ def main():
     BasicInfo.GROUPID = groupid
 
     usage = "usage: %prog [options] TARBALL [TARBALL ...]"
-    description = """Install new tarball to GNOME FTP master and mirrors.
+    description = """Install new tarball(s) to GNOME FTP master and make it available on the mirrors."""
 
-Example: install-module -u metacity-2.4.1.tar.gz
+    epilog="""Report bugs to gnome-sysadmin@gnome.org"""
+    parser = argparse.ArgumentParser(description=description,epilog=epilog)
 
-Report bugs to gnome-sysadmin@gnome.org"""
-    parser = OptionParser(usage=usage, description=description)
-    parser.add_option("-f", "--force", action="store_true", dest="clobber",
+    parser.add_argument("-s", "--section", choices=SECTIONS,
+                              help="Section to install the file to")
+
+    subparsers = parser.add_subparsers(title='subcommands')
+
+    parser_install = subparsers.add_parser('install', help='install a module to %s' % BasicInfo.URLROOT)
+    parser_install.add_argument("-f", "--force", action="store_true", dest="clobber",
                               help="Overwrite the original tarball")
-    parser.add_option("-s", "--section", type="choice", choices=SECTIONS,
-                              help="Section to install the file to [default: %default]")
-    parser.add_option("-c", "--command", type="choice", choices=COMMANDS.keys(),
-                              help="Special command to run [default: %default]")
-    parser.add_option("-u", "--unattended", action="store_true",
+    parser_install.add_argument("-u", "--unattended", action="store_true",
             help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
             "will not provide any extra information to help you avoid an invalid " +
             "(and potentially messy) installation. It is recommended that you do not " +
             "use this unless you are *very* sure.")
+    parser_install.add_argument('tarball', nargs='+', help='Tarball(s) to install')
+    parser_install.set_defaults(func=cmd_install, clobber=False, unattended=False)
 
-    parser.set_defaults(clobber=False, unattended=False, section=DEFAULT_SECTION,
-                        command=DEFAULT_COMMAND)
+    parser_show_info = subparsers.add_parser('show-info', help='show module information')
+    parser_show_info.set_defaults(func=cmd_show_info)
 
-    (options, args) = parser.parse_args()
+    parser.set_defaults(section=DEFAULT_SECTION)
+
+    options = parser.parse_args()
 
     old_mask = os.umask(0002)
 
     if DEBUG:
         print "WARNING: Running in DEBUG MODE!"
 
-    COMMANDS[options.command](options, args, parser)
+    options.func(options, parser)
 
 
 if __name__ == "__main__":
