@@ -18,6 +18,7 @@ import bz2
 import lzma # pyliblzma
 import subprocess
 import argparse
+import errno
 from email.mime.text import MIMEText
 import json
 try:
@@ -939,7 +940,9 @@ def main():
     )
     #   show-info
     parser_show_info = subparsers.add_parser('show-info', help='show module information')
-    parser_show_info.set_defaults(func=cmd_show_info)
+    parser_show_info.add_argument("-s", "--section", choices=SECTIONS,
+                              help="Section to install the file to")
+    parser_show_info.set_defaults(func=cmd_show_info, section=DEFAULT_SECTION)
     #   sudo
     parser_sudo = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
     parser_sudo.set_defaults(func=cmd_sudo)
@@ -967,7 +970,19 @@ def main():
     if DEBUG:
         print "WARNING: Running in DEBUG MODE!"
 
-    options.func(options, parser)
+    try:
+        options.func(options, parser)
+    except KeyboardInterrupt:
+        print('Interrupted')
+        sys.exit(1)
+    except EOFError:
+        print('EOF')
+        sys.exit(1)
+    except IOError, e:
+        if e.errno != errno.EPIPE:
+            raise
+        sys.exit(0)
+
 
 
 if __name__ == "__main__":
