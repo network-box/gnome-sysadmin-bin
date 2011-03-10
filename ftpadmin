@@ -33,14 +33,14 @@ script_dir = os.path.dirname(script_path) + '/../gitadmin-bin'
 sys.path.insert(0, '/home/admin/gitadmin-bin')
 sys.path.insert(0, script_dir)
 
-
 # Lives inside gitadmin-bin
 import semi_rdf
 
-
-
 DEBUG=True
-#DEBUG=False
+# Protection, only ovitters should be using debug mode:
+if os.environ['USER'] != 'ovitters':
+    DEBUG=False
+
 GROUP='ftpadmin'
 LDAP_BASE='ou=modules,dc=gnome,dc=org'
 re_file = re.compile(r'^(?P<module>.*?)[_-](?:(?P<oldversion>([0-9]+[\.])*[0-9]+)-)?(?P<version>([0-9]+[\.\-])*[0-9]+)\.(?P<format>(?:tar\.|diff\.)?[a-z][a-z0-9]*)$')
@@ -194,7 +194,7 @@ class BasicInfo(object):
 
     FTPROOT='/ftp/pub/GNOME'
     URLROOT='http://download.gnome.org'
-    BLOCKSIZE=5248000 # 5MB (dot will be printed per block)
+    BLOCKSIZE=2097152 # 2MB (dot will be printed per block)
 
     # Note: this defines the formats install-module can read
     #       formats install-module creates is defined in 
@@ -485,7 +485,8 @@ class InstallModule(BasicInfo):
 
     def confirm_install(self):
 
-        print """      Module: %s
+        print """
+      Module: %s
      Version: %s   (previous version: %s)
  Destination: %s/""" % (self.module, self.version, self.prevversion or 'N/A', self.destination)
 
@@ -500,8 +501,7 @@ Install %s? [Y/n]""" % self.module,
         response = raw_input()
 
         if response != '' and response[0] != 'y' and response[0] != 'Y':
-            print """Module installation cancelled. Please report any problems with this
-script to gnome-sysadmin@gnome.org. Thanks."""
+            print """Module installation cancelled."""
 
             return False
 
@@ -524,7 +524,7 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         # XXX - verify if tarball is being installed by a maintainer
 
         # CHECK FOR CONSISTENCY
-        sys.stdout.write("Checking consistency %s: " % self.file)
+        sys.stdout.write(" - Checking consistency: ")
         errors = self.fileinfo.check(progress=True)
         if not errors:
             print ", done"
@@ -537,23 +537,14 @@ script to gnome-sysadmin@gnome.org. Thanks."""
         return len(errors) == 0
 
     def install(self, unattended=False):
+        print "Preparing installation of %s:" % self.basename
         # Validate the file
         if not self.validate():
             return False
 
 
-        # Ask user if tarball should be installed
-        if not unattended:
-            if not self.confirm_install():
-                return False
-
-
-#        for k, v in self.__dict__.iteritems():
-#            print k, v
-
         tmpdir = tempfile.mkdtemp(prefix='install_module')
         try:
-            print "Creating new files:"
             created_files = []
             # do we have a previous version?
             prev_errors = True # pretend there are error unless proved otherwise
@@ -652,6 +643,11 @@ script to gnome-sysadmin@gnome.org. Thanks."""
                 cmd.extend([os.path.basename(fn) for fn in created_files if os.path.isfile(fn)])
                 subprocess.call(cmd, stdout=f, cwd=tmpdir)
             print ", done"
+
+            # Ask user if tarball should be installed
+            if not unattended:
+                if not self.confirm_install():
+                    return False
 
         #        if not os.path.isdir(self.destination):
         #            os.makedirs(self.destination, 042775) # drwxrwsr-x
@@ -847,11 +843,22 @@ def cmd_install(options, parser):
         parser.print_help()
         sys.exit(2)
 
-    for file in tarballs:
-        sys.stdout.write("Checking for info about %s" % file)
-        handler = InstallModule(file)
-        print ", done"
-        handler.install(unattended=options.unattended)
+    sys.stdout.write("Gathering information and sorting on version: ")
+    modules = []
+    for tarball in tarballs:
+        modules.append(InstallModule(tarball))
+        sys.stdout.write(".")
+    print ", done"
+    modules.sort(cmp=lambda x,y:
+                     x.module and y.module and (cmp(x.module, y.module) 
+                                                or version_cmp(x.version, y.version)))
+
+    for module in modules:
+        module.install(unattended=options.unattended)
+        print ""
+
+    print """Please report any problems while running this script to:
+https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin"""
 
 def cmd_show_info(options, parser):
     import glob
