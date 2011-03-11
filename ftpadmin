@@ -304,7 +304,7 @@ class TarInfo(BasicInfo):
         return errors
 
 class ModuleInfo(BasicInfo):
-    JSONVERSION = 2
+    JSONVERSION = 3
 
     def __init__(self, modulename, section=DEFAULT_SECTION):
         self.module = modulename
@@ -355,13 +355,14 @@ class ModuleInfo(BasicInfo):
             else:
                 force_refresh=True
 
-        if force_refresh and os.path.exists(self.FTPROOT):
+        moduledir = os.path.join(self.FTPROOT, self.section, self.module)
+        if force_refresh and os.path.exists(moduledir):
             curdir = os.getcwd()
             try:
-                # Ensures paths are relative to the FTPROOT
-                os.chdir(self.FTPROOT)
-                top = os.path.join(self.section, self.module)
-                for root, dirs, files in os.walk(top, topdown=False):
+                # Ensures paths are relative to the moduledir
+                os.chdir(moduledir)
+                for root, dirs, files in os.walk(".", topdown=False):
+                    saneroot = root[2:] if root.startswith("./") else root
                     for filename in files:
                         r = re_file.match(filename)
                         if r:
@@ -373,13 +374,13 @@ class ModuleInfo(BasicInfo):
                             format = fileinfo['format']
 
                             if module == self.module:
-                                info.setdefault(version, {})[format] = os.path.join(root, filename)
+                                info.setdefault(version, {})[format] = os.path.join(saneroot, filename)
                                 continue
 
                         # If we arrive here, it means we ignored the file for some reason
-                        if root not in ignored:
-                            ignored[root] = []
-                        ignored[root].append(filename)
+                        if saneroot not in ignored:
+                            ignored[saneroot] = []
+                        ignored[saneroot].append(filename)
             finally:
                 os.chdir(curdir)
 
@@ -417,7 +418,7 @@ class ModuleInfo(BasicInfo):
         info_formats = self.info[version]
         for f in formats:
             if f in info_formats:
-                return os.path.join(self.FTPROOT, info_formats[f])
+                return os.path.join(self.FTPROOT, self.section, self.module, info_formats[f])
 
         return None
 
@@ -539,10 +540,7 @@ Install %s? [Y/n]""" % self.module,
             created_files = []
             # do we have a previous version?
             prev_errors = True # pretend there are error unless proved otherwise
-            if self.prevversion:
-                prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar')
-            else:
-                prev_file = None
+            prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar') if self.prevversion else None
 
             if prev_file:
                 # validate the previous file
@@ -799,7 +797,7 @@ Install %s? [Y/n]""" % self.module,
         msg['Subject'] = subject
         msg['From'] = '"%s" <install-module@master.gnome.org>' % self.who
         msg['To'] = to
-        is headers is not None:
+        if headers is not None:
             for k, v in headers.iteritems():
                 msg[k] = v
 
@@ -863,10 +861,7 @@ def cmd_show_info(options, parser):
     modules = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
     for module in modules:
         moduleinfo = ModuleInfo(module, options.section)
-        if len(moduleinfo.versions):
-            version= moduleinfo.versions[-1]
-        else:
-            version = ""
+        version = moduleinfo.versions[-1] if len(moduleinfo.versions) else version = ""
         changed = ""
         if version:
             info = moduleinfo.info_detailed(version, 'tar.gz')
