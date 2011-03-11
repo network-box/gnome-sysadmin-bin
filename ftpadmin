@@ -303,7 +303,6 @@ class TarInfo(BasicInfo):
 
         return errors
 
-
 class ModuleInfo(BasicInfo):
     JSONVERSION = 2
 
@@ -403,17 +402,17 @@ class ModuleInfo(BasicInfo):
             # save the new information
             self.write_json()
 
-    def determine_file(self, version, format):
+    def determine_file(self, version, format, fuzzy=True):
         """Determine file using version and format
 
-        Might return a compressed version of the given format.
-
-        Returns None if format cannot be found"""
+        If fuzzy is set, possibly return a compressed version of the given
+        format."""
         if version not in self.info:
             return None
 
         formats = [format]
-        formats.extend(("%s.%s" % (format, compression) for compression in ("gz", "bz2", "xz")))
+        if fuzzy and not "." in format:
+            formats.extend(("%s.%s" % (format, compression) for compression in ("gz", "bz2", "xz")))
 
         info_formats = self.info[version]
         for f in formats:
@@ -422,22 +421,18 @@ class ModuleInfo(BasicInfo):
 
         return None
 
-    def info_detailed(self, version, format):
+    def info_detailed(self, version, format, fuzzy=False):
         """Provides detailed information about file references by
         version and format.
 
-        Will NOT return a posibly compressed version."""
-        if version not in self.info:
+        If fuzzy is set, possibly return a compressed version of the given
+        format."""
+        realpath = self.determine_file(version, format, fuzzy)
+        if realpath is None:
             return None
 
-        info = self.info[version].get(format, None)
-        if info is None:
-            return None
-
-        realpath = os.path.join(self.FTPROOT, info)
         stat = os.stat(realpath)
         return (info, realpath, human_size(stat.st_size), stat)
-
 
     def write_json(self):
         if self.module is None: return False
