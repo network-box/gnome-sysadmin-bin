@@ -409,7 +409,7 @@ class ModuleInfo(BasicInfo):
         If fuzzy is set, possibly return a compressed version of the given
         format."""
         if version not in self.info:
-            return None
+            return None, None
 
         formats = [format]
         if fuzzy and not "." in format:
@@ -418,9 +418,10 @@ class ModuleInfo(BasicInfo):
         info_formats = self.info[version]
         for f in formats:
             if f in info_formats:
-                return os.path.join(self.FTPROOT, self.section, self.module, info_formats[f])
+                return (os.path.join(self.section, self.module, info_formats[f]),
+                        os.path.join(self.FTPROOT, self.section, self.module, info_formats[f]))
 
-        return None
+        return None, None
 
     def info_detailed(self, version, format, fuzzy=False):
         """Provides detailed information about file references by
@@ -428,12 +429,12 @@ class ModuleInfo(BasicInfo):
 
         If fuzzy is set, possibly return a compressed version of the given
         format."""
-        realpath = self.determine_file(version, format, fuzzy)
+        path, realpath = self.determine_file(version, format, fuzzy)
         if realpath is None:
             return None
 
         stat = os.stat(realpath)
-        return (info, realpath, human_size(stat.st_size), stat)
+        return (path, realpath, human_size(stat.st_size), stat)
 
     def write_json(self):
         if self.module is None: return False
@@ -540,7 +541,7 @@ Install %s? [Y/n]""" % self.module,
             created_files = []
             # do we have a previous version?
             prev_errors = True # pretend there are error unless proved otherwise
-            prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar') if self.prevversion else None
+            prev_relfile, prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar') if self.prevversion else None, None
 
             if prev_file:
                 # validate the previous file
@@ -861,7 +862,7 @@ def cmd_show_info(options, parser):
     modules = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
     for module in modules:
         moduleinfo = ModuleInfo(module, options.section)
-        version = moduleinfo.versions[-1] if len(moduleinfo.versions) else version = ""
+        version = moduleinfo.versions[-1] if len(moduleinfo.versions) else ""
         changed = ""
         if version:
             info = moduleinfo.info_detailed(version, 'tar.gz')
