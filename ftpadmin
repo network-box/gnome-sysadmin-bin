@@ -194,10 +194,10 @@ class BasicInfo(object):
 
     FTPROOT='/ftp/pub/GNOME'
     URLROOT='http://download.gnome.org'
-    BLOCKSIZE=2097152 # 2MB (dot will be printed per block)
+    BLOCKSIZE=2*1024*1024 # (dot will be printed per block for progress indication)
 
     # Note: this defines the formats install-module can read
-    #       formats install-module creates is defined in 
+    #       formats install-module creates are defined in
     #       ModuleInstall.INSTALL_FORMATS
     #
     # WARNING: When extending this, make sure tarfile.TarFile
@@ -301,7 +301,6 @@ class TarInfo(BasicInfo):
             if t:
                 t.close()
 
-        # XXX  - actually validate the tarball and return errors
         return errors
 
 
@@ -399,9 +398,6 @@ class ModuleInfo(BasicInfo):
         self.majmin = majmins
         self.versions = sorted(info, version_cmp)
         self.ignored = ignored
-
-#        if DEBUG:
-#            pprint.pprint(ignored)
 
         if changed:
             # save the new information
@@ -745,7 +741,9 @@ Install %s? [Y/n]""" % self.module,
         mail.seek(0)
         subject = '%s %s' % (self.module, self.version)
         to = "FTP Releases <ftp-release-list@gnome.org>"
-        retcode = self._send_email(mail.read(), subject, to, ['olav@vitters.nl'])
+        retcode = self._send_email(mail.read(), subject, to, ['olav@vitters.nl'],
+                                   {'Reply-To': 'desktop-devel-list@gnome.org'}
+        )
         print ", done"
 
         sys.stdout.write(" - Triggering GNOME library update")
@@ -800,12 +798,15 @@ Install %s? [Y/n]""" % self.module,
         return True
 
 
-    def _send_email(self, contents, subject, to, smtp_to):
+    def _send_email(self, contents, subject, to, smtp_to, headers=None):
         """Send an email"""
         msg = MIMEText(contents, _charset='utf-8')
         msg['Subject'] = subject
         msg['From'] = '"%s" <install-module@master.gnome.org>' % self.who
         msg['To'] = to
+        is headers is not None:
+            for k, v in headers.iteritems():
+                msg[k] = v
 
         if DEBUG:
             smtp_to = ['olav@vitters.nl']
