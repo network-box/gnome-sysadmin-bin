@@ -54,6 +54,12 @@ DEFAULT_SECTION='sources'
 SUITES = [
         'core',
         'apps',
+        'platform',
+        'desktop',
+        'bindings',
+        'admin',
+        'devtools',
+        'mobile',
 ]
 DEFAULT_SUITE=SUITES[0]
 
@@ -951,15 +957,40 @@ def cmd_validate_tarballs(options, parser):
                     print ", success"
 
 
-def cmd_release_diff(options, parser):
+def cmd_release_diff(options, parser, header=None):
     oldversion = SuiteInfo(options.suite, options.oldversion)
     newversion = SuiteInfo(options.suite, options.newversion)
+
+    did_header = False
 
     modules = set()
     modules.update(oldversion.versions.keys())
     modules.update(newversion.versions.keys())
     for module in sorted(modules):
-        print "%-25s %-10s %-10s" % (module, oldversion.versions.get(module, ('None',))[-1], newversion.versions.get(module, ('None',))[-1])
+        oldmodulever = oldversion.versions.get(module, ('-none-',))[-1]
+        newmodulever = newversion.versions.get(module, ('-none-',))[-1]
+
+        if newmodulever == oldmodulever:
+            newmodulever = '-same-'
+        elif options.same:
+            # Only show modules which are the same
+            continue
+
+        if not did_header and header:
+            did_header = True
+            print header
+            print ""
+        print "%-25s %-10s %-10s" % (module, oldmodulever, newmodulever)
+
+    if did_header:
+        print ""
+
+def cmd_simple_diff(options, parser):
+    for suite in SUITES:
+        options.suite = suite
+
+        cmd_release_diff(options, parser, header="== %s ==" % suite)
+
 
 def main():
     try:
@@ -987,7 +1018,7 @@ def main():
     #   install
     subparser = subparsers.add_parser('install', help='install a module to %s' % BasicInfo.URLROOT)
     subparser.add_argument("-f", "--force", action="store_true", dest="clobber",
-                              help="Overwrite the original tarball")
+                           help="Overwrite the original tarball")
     subparser.add_argument("-u", "--unattended", action="store_true",
             help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
             "will not provide any extra information to help you avoid an invalid " +
@@ -995,14 +1026,14 @@ def main():
             "use this unless you are *very* sure.")
     subparser.add_argument('tarball', nargs='+', help='Tarball(s) to install')
     subparser.add_argument("-s", "--section", choices=SECTIONS,
-                              help="Section to install the file to")
+                           help="Section to install the file to")
     subparser.set_defaults(
         func=cmd_install, clobber=False, unattended=False, section=DEFAULT_SECTION
     )
     #   show-info
     subparser = subparsers.add_parser('show-info', help='show module information')
     subparser.add_argument("-s", "--section", choices=SECTIONS,
-                              help="Section to install the file to")
+                           help="Section to install the file to")
     subparser.set_defaults(func=cmd_show_info, section=DEFAULT_SECTION)
     #   sudo
     subparser = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
@@ -1016,17 +1047,27 @@ def main():
     #   validate-tarballs
     subparser = subparsers.add_parser('validate-tarballs', help='validate all tarballs for a given module')
     subparser.add_argument("-s", "--section", choices=SECTIONS,
-                              help="Section to install the file to")
+                           help="Section to install the file to")
     subparser.add_argument('module', help='Module to validate')
     subparser.set_defaults(func=cmd_validate_tarballs, section=DEFAULT_SECTION)
 
     # release-diff
     subparser = subparsers.add_parser('release-diff', help='show differences between two GNOME suite versions')
     subparser.add_argument("-s", "--suite", choices=SUITES,
-                            help='Suite to compare')
+                           help='Suite to compare')
+    subparser.add_argument("--same", action="store_true",
+                           help='Only show modules which have not changed')
     subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
     subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
     subparser.set_defaults(func=cmd_release_diff, suite=DEFAULT_SUITE)
+    # simple-diff
+    subparser = subparsers.add_parser('simple-diff', help='Show differences between two GNOME versions in all suites')
+    subparser.add_argument("--same", action="store_true",
+                           help='Only show modules which have not changed')
+    subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
+    subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
+    subparser.set_defaults(func=cmd_simple_diff)
+
 
     if len(sys.argv) == 1:
         parser.print_help()
