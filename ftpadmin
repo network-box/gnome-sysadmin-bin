@@ -303,39 +303,21 @@ class TarInfo(BasicInfo):
 
         return errors
 
-class ModuleInfo(BasicInfo):
-    JSONVERSION = 3
+class DirectoryInfo(BasicInfo):
+    JSONVERSION = 4
 
-    def __init__(self, modulename, section=DEFAULT_SECTION):
-        self.module = modulename
-        self.section = section
-
-        # Determine maintainers
-        self.maintainers = []
-        if self.module:
-            data = get_module_info(self.module)
-            if len(data):
-                self.maintainers = data[0][1]['maintainerUid']
-
-            self.jsonfile = os.path.join(self.FTPROOT, self.section, self.module, '%s.json' % self.module)
+    def __init__(self, relpath, limit_module=None):
+        self.relpath = relpath
+        self.module = limit_module
+        self.jsonfile = os.path.join(self.FTPROOT, relpath, 'info.json')
 
         self.read_json()
 
     def refresh(self):
-        if self.module is None: return False
-
         self.read_json(force_refresh=True)
 
     def read_json(self, force_refresh=False):
-        if self.module is None:
-            self.info = {}
-            self.majmin = {}
-            self.versions = []
-
-            return False
-
         info = {}
-        majmins = {}
         ignored = {}
         changed = False
 
@@ -355,12 +337,12 @@ class ModuleInfo(BasicInfo):
             else:
                 force_refresh=True
 
-        moduledir = os.path.join(self.FTPROOT, self.section, self.module)
-        if force_refresh and os.path.exists(moduledir):
+        absdir = os.path.join(self.FTPROOT, self.relpath)
+        if force_refresh and os.path.exists(absdir):
             curdir = os.getcwd()
             try:
                 # Ensures paths are relative to the moduledir
-                os.chdir(moduledir)
+                os.chdir(absdir)
                 for root, dirs, files in os.walk(".", topdown=False):
                     saneroot = root[2:] if root.startswith("./") else root
                     for filename in files:
@@ -373,8 +355,14 @@ class ModuleInfo(BasicInfo):
                             version = fileinfo['version']
                             format = fileinfo['format']
 
-                            if module == self.module:
-                                info.setdefault(version, {})[format] = os.path.join(saneroot, filename)
+                            if module not in info:
+                                info[module] = {}
+
+                            if version not in info[module]:
+                                info[module][version] = {}
+
+                            if self.module is None or module == self.module:
+                                info[module][version][format] = os.path.join(saneroot, filename)
                                 continue
 
                         # If we arrive here, it means we ignored the file for some reason
@@ -386,36 +374,35 @@ class ModuleInfo(BasicInfo):
 
         # XXX - maybe remove versions which lack tar.*
 
-        # Group versions by major and minor number
-        for version in info:
-            majmin = re_version.sub(r'\1', version)
-            if majmin not in majmins:
-                majmins[majmin] = set()
-
-            majmins[majmin].add(version)
-
-        self.info = info
-        self.majmin = majmins
-        self.versions = sorted(info, version_cmp)
-        self.ignored = ignored
+        self._info = info
+        versions = {}
+        if self.module:
+            versions[self.module] = []
+        for module in info.keys():
+            versions[module] = sorted(info[module], version_cmp)
+        self._versions = versions
+        self._ignored = ignored
 
         if changed:
             # save the new information
             self.write_json()
 
-    def determine_file(self, version, format, fuzzy=True):
+    def determine_file(self, module, version, format, fuzzy=True):
         """Determine file using version and format
 
         If fuzzy is set, possibly return a compressed version of the given
         format."""
-        if version not in self.info:
+        if module not in self._info:
+            return None, None
+
+        if version not in self._info[module]:
             return None, None
 
         formats = [format]
         if fuzzy and not "." in format:
             formats.extend(("%s.%s" % (format, compression) for compression in ("gz", "bz2", "xz")))
 
-        info_formats = self.info[version]
+        info_formats = self._info[module][version]
         for f in formats:
             if f in info_formats:
                 return (os.path.join(self.section, self.module, info_formats[f]),
@@ -423,13 +410,13 @@ class ModuleInfo(BasicInfo):
 
         return None, None
 
-    def info_detailed(self, version, format, fuzzy=False):
+    def info_detailed(self, module, version, format, fuzzy=False):
         """Provides detailed information about file references by
         version and format.
 
         If fuzzy is set, possibly return a compressed version of the given
         format."""
-        path, realpath = self.determine_file(version, format, fuzzy)
+        path, realpath = DirectoryInfo.determine_file(self, module, version, format, fuzzy)
         if realpath is None:
             return None
 
@@ -437,12 +424,44 @@ class ModuleInfo(BasicInfo):
         return (path, realpath, human_size(stat.st_size), stat)
 
     def write_json(self):
-        if self.module is None: return False
+        with open(self.jsonfile, 'w') as f:
+            json.dump((self.JSONVERSION, self._info, self._versions, self._ignored), f)
+            if self.GROUPID is not None:
+                os.fchown(f.fileno(), -1, self.GROUPID)
 
-        info = self.info
-        json.dump((self.JSONVERSION, info, self.versions, self.ignored), open(self.jsonfile, 'w'))
-        if self.GROUPID is not None:
-            os.chown(self.jsonfile, -1, self.GROUPID)
+
+class SuiteInfo(DirectoryInfo):
+
+    def __init__(self, suite, version):
+        majmin = re_version.sub(r'\1', version)
+        relpath = os.path.join(self.section, self.majmin, self.version)
+        DirectoryInfo.__init__(self, relpath)
+
+
+class ModuleInfo(DirectoryInfo):
+
+    def __init__(self, module, section=DEFAULT_SECTION):
+        self.module = module
+        self.section = section
+
+        relpath = os.path.join(self.section, self.module)
+        DirectoryInfo.__init__(self, relpath, limit_module=module)
+
+        # Determine maintainers
+        self.maintainers = []
+        data = get_module_info(self.module)
+        if len(data):
+            self.maintainers = data[0][1]['maintainerUid']
+
+    @property
+    def versions(self):
+        return self._versions[self.module]
+
+    def determine_file(self, version, format, fuzzy=True):
+        return DirectoryInfo.determine_file(self, self.module, version, format, fuzzy)
+
+    def info_detailed(self, version, format, fuzzy=False):
+        return DirectoryInfo.info_detailed(self, self.module, version, format, fuzzy=False)
 
 
 class InstallModule(BasicInfo):
@@ -471,7 +490,9 @@ class InstallModule(BasicInfo):
 
             self.destination = '%s/%s/%s/%s' % (self.FTPROOT, self.section, self.fileinfo.module, self.majmin)
 
-        self.moduleinfo = ModuleInfo(self.fileinfo.module, section=self.section)
+            self.moduleinfo = ModuleInfo(self.fileinfo.module, section=self.section)
+        else:
+            self.moduleinfo = None
         self.prevversion = get_latest_version(self.moduleinfo.versions, self.version)
 
 
