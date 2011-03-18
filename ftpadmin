@@ -108,6 +108,24 @@ def human_size(size):
 
     return fmt % (size/float(lim/2**10), suf)
 
+def makedirs_chown(name, mode=0777, uid=-1, gid=-1):
+    """Lake os.makedirs, but also does a chown
+    """
+    head, tail = os.path.split(name)
+    if not tail:
+        head, tail = os.path.split(head)
+    if head and tail and not os.path.exists(head):
+        try:
+            makedirs_chown(head, mode, uid, gid)
+        except OSError, e:
+            # be happy if someone already created the path
+            if e.errno != errno.EEXIST:
+                raise
+        if tail == os.path.curdir:           # xxx/newdir/. exists if xxx/newdir exists
+            return
+    os.mkdir(name, mode)
+    os.chown(name, uid, gid)
+
 class _LZMAProxy(object):
     """Small proxy class that enables external file object
        support for "r:lzma" and "w:lzma" modes. This is actually
