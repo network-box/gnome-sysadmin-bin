@@ -51,7 +51,11 @@ SECTIONS = [
         'sources',
 ]
 DEFAULT_SECTION='sources'
-
+SUITES = [
+        'core',
+        'apps',
+]
+DEFAULT_SUITE=SUITES[0]
 
 def version_cmp(a, b):
     """Compares two versions
@@ -429,12 +433,20 @@ class DirectoryInfo(BasicInfo):
             if self.GROUPID is not None:
                 os.fchown(f.fileno(), -1, self.GROUPID)
 
+    @property
+    def info(self):
+        return self._info
+
+    @property
+    def versions(self):
+        return self._versions
+
 
 class SuiteInfo(DirectoryInfo):
 
     def __init__(self, suite, version):
         majmin = re_version.sub(r'\1', version)
-        relpath = os.path.join(self.section, self.majmin, self.version)
+        relpath = os.path.join(suite, majmin, version)
         DirectoryInfo.__init__(self, relpath)
 
 
@@ -920,6 +932,17 @@ def cmd_validate_tarballs(options, parser):
                 else:
                     print ", success"
 
+
+def cmd_release_diff(options, parser):
+    oldversion = SuiteInfo(options.suite, options.oldversion)
+    newversion = SuiteInfo(options.suite, options.newversion)
+
+    modules = set()
+    modules.update(oldversion.versions.keys())
+    modules.update(newversion.versions.keys())
+    for module in sorted(modules):
+        print "%-25s %-10s %-10s" % (module, oldversion.versions.get(module, ('None',))[-1], newversion.versions.get(module, ('None',))[-1])
+
 def main():
     try:
         groupid = grp.getgrnam(GROUP)[2]
@@ -944,40 +967,48 @@ def main():
     # SUBPARSERS
     subparsers = parser.add_subparsers(title='subcommands')
     #   install
-    parser_install = subparsers.add_parser('install', help='install a module to %s' % BasicInfo.URLROOT)
-    parser_install.add_argument("-f", "--force", action="store_true", dest="clobber",
+    subparser = subparsers.add_parser('install', help='install a module to %s' % BasicInfo.URLROOT)
+    subparser.add_argument("-f", "--force", action="store_true", dest="clobber",
                               help="Overwrite the original tarball")
-    parser_install.add_argument("-u", "--unattended", action="store_true",
+    subparser.add_argument("-u", "--unattended", action="store_true",
             help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
             "will not provide any extra information to help you avoid an invalid " +
             "(and potentially messy) installation. It is recommended that you do not " +
             "use this unless you are *very* sure.")
-    parser_install.add_argument('tarball', nargs='+', help='Tarball(s) to install')
-    parser_install.add_argument("-s", "--section", choices=SECTIONS,
+    subparser.add_argument('tarball', nargs='+', help='Tarball(s) to install')
+    subparser.add_argument("-s", "--section", choices=SECTIONS,
                               help="Section to install the file to")
-    parser_install.set_defaults(
+    subparser.set_defaults(
         func=cmd_install, clobber=False, unattended=False, section=DEFAULT_SECTION
     )
     #   show-info
-    parser_show_info = subparsers.add_parser('show-info', help='show module information')
-    parser_show_info.add_argument("-s", "--section", choices=SECTIONS,
+    subparser = subparsers.add_parser('show-info', help='show module information')
+    subparser.add_argument("-s", "--section", choices=SECTIONS,
                               help="Section to install the file to")
-    parser_show_info.set_defaults(func=cmd_show_info, section=DEFAULT_SECTION)
+    subparser.set_defaults(func=cmd_show_info, section=DEFAULT_SECTION)
     #   sudo
-    parser_sudo = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
-    parser_sudo.set_defaults(func=cmd_sudo)
+    subparser = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
+    subparser.set_defaults(func=cmd_sudo)
     #   gnome-news
-    parser_gnome_news = subparsers.add_parser('gnome-news', help='show news between two GNOME versions')
-    parser_gnome_news.add_argument('suite', metavar='SUITE', help='Suite to check (e.g. core or apps)')
-    parser_gnome_news.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
-    parser_gnome_news.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
-    parser_gnome_news.set_defaults(func=cmd_gnome_news)
+    subparser = subparsers.add_parser('gnome-news', help='show news between two GNOME versions')
+    subparser.add_argument('suite', metavar='SUITE', help='Suite to check (e.g. core or apps)')
+    subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
+    subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
+    subparser.set_defaults(func=cmd_gnome_news)
     #   validate-tarballs
-    parser_validate_tarballs = subparsers.add_parser('validate-tarballs', help='validate all tarballs for a given module')
-    parser_validate_tarballs.add_argument("-s", "--section", choices=SECTIONS,
+    subparser = subparsers.add_parser('validate-tarballs', help='validate all tarballs for a given module')
+    subparser.add_argument("-s", "--section", choices=SECTIONS,
                               help="Section to install the file to")
-    parser_validate_tarballs.add_argument('module', help='Module to validate')
-    parser_validate_tarballs.set_defaults(func=cmd_validate_tarballs, section=DEFAULT_SECTION)
+    subparser.add_argument('module', help='Module to validate')
+    subparser.set_defaults(func=cmd_validate_tarballs, section=DEFAULT_SECTION)
+
+    # release-diff
+    subparser = subparsers.add_parser('release-diff', help='show differences between two GNOME suite versions')
+    subparser.add_argument("-s", "--suite", choices=SUITES,
+                            help='Suite to compare')
+    subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
+    subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
+    subparser.set_defaults(func=cmd_release_diff, suite=DEFAULT_SUITE)
 
     if len(sys.argv) == 1:
         parser.print_help()
