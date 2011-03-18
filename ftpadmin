@@ -268,6 +268,9 @@ class TarInfo(BasicInfo):
 
     def check(self, progress=False):
         """Check tarball consistency"""
+        if hasattr(self, '_errors'):
+            return self._errors
+
         errors = {}
         files = self.files
 
@@ -329,7 +332,66 @@ class TarInfo(BasicInfo):
             if t:
                 t.close()
 
-        return errors
+        self._errors = errors
+        return self._errors
+
+    def diff(self, files, prev_tarinfo, constructor, progress=False):
+        diffs = {}
+        prev_errors = False
+
+        if prev_tarinfo:
+            if progress:
+                sys.stdout.write(" - Checking previous tarball: ")
+            prev_errors = prev_tarinfo.check(progress)
+            if not prev_errors:
+                if progress:
+                    print ", done"
+            else:
+                if progress:
+                    print ", failed (ignoring previous tarball!)"
+
+        for fn in files:
+            if fn not in self.file:
+                continue
+
+            if progress:
+                sys.stdout.write(" - %s" % fn)
+
+            f = constructor(fn)
+            if prev_tarinfo is not None and fn in prev_tarinfo.file:
+                context = 0
+                a = prev_tarinfo.file[fn]
+                b = self.file[fn]
+                break_for = False
+                lines = 0
+                for group in difflib.SequenceMatcher(None,a,b).get_grouped_opcodes(context):
+                    i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
+                    for tag, i1, i2, j1, j2 in group:
+                        if tag == 'replace' or tag == 'insert':
+                            lines += j2 - j1
+                            f.writelines(b[j1:j2])
+                            break_for = True
+                    if break_for:
+                        break
+                if lines > 2:
+                    diffs[fn] = f
+                    if progress:
+                        print ", done (diff, %s lines)" % lines
+                else:
+                    if progress:
+                        print ", ignored (no change)"
+                    if hasattr(f, 'name'):
+                        os.remove(f.name)
+            elif not prev_errors:
+                # succesfully read previous tarball, didn't find a 'NEWS' / 'ChangeLog'
+                # assume file has been added in this release and no diff is needed
+                f.writelines(self.file[fn])
+                diffs[fn] = f
+                print ", done (new file)"
+            else:
+                print ", ignored (previous tarball is not valid)"
+
+        return diffs
 
 class DirectoryInfo(BasicInfo):
     JSONVERSION = 4
@@ -433,8 +495,8 @@ class DirectoryInfo(BasicInfo):
         info_formats = self._info[module][version]
         for f in formats:
             if f in info_formats:
-                return (os.path.join(self.section, self.module, info_formats[f]),
-                        os.path.join(self.FTPROOT, self.section, self.module, info_formats[f]))
+                return (os.path.join(self.relpath, info_formats[f]),
+                        os.path.join(self.FTPROOT, self.relpath, info_formats[f]))
 
         return None, None
 
@@ -597,54 +659,18 @@ Install %s? [Y/n]""" % self.module,
         try:
             created_files = []
             # do we have a previous version?
-            prev_errors = True # pretend there are error unless proved otherwise
-            prev_relfile, prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar') if self.prevversion else None, None
 
+            prev_tarinfo = None
+            prev_relfile, prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar') if self.prevversion else (None, None)
             if prev_file:
-                # validate the previous file
-                prev_fileinfo = TarInfo(prev_file)
-                sys.stdout.write(" - Checking previous tarball: ")
-                prev_errors = prev_fileinfo.check(progress=True)
-                if not prev_errors:
-                    print ", done"
-                else:
-                    print ", failed (ignoring previous tarball!)"
-                    # only diff against the previous version is there are no errors
-                    prev_file = None
+                prev_tarinfo = TarInfo(prev_file)
 
-            for fn in self.fileinfo.file:
-                sys.stdout.write(" - %s" % fn)
-                with self._make_tmp_file(tmpdir, fn) as f:
-                    if prev_file is not None and fn in prev_fileinfo.file:
-                        context = 0
-                        a = prev_fileinfo.file[fn]
-                        b = self.fileinfo.file[fn]
-                        break_for = False
-                        lines = 0
-                        for group in difflib.SequenceMatcher(None,a,b).get_grouped_opcodes(context):
-                            i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
-                            for tag, i1, i2, j1, j2 in group:
-                                if tag == 'replace' or tag == 'insert':
-                                    lines += j2 - j1
-                                    f.writelines(b[j1:j2])
-                                    break_for = True
-                            if break_for:
-                                break
-                        if lines > 2:
-                            created_files.append(f.name)
-                            print ", done (diff, %s lines)" % lines
-                        else:
-                            print ", ignored (no change)"
-                            os.remove(f.name)
-                    elif not prev_errors:
-                        # succesfully read previous tarball, didn't find a 'NEWS' / 'ChangeLog'
-                        # assume file has been added in this release and no diff is needed
-                        f.writelines(self.fileinfo.file[fn])
-                        created_files.append(f.name)
-                        print ", done (new file)"
-                    else:
-                        print ", ignored (previous tarball is not valid)"
 
+            constructor = lambda fn: self._make_tmp_file(tmpdir, fn)
+            diffs = self.fileinfo.diff(self.fileinfo.file, prev_tarinfo, constructor, progress=True)
+
+            for fn, f in diffs.iteritems():
+                created_files.append(f.name)
 
             # Create tarball(s) according to INSTALL_FORMATS
             if self.format in self.INSTALL_FORMATS:
@@ -991,6 +1017,92 @@ def cmd_simple_diff(options, parser):
 
         cmd_release_diff(options, parser, header="== %s ==" % suite)
 
+def cmd_release_news(options, parser, header=None):
+    def moduleprint(modules, header):
+        if modules:
+            print header
+            for module in sorted(modules):
+                print " - %s " % module
+            print ""
+    oldversion = SuiteInfo(options.suite, options.oldversion)
+    newversion = SuiteInfo(options.suite, options.newversion)
+
+    oldmodules = set(oldversion.versions.keys())
+    newmodules = set(newversion.versions.keys())
+    modules = set()
+    modules.update(oldmodules)
+    modules.update(newmodules)
+
+    addedmodules = newmodules - oldmodules
+    removedmodules = oldmodules - newmodules
+    samemodules = oldmodules & newmodules
+    moduleprint(addedmodules, "The following modules have been added in this release")
+    moduleprint(removedmodules, "The following modules have been removed in this release")
+
+    TYPE_ERR = 3
+    TYPE_NO_NEWS = 2
+    TYPE_NEWS = 1
+    newstype = {}
+    news = {}
+    sameversions = set()
+    header = "The following modules have a new version"
+    did_header = False
+    for module in sorted(samemodules):
+        show_contents = True
+        newmodulever = newversion.versions.get(module, (None,))[-1]
+        new_relfile, new_file = newversion.determine_file(module, newmodulever, 'tar') if newmodulever else (None, None)
+
+        prevmodulever = oldversion.versions.get(module, (None,))[-1]
+        prev_relfile, prev_file = oldversion.determine_file(module, prevmodulever, 'tar') if prevmodulever else (None, None)
+
+        if not new_file:
+            newstype[module] = TYPE_ERR
+            continue
+
+        if newmodulever == prevmodulever:
+            sameversions.add(module)
+            continue
+
+        if not did_header:
+            print header
+            did_header=True
+        print " - %s (%s => %s)" % (module, prevmodulever or '-none-', newmodulever or '-none')
+
+
+        fn = 'NEWS'
+
+        new_tarinfo = TarInfo(new_file)
+        new_errors = new_tarinfo.check()
+        if new_errors:
+            newstype[module] = TYPE_ERR
+            continue
+
+        if fn not in new_tarinfo.file:
+            newstype[module] = TYPE_NO_NEWS
+            continue
+
+        prev_tarinfo = TarInfo(prev_file) if prev_file else None
+
+        constructor = lambda fn: StringIO()
+        diffs = new_tarinfo.diff((fn, ), prev_tarinfo, constructor, progress=False)
+
+        if fn in diffs:
+            f = diffs[fn]
+            newstype[module] = TYPE_NEWS
+            f.seek(0)
+            news[module] = f.read()
+    if did_header:
+        print ""
+
+    moduleprint(sameversions, "The following modules weren't upgraded in this release")
+    moduleprint(news, "Modules with detailed change information")
+
+    for module in sorted(news):
+        print "========================================"
+        print "  %s" % module
+        print "========================================"
+        print news[module]
+
 
 def main():
     try:
@@ -1067,6 +1179,13 @@ def main():
     subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
     subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
     subparser.set_defaults(func=cmd_simple_diff)
+    # release-news
+    subparser = subparsers.add_parser('release-news', help='show news between two GNOME suite versions')
+    subparser.add_argument("-s", "--suite", choices=SUITES,
+                           help='Suite to compare')
+    subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
+    subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
+    subparser.set_defaults(func=cmd_release_news, suite=DEFAULT_SUITE)
 
 
     if len(sys.argv) == 1:
