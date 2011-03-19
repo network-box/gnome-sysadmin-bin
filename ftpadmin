@@ -1079,9 +1079,8 @@ def cmd_release_news(options, parser, header=None):
         diffs = new_tarinfo.diff((fn, ), prev_tarinfo, constructor, progress=False)
 
         if fn in diffs:
-            f = diffs[fn]
-            f.seek(0)
-            news[module] = f.read()
+            news[module] = diffs[fn]
+            news[module].seek(0)
     if did_header:
         print ""
 
@@ -1093,7 +1092,7 @@ def cmd_release_news(options, parser, header=None):
         print "  %s" % module
         print "========================================"
         print ""
-        print news[module]
+        print news[module].read()
 
 
 def main():
