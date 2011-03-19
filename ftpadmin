@@ -44,7 +44,8 @@ if os.environ['USER'] != 'ovitters':
 GROUP='ftpadmin'
 LDAP_BASE='ou=modules,dc=gnome,dc=org'
 re_file = re.compile(r'^(?P<module>.*?)[_-](?:(?P<oldversion>([0-9]+[\.])*[0-9]+)-)?(?P<version>([0-9]+[\.\-])*[0-9]+)\.(?P<format>(?:tar\.|diff\.)?[a-z][a-z0-9]*)$')
-re_version = re.compile(r'^([0-9]+\.[0-9]+).*')
+re_majmin = re.compile(r'^([0-9]+\.[0-9]+).*')
+re_version = re.compile(r'([-.]|\d+|[^-.\d]+)')
 re_who = re.compile(r' <[^>]+>$')
 
 SECTIONS = [
@@ -71,17 +72,34 @@ def version_cmp(a, b):
       0  if a == b
       1  if a > b
 
-    Important: only supports very specific versions (all numeric, separated by
-    dots)"""
-    a_nums = a.replace('-', '.0.').split('.')
-    b_nums = b.replace('-', '.0.').split('.')
-    num_fields = min(len(a_nums), len(b_nums))
-    for i in range(0,num_fields):
-        if   int(a_nums[i]) < int(b_nums[i]):
+    Logic from Bugzilla::Install::Util::vers_cmp"""
+    A = re_version.findall(a.lstrip('0'))
+    B = re_version.findall(b.lstrip('0'))
+
+    while A and B:
+        a = A.pop(0)
+        b = B.pop(0)
+
+        if a == b:
+            continue
+        elif a == '-':
             return -1
-        elif int(a_nums[i]) > int(b_nums[i]):
+        elif b == '-':
             return 1
-    return cmp(len(a_nums), len(b_nums))
+        elif a == '.':
+            return -1
+        elif b == '.':
+            return 1
+        elif a.isdigit() and b.isdigit():
+            c = cmp(a, b) if (a.startswith('0') or b.startswith('0')) else cmp(int(a, 10), int(b, 10))
+            if c:
+                return c
+        else:
+            c = cmp(a.upper(), b.upper())
+            if c:
+                return c
+
+    return cmp(len(A), len(B))
 
 def get_latest_version(versions, max_version=None):
     """Gets the latest version number
@@ -260,7 +278,7 @@ class TarInfo(BasicInfo):
             self.module = fileinfo['module']
             self.version = fileinfo['version']
             self.format = fileinfo['format']
-            self.majmin = re_version.sub(r'\1', fileinfo['version'])
+            self.majmin = re_majmin.sub(r'\1', fileinfo['version'])
 
             for tarballname, format, formatname in self.DIFF_FILES:
                 tarinfo_files.add('%s-%s/%s' % (self.module, self.version, tarballname))
@@ -542,7 +560,7 @@ class DirectoryInfo(BasicInfo):
 class SuiteInfo(DirectoryInfo):
 
     def __init__(self, suite, version):
-        majmin = re_version.sub(r'\1', version)
+        majmin = re_majmin.sub(r'\1', version)
         relpath = os.path.join(suite, majmin, version)
         DirectoryInfo.__init__(self, relpath)
 
