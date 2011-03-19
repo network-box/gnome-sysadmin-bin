@@ -556,6 +556,10 @@ class DirectoryInfo(BasicInfo):
     def versions(self):
         return self._versions
 
+    @property
+    def ignored(self):
+        return self._ignored
+
 
 class SuiteInfo(DirectoryInfo):
 
@@ -992,6 +996,17 @@ def cmd_sudo(options, parser):
     print >>sys.stderr, "ERROR: Not yet implemented!"
     sys.exit(2)
 
+def cmd_show_ignored(options, parser):
+    if options.module == '*':
+        modules = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
+    else:
+        modules = [options.module]
+    for module in modules:
+        moduleinfo = ModuleInfo(module, section=options.section)
+        for dir, files in moduleinfo.ignored.iteritems():
+            for f in files:
+                print "/".join((module, dir, f))
+
 def cmd_validate_tarballs(options, parser):
     print options.module, options.section
     moduleinfo = ModuleInfo(options.module, section=options.section)
@@ -1184,6 +1199,12 @@ def main():
                            help="Section to install the file to")
     subparser.add_argument('module', help='Module to validate')
     subparser.set_defaults(func=cmd_validate_tarballs, section=DEFAULT_SECTION)
+    #   show-ignored
+    subparser = subparsers.add_parser('show-ignored', help='Show ignored files in a module')
+    subparser.add_argument("-s", "--section", choices=SECTIONS,
+                           help="Section")
+    subparser.add_argument('module', help='Module to check')
+    subparser.set_defaults(func=cmd_show_ignored, section=DEFAULT_SECTION)
 
     # release-diff
     subparser = subparsers.add_parser('release-diff', help='show differences between two GNOME suite versions')
