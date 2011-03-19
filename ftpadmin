@@ -574,11 +574,16 @@ class ModuleInfo(DirectoryInfo):
         relpath = os.path.join(self.section, self.module)
         DirectoryInfo.__init__(self, relpath, limit_module=module)
 
-        # Determine maintainers
-        self.maintainers = []
-        data = get_module_info(self.module)
-        if len(data):
-            self.maintainers = data[0][1]['maintainerUid']
+    @property
+    def maintainers(self):
+        if not hasattr(self, '_maintainers'):
+            # Determine maintainers
+            self._maintainers = []
+            data = get_module_info(self.module)
+            if len(data):
+                self._maintainers = data[0][1]['maintainerUid']
+
+        return self._maintainers
 
     @property
     def versions(self):
@@ -751,6 +756,8 @@ Install %s? [Y/n]""" % self.module,
                 if not self.confirm_install():
                     return False
 
+
+            print "Installing %s:" % self.basename
         #        if not os.path.isdir(self.destination):
         #            os.makedirs(self.destination, 042775) # drwxrwsr-x
                 # XXX - install the tarball
@@ -961,7 +968,7 @@ def cmd_install(options, parser):
         module.install(unattended=options.unattended)
         print ""
 
-    print """Please report any problems while running this script to:
+    print """Please report any problems to:
 https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin"""
 
 def cmd_show_info(options, parser):
