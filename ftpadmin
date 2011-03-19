@@ -1023,11 +1023,13 @@ def cmd_simple_diff(options, parser):
         cmd_release_diff(options, parser, header="== %s ==" % suite)
 
 def cmd_release_news(options, parser, header=None):
+    import textwrap
     def moduleprint(modules, header):
         if modules:
-            print header
-            for module in sorted(modules):
-                print " - %s " % module
+            print "%s:" % header
+            print textwrap.fill(", ".join(sorted(list(modules))), width=78,
+                                break_long_words=False, break_on_hyphens=False,
+                                initial_indent='   ', subsequent_indent='   ')
             print ""
     oldversion = SuiteInfo(options.suite, options.oldversion)
     newversion = SuiteInfo(options.suite, options.newversion)
@@ -1048,6 +1050,7 @@ def cmd_release_news(options, parser, header=None):
     sameversions = set()
     header = "The following modules have a new version"
     did_header = False
+    have_no_news = False
     for module in sorted(samemodules):
         show_contents = True
         newmodulever = newversion.versions.get(module, (None,))[-1]
@@ -1064,9 +1067,9 @@ def cmd_release_news(options, parser, header=None):
             continue
 
         if not did_header:
-            print header
+            print "%s:" % header
             did_header=True
-        print " - %s (%s => %s)" % (module, prevmodulever or '-none-', newmodulever or '-none')
+        sys.stdout.write(" - %s (%s => %s)" % (module, prevmodulever or '-none-', newmodulever or '-none'))
 
 
         fn = 'NEWS'
@@ -1084,11 +1087,17 @@ def cmd_release_news(options, parser, header=None):
         if fn in diffs:
             news[module] = diffs[fn]
             news[module].seek(0)
+        else:
+            have_no_news=True
+            sys.stdout.write(" (*)")
+
+        print >>sys.stdout, ""
     if did_header:
+        if have_no_news:
+            print "(*) No summarized news available"
         print ""
 
     moduleprint(sameversions, "The following modules weren't upgraded in this release")
-    moduleprint(news, "Modules with detailed change information")
 
     for module in sorted(news):
         print "========================================"
