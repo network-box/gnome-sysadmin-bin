@@ -237,6 +237,12 @@ class BasicInfo(object):
         'tar.xz': lzma.LZMAFile
     }
 
+    DIFF_FILES = [
+        # Filename in tarball, extension on ftp.gnome.org, heading name
+        ('NEWS', 'news', 'News'),
+        ('ChangeLog', 'changes', 'ChangeLog')
+    ]
+    DIFF_FILES_DICT = dict([(a,(b,c)) for a,b,c in DIFF_FILES])
 class TarInfo(BasicInfo):
 
     def __init__(self, path, files=set()):
@@ -256,8 +262,8 @@ class TarInfo(BasicInfo):
             self.format = fileinfo['format']
             self.majmin = re_version.sub(r'\1', fileinfo['version'])
 
-            tarinfo_files.add('%s-%s/ChangeLog' % (self.module, self.version))
-            tarinfo_files.add('%s-%s/NEWS' % (self.module, self.version))
+            for tarballname, format, formatname in self.DIFF_FILES:
+                tarinfo_files.add('%s-%s/%s' % (self.module, self.version, tarballname))
         else:
             self.module = None
             self.version = None
@@ -671,8 +677,8 @@ Install %s? [Y/n]""" % self.module,
                 prev_tarinfo = TarInfo(prev_file)
 
 
-            constructor = lambda fn: self._make_tmp_file(tmpdir, fn)
-            diffs = self.fileinfo.diff(self.fileinfo.file, prev_tarinfo, constructor, progress=True)
+            constructor = lambda fn: self._make_tmp_file(tmpdir, self.DIFF_FILES_DICT[fn][0])
+            diffs = self.fileinfo.diff(self.DIFF_FILES_DICT, prev_tarinfo, constructor, progress=True)
 
             for fn, f in diffs.iteritems():
                 created_files.append(f.name)
@@ -755,7 +761,7 @@ Install %s? [Y/n]""" % self.module,
     def inform(self):
         """Inform regarding the new release"""
         print "Doing notifications:"
-        if self.version not in self.moduleinfo.info:
+        if self.version not in self.moduleinfo.versions:
             return False
 
         sha256sum = {}
@@ -793,12 +799,8 @@ Install %s? [Y/n]""" % self.module,
                 print >>mail, "      size: %s" % size
                 print >>mail, ""
 
-        dump_files = [
-            ('news', 'News'),
-            ('changes', 'ChangeLog')
-        ]
         show_contents = True
-        for format, formatname in dump_files:
+        for tarballname, format, formatname in self.DIFF_FILES:
             info = self.moduleinfo.info_detailed(self.version, format)
             if info is not None:
                 path, realpath, size, stat = info
