@@ -878,7 +878,11 @@ Install %s? [Y/n]""" % self.module,
         mail.seek(0)
         subject = '%s %s' % (self.module, self.version)
         to = "FTP Releases <ftp-release-list@gnome.org>"
-        retcode = self._send_email(mail.read(), subject, to, ['olav@vitters.nl'],
+        smtp_to = ['%s@src.gnome.org' % maint for maint in self.moduleinfo.maintainers]
+        if not smtp_to:
+            smtp_to = ['release-team@gnome.org']
+        smtp_to.append('ftp-release-list@gnome.org'
+        retcode = self._send_email(mail.read(), subject, to, smtp_to,
                                    {'Reply-To': 'desktop-devel-list@gnome.org'}
         )
         print ", done"
@@ -886,7 +890,7 @@ Install %s? [Y/n]""" % self.module,
         sys.stdout.write(" - Triggering GNOME library update")
         subject = 'GNOME_GIT library-web'
         to = "gnomeweb@www.gnome.org"
-        retcode = self._send_email("forced", subject, to, ['olav@vitters.nl'])
+        retcode = self._send_email("forced", subject, to, [to])
         print ", done"
 
         sys.stdout.write(" - Adding new version to GNOME Bugzilla")
@@ -1016,6 +1020,8 @@ def cmd_show_info(options, parser):
 
 def cmd_sudo(options, parser):
     print >>sys.stderr, "ERROR: Not yet implemented!"
+    print ""
+    print os.environ['SSH_ORIGINAL_COMMAND']
     sys.exit(2)
 
 def cmd_show_ignored(options, parser):
@@ -1197,10 +1203,7 @@ def main():
     subparser.add_argument("-f", "--force", action="store_true", dest="clobber",
                            help="Overwrite the original tarball")
     subparser.add_argument("-u", "--unattended", action="store_true",
-            help="do not prompt for confirmation.\n\nNOTE: An unattended install " +
-            "will not provide any extra information to help you avoid an invalid " +
-            "(and potentially messy) installation. It is recommended that you do not " +
-            "use this unless you are *very* sure.")
+                           help="do not prompt for confirmation")
     subparser.add_argument('tarball', nargs='+', help='Tarball(s) to install')
     subparser.add_argument("-s", "--section", choices=SECTIONS,
                            help="Section to install the file to")
