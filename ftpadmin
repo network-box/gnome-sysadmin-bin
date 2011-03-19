@@ -276,7 +276,7 @@ class TarInfo(BasicInfo):
 
         t = None
         try:
-            t = tarfile.open(self.path, 'r', errors=2)
+            t = tarfile.open(self.path, 'r')
 
             size_files = 0
             file_count = 0
@@ -338,6 +338,11 @@ class TarInfo(BasicInfo):
     def diff(self, files, prev_tarinfo, constructor, progress=False):
         diffs = {}
         prev_errors = False
+
+        # Only diff if the current tarbal has at least one file to diff
+        found_files = len([fn for fn in files if fn in self.file])
+        if not found_files:
+            return diffs
 
         if prev_tarinfo:
             if progress:
@@ -422,7 +427,7 @@ class DirectoryInfo(BasicInfo):
                 if not len(info):
                     force_refresh=True
             elif json_ver > self.JSONVERSION:
-                print "ERROR: Json newer than supported version, ignoring json"
+                print >>sys.stderr, "ERROR: Json newer than supported version, ignoring json"
                 force_refresh=True
             else:
                 force_refresh=True
@@ -622,14 +627,14 @@ Install %s? [Y/n]""" % self.module,
 
     def validate(self):
         if self.module is None:
-            print 'ERROR: Unrecognized module/version/file format. Make sure to follow a sane naming scheme (MAJOR.MINOR.MICRO)'
+            print >>sys.stderr, 'ERROR: Unrecognized module/version/file format. Make sure to follow a sane naming scheme (MAJOR.MINOR.MICRO)'
             return False
 
         # Don't allow an existing tarball to be overwritten
         if os.path.exists(os.path.join(self.destination, self.basename)):
-            print """ERROR: %s already exists in the archive!""" % self.basename
+            print >>sys.stderr, """ERROR: %s already exists in the archive!""" % self.basename
             if DEBUG:
-                print "DEBUG: Continuing anyway in debug mode"
+                print >>sys.stderr, "DEBUG: Continuing anyway in debug mode"
             else:
                 return False
 
@@ -643,7 +648,7 @@ Install %s? [Y/n]""" % self.module,
         else:
             print ", failed"
             for k, v in errors.iteritems():
-                print "ERROR: %s" % v
+                print >>sys.stderr, "ERROR: %s" % v
 
         # True if there are no errors
         return len(errors) == 0
@@ -956,11 +961,8 @@ def cmd_show_info(options, parser):
         print "\t".join((module, version, changed, ", ".join(moduleinfo.maintainers)))
 
 def cmd_sudo(options, parser):
-    print "ERROR: Not yet implemented!"
+    print >>sys.stderr, "ERROR: Not yet implemented!"
     sys.exit(2)
-
-def cmd_gnome_news(options, parser):
-    print ""
 
 def cmd_validate_tarballs(options, parser):
     print options.module, options.section
@@ -1039,10 +1041,6 @@ def cmd_release_news(options, parser, header=None):
     moduleprint(addedmodules, "The following modules have been added in this release")
     moduleprint(removedmodules, "The following modules have been removed in this release")
 
-    TYPE_ERR = 3
-    TYPE_NO_NEWS = 2
-    TYPE_NEWS = 1
-    newstype = {}
     news = {}
     sameversions = set()
     header = "The following modules have a new version"
@@ -1056,7 +1054,6 @@ def cmd_release_news(options, parser, header=None):
         prev_relfile, prev_file = oldversion.determine_file(module, prevmodulever, 'tar') if prevmodulever else (None, None)
 
         if not new_file:
-            newstype[module] = TYPE_ERR
             continue
 
         if newmodulever == prevmodulever:
@@ -1074,11 +1071,6 @@ def cmd_release_news(options, parser, header=None):
         new_tarinfo = TarInfo(new_file)
         new_errors = new_tarinfo.check()
         if new_errors:
-            newstype[module] = TYPE_ERR
-            continue
-
-        if fn not in new_tarinfo.file:
-            newstype[module] = TYPE_NO_NEWS
             continue
 
         prev_tarinfo = TarInfo(prev_file) if prev_file else None
@@ -1088,7 +1080,6 @@ def cmd_release_news(options, parser, header=None):
 
         if fn in diffs:
             f = diffs[fn]
-            newstype[module] = TYPE_NEWS
             f.seek(0)
             news[module] = f.read()
     if did_header:
@@ -1101,6 +1092,7 @@ def cmd_release_news(options, parser, header=None):
         print "========================================"
         print "  %s" % module
         print "========================================"
+        print ""
         print news[module]
 
 
@@ -1108,8 +1100,8 @@ def main():
     try:
         groupid = grp.getgrnam(GROUP)[2]
     except KeyError:
-        print 'FATAL: Group %s does NOT exist!' % GROUP
-        print 'FATAL: Please inform gnome-sysadmin@gnome.org!'
+        print >>sys.stderr, 'FATAL: Group %s does NOT exist!' % GROUP
+        print >>sys.stderr, 'FATAL: Please inform gnome-sysadmin@gnome.org!'
         sys.exit(1)
 
     if groupid is None or (os.getgid() != groupid and groupid not in os.getgroups()):
@@ -1150,12 +1142,6 @@ def main():
     #   sudo
     subparser = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
     subparser.set_defaults(func=cmd_sudo)
-    #   gnome-news
-    subparser = subparsers.add_parser('gnome-news', help='show news between two GNOME versions')
-    subparser.add_argument('suite', metavar='SUITE', help='Suite to check (e.g. core or apps)')
-    subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
-    subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
-    subparser.set_defaults(func=cmd_gnome_news)
     #   validate-tarballs
     subparser = subparsers.add_parser('validate-tarballs', help='validate all tarballs for a given module')
     subparser.add_argument("-s", "--section", choices=SECTIONS,
