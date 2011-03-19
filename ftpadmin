@@ -1029,7 +1029,7 @@ def cmd_release_diff(options, parser, header=None):
             did_header = True
             print header
             print ""
-        print "%-25s %-10s %-10s" % (module, oldmodulever, newmodulever)
+        print "%-35s %-15s %s" % (module, oldmodulever, newmodulever)
 
     if did_header:
         print ""
