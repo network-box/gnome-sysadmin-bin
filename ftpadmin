@@ -597,7 +597,7 @@ class InstallModule(BasicInfo):
             self.version = self.fileinfo.version
             self.format = self.fileinfo.format
 
-            self.destination = '%s/%s/%s/%s' % (self.FTPROOT, self.section, self.fileinfo.module, self.majmin)
+            self.destination = os.path.join(self.FTPROOT, self.section, self.fileinfo.module, self.majmin)
 
             self.moduleinfo = ModuleInfo(self.fileinfo.module, section=self.section)
         else:
@@ -614,7 +614,7 @@ class InstallModule(BasicInfo):
  Destination: %s/""" % (self.module, self.version, self.prevversion or 'N/A', self.destination)
 
         # Check if the module directory already exists. If not, the module name might contain a typo
-        if not os.path.isdir('%s/%s/%s' % (self.FTPROOT, self.section, self.module)):
+        if not os.path.isdir(os.path.join(self.FTPROOT, self.section, self.module)):
             print """
 WARNING: %s is not present in the archive!
          Are you sure that it is new and/or the correct module name?""" % self.module
@@ -737,6 +737,7 @@ Install %s? [Y/n]""" % self.module,
         #            os.makedirs(self.destination, 042775) # drwxrwsr-x
                 # XXX - install the tarball
                 # XXX - change ownership of the tarball
+                # XXX - update LATEST-IS file
         finally:
             # cleanup temporary directory
             if not DEBUG:
