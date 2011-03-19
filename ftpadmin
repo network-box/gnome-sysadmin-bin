@@ -19,6 +19,7 @@ import lzma # pyliblzma
 import subprocess
 import argparse
 import errno
+import glob
 from email.mime.text import MIMEText
 import json
 try:
@@ -239,6 +240,7 @@ class BasicInfo(object):
     GROUPID = None
 
     FTPROOT='/ftp/pub/GNOME'
+    FTPROOT_DEBUG='/ftp/tmp'
     URLROOT='http://download.gnome.org'
     BLOCKSIZE=2*1024*1024 # (dot will be printed per block for progress indication)
 
@@ -625,13 +627,14 @@ class InstallModule(BasicInfo):
             self.format = self.fileinfo.format
 
             self.destination = os.path.join(self.FTPROOT, self.section, self.fileinfo.module, self.majmin)
+            if DEBUG:
+                self.destination = os.path.join(self.FTPROOT_DEBUG, self.section, self.fileinfo.module, self.majmin)
 
             self.moduleinfo = ModuleInfo(self.fileinfo.module, section=self.section)
+            self.prevversion = get_latest_version(self.moduleinfo.versions, self.version)
         else:
             self.moduleinfo = None
-        self.prevversion = get_latest_version(self.moduleinfo.versions, self.version)
-
-
+            self.module = None
 
     def confirm_install(self):
 
@@ -663,12 +666,19 @@ Install %s? [Y/n]""" % self.module,
             print >>sys.stderr, 'ERROR: Unrecognized module/version/file format. Make sure to follow a sane naming scheme (MAJOR.MINOR.MICRO)'
             return False
 
+        if self.format not in self.FORMATS:
+            print >>sys.stderr, 'ERROR: Unrecognized file format \'.%s\'' % self.format
+            return False
+
         # Don't allow an existing tarball to be overwritten
-        if os.path.exists(os.path.join(self.destination, self.basename)):
-            print >>sys.stderr, """ERROR: %s already exists in the archive!""" % self.basename
-            if DEBUG:
-                print >>sys.stderr, "DEBUG: Continuing anyway in debug mode"
-            else:
+        if not DEBUG:
+            # When debugging, only check for the exact tarball name
+            if self.version in self.fileinfo.versions:
+                print >>sys.stderr, """ERROR: %s already exists in the archive!""" % self.basename
+                return False
+        else:
+            if os.path.exists(os.path.join(self.destination, self.basename)):
+                print >>sys.stderr, """ERROR: %s already exists in the archive!""" % self.basename
                 return False
 
         # XXX - verify if tarball is being installed by a maintainer
@@ -762,17 +772,30 @@ Install %s? [Y/n]""" % self.module,
 
 
             print "Installing %s:" % self.basename
-        #        if not os.path.isdir(self.destination):
-        #            os.makedirs(self.destination, 042775) # drwxrwsr-x
-                # XXX - install the tarball
-                # XXX - change ownership of the tarball
-                # XXX - update LATEST-IS file
+
+            if not os.path.isdir(self.destination):
+                sys.stdout.write(' - Creating directory')
+                makedirs_chown(self.destination, 042775, -1, self.GROUPID or -1) # drwxrwsr-x
+                print ", done"
+            sys.stdout.write(' - Moving files: ')
+            for fn in created_files:
+                dest = os.path.join(self.destination, os.path.basename(fn))
+                shutil.move(fn, dest)
+                if self.GROUPID is not None:
+                    os.chown(dest, -1, self.GROUPID)
+                sys.stdout.write('.')
+            print ", done"
+
+            sys.stdout.write(' - Updating LATEST-IS')
+            latest = '%s-%s.%s' % (self.module, self.version, 'tar.gz')
+            if os.path.exists(os.path.join(self.destination, latest)):
+                for fn in glob.glob(os.path.join(self.destination, 'LATEST-IS-*')):
+                    os.remove(fn)
+                os.symlink(latest, os.path.join(self.destination, 'LATEST-IS-%s' % self.version))
+            print ", done"
         finally:
             # cleanup temporary directory
-            if not DEBUG:
-                shutil.rmtree(tmpdir)
-            else:
-                print "DEBUG: Not removing temporary directory: %s" % tmpdir
+            shutil.rmtree(tmpdir)
 
         sys.stdout.write(" - Updating known versions")
         self.moduleinfo.refresh()
@@ -976,7 +999,6 @@ def cmd_install(options, parser):
 https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin"""
 
 def cmd_show_info(options, parser):
-    import glob
     import datetime
 
     modules = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
