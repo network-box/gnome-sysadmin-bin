@@ -125,21 +125,22 @@ class Mango(object):
 
     EMAIL_TEMPLATE = string.Template("""Hello $cn,
 
-Mango is the system which people can use to request new GNOME accounts. The new
-system will directly mail the maintainer(s) of the responsible module / the
-language coordinator (you). With this email I'll try to explain how it will
-work.
+Mango is the system which people can use to request new GNOME accounts.
+
+You've been added as either a maintainer or a language coordinator. When Mango
+asks you to confirm to vouch for someone, you'll need to login to:
+  https://mango.gnome.org/
 
  ==> IF YOU AREN'T INTERESTED IN DETAILS, SEE END OF THE EMAIL FOR YOUR
  ==> PASSWORD
 
-Basically the process is as follows:
+The process for new accounts is:
 1. User requests account
 2. User verifies email address
 3. Mango mails maintainers / l10n coordinators
 4. Maintainer/coordinator reject/approve account request
-==> can need multiple maintainers if e.g. user requested e.g. Bugzilla
-    shell account and Git for nautilus.. in practice, this won't happen
+==> can need multiple maintainers if user requested Bugzilla shell account and
+    Git for Nautilus. In practice, this should not happen.
 5a. Mango mails Accounts Team
 5b. Mango mails progress information to the user
 6. Accounts Team sets up user in LDAP
@@ -151,16 +152,10 @@ accounts team (e.g. @gnome.org alias)
 
 What does not work:
 * This is for new accounts. It will not work if the userid already
-exists. This is planned for the future (so you can request an additional
-group).
-* You cannot change your Mango password. Sorry. See end of the email for
-how to get your password.
+exists. This is planned for the future (so you can request additional
+access/changes).
 * You cannot change your other details (SSH keys, email address). It is
 planned, but can take a while before you see it.
-* You cannot change who is maintainer of your modules. This is planned
-for the future.
-==> If you want to dicuss Mango, please use
-gnome-infrastructure@gnome.org mailing list.
 
 
 How to approve account requests:
@@ -172,9 +167,8 @@ How to approve account requests:
 * Go to https://mango.gnome.org/ and log in (see end of email for
   password)
 * You will get an overview of outstanding requests right after logging
-  in. See http://blogs.gnome.org/ovitters/files/2007/09/mango7.png. If
-  there aren't any outstanding requests, currently it only says something
-  like "Welcome $NAME" (and a log out button).
+  in. If there aren't any outstanding requests, currently it only says
+  something like "Welcome $NAME" (and a log out button).
 * Reject/approve the request(s) and click submit
   Note: Because this goes to multiple persons, you might not see the
   request even if you got an email from Mango. This means another person
@@ -183,28 +177,16 @@ How to approve account requests:
           an explanation to the user. Ideally before you click submit,
           because Mango will email the user right away.
 
-
-In case of problems:
-Please either email gnome-infrastructure@gnome.org, or file a bug:
-http://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=mango
-(sysadmin product, mango component)
-
-
 YOUR MANGO PASSWORD
-To see your mango password, do:
+To retrieve (reset) your mango password, do:
   ssh -l $uid mango.gnome.org mango
-
 Your username is same as your Git username.
 
-Note: You can only run this command once. The next time it will have
-forgotten what your password was.
 
-Note2: For those who want to try out, this allows you to use the jabber
-service (jabber.gnome.org, username is same as git/mango/etc). Please
-*enforce* SSL/TLS. Do NOT allow plain text auth! However, this is only
-intended for foundation members (it'll work currently for everyone, but
-that will not be forever). This was setup by Jeff, if it doesn't work,
-it probably requires some other setting.""")
+Note2: Your Mango password also allows you to use the jabber service
+(jabber.gnome.org, username is same as git/mango/etc). Please *enforce*
+SSL/TLS. Do NOT allow plain text auth! However, this is only intended for
+foundation members.""")
 
     def __init__(self, passwd):
         self.LDAP_PASSWD = passwd
@@ -223,8 +205,8 @@ it probably requires some other setting.""")
         self.UID_TO_MAIL = {}
         self.UID_TO_CN = {}
         self.UID_TO_NR = {}
-        self.VCS_UIDS = set(self._get_uids_from_group('gnomecvs') + self._get_uids_from_group('gnomevcs'))
-        self.FTPBASIC_UIDS = set(self._get_uids_from_group('ftpbasic'))
+        self.VCS_UIDS = set(self.get_uids_from_group('gnomecvs') + self.get_uids_from_group('gnomevcs'))
+        self.FTPBASIC_UIDS = set(self.get_uids_from_group('ftpbasic'))
 
         l = self._ldap
         results = l.search_s("dc=gnome,dc=org", ldap.SCOPE_SUBTREE, "objectClass=posixAccount", ('uid', 'cn', 'mail', 'userPassword', 'uidNumber'))
@@ -247,7 +229,7 @@ it probably requires some other setting.""")
             self.UID_TO_NR[uid] = int(attr['uidNumber'][0])
 
 
-    def _get_uids_from_group(self, group):
+    def get_uids_from_group(self, group):
         l = self._ldap
         filter = ldap.filter.filter_format("(cn=%s)", (group, ))
         try:
@@ -451,33 +433,22 @@ it probably requires some other setting.""")
 
         s = smtplib.SMTP()
         s.connect()
-        
-        try:
-            prevmask = os.umask(0177)
-                
-            for uid, passwd in passwds.iteritems():
-                if uid not in self.UID_TO_CN: continue # XXX -- warn loudly
-                
-                mail = self.UID_TO_MAIL[uid]
-                path = '/var/local/mango/%s' % uid
-                
-                f = file(path, 'w')
-                print >>f, passwd
-                f.close()
-                os.chown(path, self.UID_TO_NR[uid], -1)
 
-                mime = MIMEText(self.EMAIL_TEMPLATE.safe_substitute(
-                    uid=uid,
-                    mail=mail,
-                    cn=self.UID_TO_CN[uid],
+        for uid, passwd in passwds.iteritems():
+            if uid not in self.UID_TO_CN: continue # XXX -- warn loudly
 
-                ))
-                mime['Subject'] = 'GNOME Mango account: %s' % uid
-                mime['From'] = 'Mango <accounts@gnome.org>'
-                mime['To'] = mail
-                s.sendmail('accounts@gnome.org', [mail], mime.as_string())
-        finally:
-            os.umask(prevmask)
+            mail = self.UID_TO_MAIL[uid]
+
+            mime = MIMEText(self.EMAIL_TEMPLATE.safe_substitute(
+                uid=uid,
+                mail=mail,
+                cn=self.UID_TO_CN[uid],
+
+            ))
+            mime['Subject'] = 'GNOME Mango account: %s' % uid
+            mime['From'] = 'Mango <accounts@gnome.org>'
+            mime['To'] = mail
+            s.sendmail('accounts@gnome.org', [mail], mime.as_string())
 
     def update_ldap_ftpbasic(self, vcs_users, change=True, remove=False, verbose=False):
         """Updates LDAP module
@@ -666,6 +637,16 @@ if __name__ == '__main__':
             print 'Resetting passwords for: %s' % ', '.join(uids)
             passwds = m.set_passwds(uids)
             m.store_passwds(passwds)
+    elif cmd == 'reset-my-passwd':
+        import pwd
+
+        protected = set(self.get_uids_from_group('sysadmin') + self.get_uids_from_group('accounts') + self.get_uids_from_group('mango'))
+        uid = pwd.getpwuid(os.getuid())[0]
+        if uid in protected or uid not in m.UID_TO_PW or uid not in m.VCS_UIDS:
+            sys.exit(2)
+
+        passwds = m.set_passwds([uid])
+        print passwds[uid]
     elif cmd == 'new-passwd':
         uids = []
         for uid in sys.argv[1:]:
