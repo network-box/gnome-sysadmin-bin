@@ -640,7 +640,7 @@ if __name__ == '__main__':
     elif cmd == 'reset-my-passwd':
         import pwd
 
-        protected = set(self.get_uids_from_group('sysadmin') + self.get_uids_from_group('accounts') + self.get_uids_from_group('mango'))
+        protected = set(m.get_uids_from_group('sysadmin') + m.get_uids_from_group('accounts') + m.get_uids_from_group('mango'))
         uid = pwd.getpwuid(os.getuid())[0]
         if uid in protected or uid not in m.UID_TO_PW or uid not in m.VCS_UIDS:
             sys.exit(2)
