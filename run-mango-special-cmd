@@ -5,9 +5,7 @@
 if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
 	case "$SSH_ORIGINAL_COMMAND" in
 		"mango")
-			cat "/var/local/mango/`whoami`" 2> /dev/null
-			echo > "/var/local/mango/`whoami`" 2> /dev/null
-			exit
+			exec sudo -n -g root /home/admin/bin/handle-ldap-modules reset-my-passwd
 			;;
 	esac
 fi
