@@ -134,7 +134,7 @@ def human_size(size):
     return fmt % (size/float(lim/2**10), suf)
 
 def makedirs_chown(name, mode=0777, uid=-1, gid=-1):
-    """Lake os.makedirs, but also does a chown
+    """Like os.makedirs, but also does a chown
     """
     head, tail = os.path.split(name)
     if not tail:
@@ -150,6 +150,13 @@ def makedirs_chown(name, mode=0777, uid=-1, gid=-1):
             return
     os.mkdir(name, mode)
     os.chown(name, uid, gid)
+
+def line_input (file):
+    for line in file:
+        if line[-1] == '\n':
+            yield line[:-1]
+        else:
+            yield line
 
 class _LZMAProxy(object):
     """Small proxy class that enables external file object
@@ -222,6 +229,8 @@ class XzTarFile(tarfile.TarFile):
             fileobj = lzma.LZMAFile(name, mode)
 
         try:
+            # lzma doesn't immediately return an error
+            # try and read a bit of data to determine if it is a valid xz file
             fileobj.read(_LZMAProxy.blocksize)
             fileobj.seek(0)
             t = cls.taropen(name, mode, fileobj, **kwargs)
@@ -258,7 +267,7 @@ class BasicInfo(object):
     }
 
     DIFF_FILES = [
-        # Filename in tarball, extension on ftp.gnome.org, heading name
+        # Filename in tarball; extension on ftp.gnome.org; heading name
         ('NEWS', 'news', 'News'),
         ('ChangeLog', 'changes', 'ChangeLog')
     ]
@@ -302,6 +311,9 @@ class TarInfo(BasicInfo):
 
         t = None
         try:
+            # This automatically determines the compression method
+            # However, it does that by just trying to open it with every compression method it knows
+            # and seeing what succeeds. Which is somewhat inefficient
             t = tarfile.open(self.path, 'r')
 
             size_files = 0
@@ -329,7 +341,9 @@ class TarInfo(BasicInfo):
             tar_end_of_data_pos = t.fileobj.tell()
             # as well as the last position in the tar file
             # Note: doing a read as seeking is often not supported :-(
-            t.fileobj.read()
+            while t.fileobj.read(self.BLOCKSIZE) != '':
+                if progress:
+                    sys.stdout.write(".")
             tar_end_of_file_pos = t.fileobj.tell()
 
 
@@ -508,16 +522,16 @@ class DirectoryInfo(BasicInfo):
             # save the new information
             self.write_json()
 
-    def determine_file(self, module, version, format, fuzzy=True):
+    def determine_file(self, module, version, format, fuzzy=True, relative=False):
         """Determine file using version and format
 
         If fuzzy is set, possibly return a compressed version of the given
         format."""
         if module not in self._info:
-            return None, None
+            return None
 
         if version not in self._info[module]:
-            return None, None
+            return None
 
         formats = [format]
         if fuzzy and not "." in format:
@@ -526,10 +540,10 @@ class DirectoryInfo(BasicInfo):
         info_formats = self._info[module][version]
         for f in formats:
             if f in info_formats:
-                return (os.path.join(self.relpath, info_formats[f]),
-                        os.path.join(self.FTPROOT, self.relpath, info_formats[f]))
+                return os.path.join(self.relpath, info_formats[f]) if relative else \
+                        os.path.join(self.FTPROOT, self.relpath, info_formats[f])
 
-        return None, None
+        return None
 
     def info_detailed(self, module, version, format, fuzzy=False):
         """Provides detailed information about file references by
@@ -537,12 +551,14 @@ class DirectoryInfo(BasicInfo):
 
         If fuzzy is set, possibly return a compressed version of the given
         format."""
-        path, realpath = DirectoryInfo.determine_file(self, module, version, format, fuzzy)
-        if realpath is None:
+        relpath = DirectoryInfo.determine_file(self, module, version, format, fuzzy=fuzzy, relative=True)
+        if relpath is None:
             return None
 
+        realpath = os.path.join(self.FTPROOT, relpath)
+
         stat = os.stat(realpath)
-        return (path, realpath, human_size(stat.st_size), stat)
+        return (relpath, realpath, human_size(stat.st_size), stat)
 
     def write_json(self):
         with open(self.jsonfile, 'w') as f:
@@ -707,12 +723,8 @@ Install %s? [Y/n]""" % self.module,
         try:
             created_files = []
             # do we have a previous version?
-
-            prev_tarinfo = None
-            prev_relfile, prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar') if self.prevversion else (None, None)
-            if prev_file:
-                prev_tarinfo = TarInfo(prev_file)
-
+            prev_file = self.moduleinfo.determine_file(self.prevversion, 'tar') if self.prevversion else None
+            prev_tarinfo = TarInfo(prev_file) if prev_file else None
 
             constructor = lambda fn: self._make_tmp_file(tmpdir, self.DIFF_FILES_DICT[fn][0])
             diffs = self.fileinfo.diff(self.DIFF_FILES_DICT, prev_tarinfo, constructor, progress=True)
@@ -763,13 +775,13 @@ Install %s? [Y/n]""" % self.module,
                 cmd = ['sha256sum', '--']
                 cmd.extend([os.path.basename(fn) for fn in created_files if os.path.isfile(fn)])
                 subprocess.call(cmd, stdout=f, cwd=tmpdir)
+                created_files.append(f.name)
             print ", done"
 
             # Ask user if tarball should be installed
             if not unattended:
                 if not self.confirm_install():
                     return False
-
 
             print "Installing %s:" % self.basename
 
@@ -815,6 +827,7 @@ Install %s? [Y/n]""" % self.module,
         """Inform regarding the new release"""
         print "Doing notifications:"
         if self.version not in self.moduleinfo.versions:
+            print "ERROR: Cannot find new version?!?"
             return False
 
         sha256sum = {}
@@ -822,11 +835,10 @@ Install %s? [Y/n]""" % self.module,
 
         mail = StringIO()
 
-        info = self.moduleinfo.info_detailed(self.version, 'sha256sum')
-        if info is not None:
-            path, realpath, size, stat = info
+        realpath = self.moduleinfo.determine_file(self.version, 'sha256sum', fuzzy=False)
+        if realpath is not None:
             with open(realpath, "r") as f:
-                for line in f.read().splitlines():
+                for line in line_input(f):
                     # XXX - the checksum filed could look differently (binary indicator)
                     if '  ' in line:
                         checksum, file = line.partition('  ')[::2]
@@ -881,7 +893,7 @@ Install %s? [Y/n]""" % self.module,
         smtp_to = ['%s@src.gnome.org' % maint for maint in self.moduleinfo.maintainers]
         if not smtp_to:
             smtp_to = ['release-team@gnome.org']
-        smtp_to.append('ftp-release-list@gnome.org'
+        smtp_to.append('ftp-release-list@gnome.org')
         retcode = self._send_email(mail.read(), subject, to, smtp_to,
                                    {'Reply-To': 'desktop-devel-list@gnome.org'}
         )
@@ -907,10 +919,9 @@ Install %s? [Y/n]""" % self.module,
             print ""
             print "It is important to retain the trailing slash for compatibility with"
             print "broken http clients, and to use http as it is less taxing on the server."
-            info = self.moduleinfo.info_detailed(self.version, 'sha256sum')
-            if info is not None:
+            realpath = self.moduleinfo.determine_file(self.version, 'sha256sum', fuzzy=False)
+            if realpath is not None:
                 print ""
-                path, realpath, size, stat = info
                 with open(realpath, "r") as f:
                     shutil.copyfileobj(f, sys.stdout)
 
@@ -962,7 +973,37 @@ Install %s? [Y/n]""" % self.module,
         return p.wait()
 
 
+class InstallSuites(BasicInfo):
 
+    INSTALL_FORMATS = ('tar.gz', 'tar.bz2')
+
+    def __init__(self, file, gnomever):
+        self.file = file
+
+        self.dirname, self.basename = os.path.split(file)
+
+    def validate(self):
+        is_valid = True
+        suites = set()
+        with open(self.file, 'r') as f:
+            for line in line_input(f):
+                if line == '' or line.startswith('#'):
+                    continue
+                data = line.split(':')
+                if len(data) <> 4:
+                    print 'ERROR: Bad line in datafile: %s' % line
+                    is_valid = False
+                    continue
+
+                print line
+
+        return is_valid
+
+    def install(self, unattended=False):
+        print "Preparing installation of %s:" % self.basename
+        # Validate the file
+        if not self.validate():
+            return False
 
 
 l = None
@@ -1041,13 +1082,11 @@ def cmd_validate_tarballs(options, parser):
     for version in moduleinfo.versions:
         print "Version: %s" % version
         for format in BasicInfo.FORMATS:
-            info = moduleinfo.info_detailed(version, format)
-            if info is not None:
-                path, realpath, size, stat = info
-
-                prev_fileinfo = TarInfo(realpath)
+            realpath = moduleinfo.determine_file(version, format, fuzzy=False)
+            if realpath is not None:
+                tarinfo = TarInfo(realpath)
                 sys.stdout.write(" - Checking %s: " % format)
-                errors = prev_fileinfo.check(progress=True)
+                errors = tarinfo.check(progress=True)
                 if errors:
                     print ", FAILED"
                     for k, v in errors.iteritems():
@@ -1122,10 +1161,10 @@ def cmd_release_news(options, parser, header=None):
     for module in sorted(samemodules):
         show_contents = True
         newmodulever = newversion.versions.get(module, (None,))[-1]
-        new_relfile, new_file = newversion.determine_file(module, newmodulever, 'tar') if newmodulever else (None, None)
+        new_file = newversion.determine_file(module, newmodulever, 'tar') if newmodulever else None
 
         prevmodulever = oldversion.versions.get(module, (None,))[-1]
-        prev_relfile, prev_file = oldversion.determine_file(module, prevmodulever, 'tar') if prevmodulever else (None, None)
+        prev_file = oldversion.determine_file(module, prevmodulever, 'tar') if prevmodulever else None
 
         if not new_file:
             continue
@@ -1174,6 +1213,10 @@ def cmd_release_news(options, parser, header=None):
         print ""
         print news[module].read()
 
+def cmd_release_suites(options, parser):
+    installer = InstallSuites(options.datafile, options.newversion)
+    installer.install()
+
 
 def main():
     try:
@@ -1186,15 +1229,11 @@ def main():
     if groupid is None or (os.getgid() != groupid and groupid not in os.getgroups()):
         print 'FATAL: Script requires membership of the %s group' % GROUP
         sys.exit(1)
-
     BasicInfo.GROUPID = groupid
 
-    usage = "usage: %prog [options] TARBALL [TARBALL ...]"
     description = """Install new tarball(s) to GNOME FTP master and make it available on the mirrors."""
-
     epilog="""Report bugs to gnome-sysadmin@gnome.org"""
     parser = argparse.ArgumentParser(description=description,epilog=epilog)
-
 
     # SUBPARSERS
     subparsers = parser.add_subparsers(title='subcommands')
@@ -1254,6 +1293,11 @@ def main():
     subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
     subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
     subparser.set_defaults(func=cmd_release_news, suite=DEFAULT_SUITE)
+    # release-suites
+    subparser = subparsers.add_parser('release-suites', help='release a new GNOME version')
+    subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
+    subparser.add_argument('datafile', metavar='DATAFILE', help='file which describes which modules to include')
+    subparser.set_defaults(func=cmd_release_suites)
 
 
     if len(sys.argv) == 1:
