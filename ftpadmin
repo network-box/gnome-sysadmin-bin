@@ -985,6 +985,8 @@ class InstallSuites(BasicInfo):
     def validate(self):
         is_valid = True
         suites = set()
+        moduleversions = {}
+        modulesuites = {}
         with open(self.file, 'r') as f:
             for line in line_input(f):
                 if line == '' or line.startswith('#'):
@@ -995,7 +997,38 @@ class InstallSuites(BasicInfo):
                     is_valid = False
                     continue
 
-                print line
+                suite, module, version, subdir = data
+                suites.add(suite)
+                if module not in moduleversions:
+                    moduleversions[module] = []
+                moduleversions[module].append(version)
+
+                if module not in modulesuites:
+                    modulesuites[module] = set()
+                modulesuites[module].add(suite)
+
+        # Validate the suite
+        for suite in suites:
+            if suite not in SUITES:
+                print 'ERROR: Invalid suite: %s' % suite
+                is_valid = False
+
+        # Validate if the given module versions can be found
+        for module, versions in moduleversions.iteritems():
+            moduleinfo = ModuleInfo(module)
+            for version in versions:
+                if version not in moduleinfo.versions:
+                    print 'ERROR: Module %s doesn\'t have version %s' % (module, version)
+                    is_valid = False
+            # Module could have multiple versions, but that's pretty strange
+            if len(versions) > 1:
+                print 'WARNING: Module %s has multiple versions: %s' % (module, ", ".join(versions))
+
+        # Validate if module is not in multiple suites
+        for module, suites in modulesuites.iteritems():
+            if len(suites) > 1:
+                print 'ERROR: Module %s appears in multiple suites: %s' % (module, ", ".join(suites))
+                is_valid = False
 
         return is_valid
 
