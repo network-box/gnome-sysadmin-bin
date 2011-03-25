@@ -611,9 +611,6 @@ if __name__ == '__main__':
 
         vcs_uids, vcs_modules, vcs_descs, vcs_tarballs, INVALID, ONCE_VALID = m.get_maintainer_data_vcs()
 
-        print_invalid(INVALID, False, "Invalid uids:")
-        print_invalid(INVALID, True, "Mismatch between email addresses (DOAP vs LDAP):")
-
         m.update_ldap_modules(vcs_modules, vcs_descs, vcs_tarballs, change=change_stuff, remove=True, verbose=True)
         m.update_ldap_ftpbasic(vcs_uids, change=change_stuff, remove=True, verbose=True)
 
@@ -625,6 +622,8 @@ if __name__ == '__main__':
                 passwds = m.set_passwds(uids_give_passwd)
                 m.store_passwds(passwds)
 
+        print_invalid(INVALID, False, "Invalid uids:")
+        print_invalid(INVALID, True, "Mismatch between email addresses (DOAP vs LDAP):")
 
     elif cmd == 'test-reset':
         m.store_passwds({'ovitters': 'yeahright'})
