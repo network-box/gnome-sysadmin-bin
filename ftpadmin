@@ -627,8 +627,12 @@ class ModuleInfo(DirectoryInfo):
     @property
     def doap(self):
         if not hasattr(self, '_doap'):
+            import xml.sax
             # Fetch DOAP file
-            self._doap = semi_rdf.read_rdf(self.DOAPURL % self.reponame)
+            try:
+                self._doap = semi_rdf.read_rdf(self.DOAPURL % self.reponame)
+            except xml.sax._exceptions.SAXParseException:
+                self._doap = []
 
         return self._doap
 
