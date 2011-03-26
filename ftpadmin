@@ -251,6 +251,7 @@ class BasicInfo(object):
     FTPROOT='/ftp/pub/GNOME'
     FTPROOT_DEBUG='/ftp/tmp'
     URLROOT='http://download.gnome.org'
+    DOAPURL='http://git.gnome.org/doap/%s'
     BLOCKSIZE=2*1024*1024 # (dot will be printed per block for progress indication)
 
     # Note: this defines the formats install-module can read
@@ -589,6 +590,10 @@ class SuiteInfo(DirectoryInfo):
 
 class ModuleInfo(DirectoryInfo):
 
+    DOAP = "http://usefulinc.com/ns/doap#"
+    FOAF = "http://xmlns.com/foaf/0.1/"
+    GNOME = "http://api.gnome.org/doap-extensions#"
+
     def __init__(self, module, section=DEFAULT_SECTION):
         self.module = module
         self.section = section
@@ -596,16 +601,52 @@ class ModuleInfo(DirectoryInfo):
         relpath = os.path.join(self.section, self.module)
         DirectoryInfo.__init__(self, relpath, limit_module=module)
 
+    def _set_ldap(self):
+        # Determine maintainers and module name
+        self._maintainers = []
+        self._reponame = self.module
+        data = get_module_info(self.module)
+        if len(data):
+            self._maintainers = data[0][1].get('maintainerUid', [])
+            self._reponame = data[0][1]['cn'][0]
+
     @property
     def maintainers(self):
         if not hasattr(self, '_maintainers'):
-            # Determine maintainers
-            self._maintainers = []
-            data = get_module_info(self.module)
-            if len(data):
-                self._maintainers = data[0][1]['maintainerUid']
+            self._set_ldap()
 
         return self._maintainers
+
+    @property
+    def reponame(self):
+        if not hasattr(self, '_reponame'):
+            self._set_ldap()
+
+        return self._reponame
+
+    @property
+    def doap(self):
+        if not hasattr(self, '_doap'):
+            # Fetch DOAP file
+            self._doap = semi_rdf.read_rdf(self.DOAPURL % self.reponame)
+
+        return self._doap
+
+    def get_one_from_doap(self, needle, default=None):
+        for node in self.doap:
+            if node.name != (self.DOAP, "Project"):
+                    continue
+            val = node.find_property((self.DOAP, needle))
+            if val is not None:
+                return val
+        return default
+
+    def get_from_doap(self, needle):
+        for node in self.doap:
+            if node.name != (self.DOAP, "Project"):
+                    continue
+            for property in node.find_properties((self.DOAP, needle)):
+                yield property
 
     @property
     def versions(self):
@@ -823,12 +864,18 @@ Install %s? [Y/n]""" % self.module,
             os.chown(fn, -1, self.GROUPID)
         return f
 
+    def _print_header(self, obj, header):
+        print >>obj, header
+        print >>obj, "=" * len(header)
+
     def inform(self):
         """Inform regarding the new release"""
         print "Doing notifications:"
         if self.version not in self.moduleinfo.versions:
             print "ERROR: Cannot find new version?!?"
             return False
+
+        import textwrap
 
         sha256sum = {}
         sys.stdout.write(" - Informing ftp-release-list")
@@ -864,6 +911,19 @@ Install %s? [Y/n]""" % self.module,
                 print >>mail, "      size: %s" % size
                 print >>mail, ""
 
+        modulename = None
+        desc = self.moduleinfo.get_one_from_doap('description')
+        desc = self.moduleinfo.get_one_from_doap('shortdesc') if desc is None else desc
+        if desc is not None:
+            modulename = self.moduleinfo.get_one_from_doap('name', self.module)
+            self._print_header(mail, "About %s" % (modulename or self.module))
+            print >>mail, ""
+            for paragraph in desc.split("\n\n"):
+                print >>mail, textwrap.fill(paragraph)
+                print >>mail, ""
+            if "\n\n" in desc:
+                print >>mail, ""
+
         show_contents = True
         for tarballname, format, formatname in self.DIFF_FILES:
             info = self.moduleinfo.info_detailed(self.version, format)
@@ -873,14 +933,12 @@ Install %s? [Y/n]""" % self.module,
                     with open(realpath, 'r') as f:
                         line = f.readline()
                         if not self.version in line:
-                            print >>mail, formatname
-                            print >>mail, "-" * len(formatname)
+                            self._print_header(mail, formatname)
                             print >>mail, ""
                         mail.write(line)
                         shutil.copyfileobj(f, mail)
                 else:
-                    print >>mail, formatname
-                    print >>mail, "-" * len(formatname)
+                    self._print_header(mail, formatname)
                     mail.write("%s/%s  (%s)" % (self.URLROOT, path, size))
                 print >>mail, ""
                 # Only show the contents of the first found file, URLs for the rest
@@ -912,18 +970,24 @@ Install %s? [Y/n]""" % self.module,
         sys.stdout.write(" - Triggering ftp.gnome.org update")
         syncscript = ['/usr/local/bin/signal-ftp-sync']
         if self._call_cmd(cmd):
-            print ""
-            print "Your tarball will appear in the following location on ftp.gnome.org:"
-            print ""
-            print "  %s" % "/".join((self.URLROOT, self.section, self.module, self.majmin, ""))
-            print ""
-            print "It is important to retain the trailing slash for compatibility with"
-            print "broken http clients, and to use http as it is less taxing on the server."
+            print """
+Your tarball will appear in the following location on ftp.gnome.org:
+
+  %s
+
+It is important to retain the trailing slash for compatibility with
+broken http clients, and to use http as it is less taxing on the server.""" % "/".join((self.URLROOT, self.section, self.module, self.majmin, ""))
             realpath = self.moduleinfo.determine_file(self.version, 'sha256sum', fuzzy=False)
             if realpath is not None:
                 print ""
                 with open(realpath, "r") as f:
                     shutil.copyfileobj(f, sys.stdout)
+
+        print """
+The ftp-release-list email uses information from the modules DOAP file. Make
+sure at least the following fields are filled in:
+  name, shortdesc, description, download-page, bug-database
+See http://live.gnome.org/MaintainersCorner#doap"""
 
 
     def _call_cmd(self, cmd):
@@ -1047,7 +1111,7 @@ def get_module_info(module):
         l = ldap.open('ldap-back')
         l.protocol_version = ldap.VERSION3
 
-    filter = ldap.filter.filter_format("(cn=%s)", (module, ))
+    filter = ldap.filter.filter_format("(|(cn=%s)(tarballName=%s))", (module, module))
     data = l.search_s (LDAP_BASE, ldap.SCOPE_SUBTREE, filter, None)
 
     return data
@@ -1109,6 +1173,15 @@ def cmd_show_ignored(options, parser):
             for f in files:
                 print "/".join((module, dir, f))
 
+def cmd_show_doap(options, parser):
+    import textwrap
+    print options.module
+    moduleinfo = ModuleInfo(options.module)
+    desc = moduleinfo.get_one_from_doap('description', '')
+    for paragraph in desc.split("\n\n"):
+        print textwrap.fill(paragraph)
+        print ""
+
 def cmd_validate_tarballs(options, parser):
     print options.module, options.section
     moduleinfo = ModuleInfo(options.module, section=options.section)
@@ -1126,7 +1199,6 @@ def cmd_validate_tarballs(options, parser):
                         print "ERROR: %s" % v
                 else:
                     print ", success"
-
 
 def cmd_release_diff(options, parser, header=None):
     oldversion = SuiteInfo(options.suite, options.oldversion)
@@ -1290,6 +1362,10 @@ def main():
     #   sudo
     subparser = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
     subparser.set_defaults(func=cmd_sudo)
+    #   doap
+    subparser = subparsers.add_parser('doap', help='show information from DOAP file')
+    subparser.add_argument('module', help='Module to show DOAP for')
+    subparser.set_defaults(func=cmd_show_doap)
     #   validate-tarballs
     subparser = subparsers.add_parser('validate-tarballs', help='validate all tarballs for a given module')
     subparser.add_argument("-s", "--section", choices=SECTIONS,
