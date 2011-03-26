@@ -587,6 +587,92 @@ class SuiteInfo(DirectoryInfo):
         relpath = os.path.join(suite, majmin, version)
         DirectoryInfo.__init__(self, relpath)
 
+    def diff(self, oldversion, obj=sys.stdout):
+        # XXX  -- assert self.suite == oldversion.suite
+        import textwrap
+
+        def moduleprint(modules, header):
+            if modules:
+                print >>obj, "%s:" % header
+                print >>obj, textwrap.fill(", ".join(sorted(list(modules))), width=78,
+                                    break_long_words=False, break_on_hyphens=False,
+                                    initial_indent='   ', subsequent_indent='   ')
+                print >>obj, ""
+
+
+        oldmodules = set(oldversion.versions.keys())
+        newmodules = set(self.versions.keys())
+        modules = set()
+        modules.update(oldmodules)
+        modules.update(newmodules)
+
+        addedmodules = newmodules - oldmodules
+        removedmodules = oldmodules - newmodules
+        samemodules = oldmodules & newmodules
+        moduleprint(addedmodules, "The following modules have been added in this release")
+        moduleprint(removedmodules, "The following modules have been removed in this release")
+
+        news = {}
+        sameversions = set()
+        header = "The following modules have a new version"
+        did_header = False
+        have_no_news = False
+        for module in sorted(samemodules):
+            show_contents = True
+            newmodulever = self.versions.get(module, (None,))[-1]
+            new_file = self.determine_file(module, newmodulever, 'tar') if newmodulever else None
+
+            prevmodulever = oldversion.versions.get(module, (None,))[-1]
+            prev_file = oldversion.determine_file(module, prevmodulever, 'tar') if prevmodulever else None
+
+            if not new_file:
+                continue
+
+            if newmodulever == prevmodulever:
+                sameversions.add(module)
+                continue
+
+            if not did_header:
+                print >>obj, "%s:" % header
+                did_header=True
+            obj.write(" - %s (%s => %s)" % (module, prevmodulever or '-none-', newmodulever or '-none'))
+
+
+            fn = 'NEWS'
+
+            new_tarinfo = TarInfo(new_file)
+            new_errors = new_tarinfo.check()
+            if new_errors:
+                print >>obj, ""
+                continue
+
+            prev_tarinfo = TarInfo(prev_file) if prev_file else None
+
+            constructor = lambda fn: StringIO()
+            diffs = new_tarinfo.diff((fn, ), prev_tarinfo, constructor, progress=False)
+
+            if fn in diffs:
+                news[module] = diffs[fn]
+                news[module].seek(0)
+            else:
+                have_no_news=True
+                obj.write(" (*)")
+
+            print >>obj, ""
+        if did_header:
+            if have_no_news:
+                print >>obj, "(*) No summarized news available"
+            print >>obj, ""
+
+        moduleprint(sameversions, "The following modules weren't upgraded in this release")
+
+        for module in sorted(news):
+            print >>obj, "========================================"
+            print >>obj, "  %s" % module
+            print >>obj, "========================================"
+            print >>obj, ""
+            print >>obj, news[module].read()
+
 
 class ModuleInfo(DirectoryInfo):
 
@@ -1255,88 +1341,32 @@ def cmd_simple_diff(options, parser):
         cmd_release_diff(options, parser, header="== %s ==" % suite)
 
 def cmd_release_news(options, parser, header=None):
-    import textwrap
-    def moduleprint(modules, header):
-        if modules:
-            print "%s:" % header
-            print textwrap.fill(", ".join(sorted(list(modules))), width=78,
-                                break_long_words=False, break_on_hyphens=False,
-                                initial_indent='   ', subsequent_indent='   ')
-            print ""
     oldversion = SuiteInfo(options.suite, options.oldversion)
     newversion = SuiteInfo(options.suite, options.newversion)
 
-    oldmodules = set(oldversion.versions.keys())
-    newmodules = set(newversion.versions.keys())
-    modules = set()
-    modules.update(oldmodules)
-    modules.update(newmodules)
+    newversion.diff(oldversion, obj=sys.stdout)
 
-    addedmodules = newmodules - oldmodules
-    removedmodules = oldmodules - newmodules
-    samemodules = oldmodules & newmodules
-    moduleprint(addedmodules, "The following modules have been added in this release")
-    moduleprint(removedmodules, "The following modules have been removed in this release")
-
-    news = {}
-    sameversions = set()
-    header = "The following modules have a new version"
-    did_header = False
-    have_no_news = False
-    for module in sorted(samemodules):
-        show_contents = True
-        newmodulever = newversion.versions.get(module, (None,))[-1]
-        new_file = newversion.determine_file(module, newmodulever, 'tar') if newmodulever else None
-
-        prevmodulever = oldversion.versions.get(module, (None,))[-1]
-        prev_file = oldversion.determine_file(module, prevmodulever, 'tar') if prevmodulever else None
-
-        if not new_file:
+def cmd_simple_news(options, parser):
+    diffs = []
+    do_diff = True
+    for suite in SUITES:
+        newversion = SuiteInfo(suite, options.newversion)
+        if not os.path.exists(os.path.join(newversion.FTPROOT, newversion.relpath)):
             continue
 
-        if newmodulever == prevmodulever:
-            sameversions.add(module)
+        oldversion = SuiteInfo(suite, options.oldversion)
+        if not os.path.exists(os.path.join(oldversion.FTPROOT, oldversion.relpath)):
             continue
 
-        if not did_header:
-            print "%s:" % header
-            did_header=True
-        sys.stdout.write(" - %s (%s => %s)" % (module, prevmodulever or '-none-', newmodulever or '-none'))
+        if os.path.exists(os.path.join(newversion.FTPROOT, newversion.relpath, 'NEWS')):
+            print 'ERROR: NEWS file already exists for %s %s' % (suite, options.newversion)
+            do_diff = False
 
+        diffs = [newversion, oldversion]
 
-        fn = 'NEWS'
-
-        new_tarinfo = TarInfo(new_file)
-        new_errors = new_tarinfo.check()
-        if new_errors:
-            continue
-
-        prev_tarinfo = TarInfo(prev_file) if prev_file else None
-
-        constructor = lambda fn: StringIO()
-        diffs = new_tarinfo.diff((fn, ), prev_tarinfo, constructor, progress=False)
-
-        if fn in diffs:
-            news[module] = diffs[fn]
-            news[module].seek(0)
-        else:
-            have_no_news=True
-            sys.stdout.write(" (*)")
-
-        print >>sys.stdout, ""
-    if did_header:
-        if have_no_news:
-            print "(*) No summarized news available"
-        print ""
-
-    moduleprint(sameversions, "The following modules weren't upgraded in this release")
-
-    for module in sorted(news):
-        print "========================================"
-        print "  %s" % module
-        print "========================================"
-        print ""
-        print news[module].read()
+    if do_diff:
+        for newversion, oldversion in diffs:
+            newversion.diff(oldversion)
 
 def cmd_release_suites(options, parser):
     installer = InstallSuites(options.datafile, options.newversion)
@@ -1422,6 +1452,11 @@ def main():
     subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
     subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
     subparser.set_defaults(func=cmd_release_news, suite=DEFAULT_SUITE)
+    # simple-news
+    subparser = subparsers.add_parser('simple-news', help='Create NEWS file between two GNOME versions')
+    subparser.add_argument('oldversion', metavar='OLDVERSION', help='Previous GNOME version')
+    subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
+    subparser.set_defaults(func=cmd_simple_news)
     # release-suites
     subparser = subparsers.add_parser('release-suites', help='release a new GNOME version')
     subparser.add_argument('newversion', metavar='NEWVERSION', help='New GNOME version')
