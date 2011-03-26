@@ -652,6 +652,15 @@ class ModuleInfo(DirectoryInfo):
             for property in node.find_properties((self.DOAP, needle)):
                 yield property
 
+    def get_bz_product_from_doap(self):
+        import urlparse
+        for bz in self.get_from_doap('bug-database'):
+            url = urlparse.urlparse(bz)
+            if url.netloc == 'bugzilla.gnome.org':
+                d = urlparse.parse_qs(url.query)
+                if 'product' in d:
+                    yield d['product'][0]
+
     @property
     def versions(self):
         return self._versions[self.module]
@@ -967,9 +976,13 @@ Install %s? [Y/n]""" % self.module,
         retcode = self._send_email("forced", subject, to, [to])
         print ", done"
 
-        sys.stdout.write(" - Adding new version to GNOME Bugzilla")
-        cmd = ['/usr/bin/curl', '-q', '-L', 'https://bugzilla.gnome.org/add-version.cgi?%s|%s' % (self.module, self.version)]
-        self._call_cmd(cmd)
+        products = self.moduleinfo.get_bz_product_from_doap()
+        if not products:
+            products = [self.module]
+        for product in products:
+            sys.stdout.write(" - Adding new version to GNOME Bugzilla")
+            cmd = ['/usr/bin/curl', '-q', '-L', 'https://bugzilla.gnome.org/add-version.cgi?%s|%s' % (product, self.version)]
+            self._call_cmd(cmd)
 
         sys.stdout.write(" - Triggering ftp.gnome.org update")
         syncscript = ['/usr/local/bin/signal-ftp-sync']
@@ -1185,6 +1198,9 @@ def cmd_show_doap(options, parser):
     for paragraph in desc.split("\n\n"):
         print textwrap.fill(paragraph)
         print ""
+    bz = moduleinfo.get_bz_product_from_doap()
+    if bz:
+        print "Bugzilla: %s" % ", ".join(bz)
 
 def cmd_validate_tarballs(options, parser):
     print options.module, options.section
