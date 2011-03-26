@@ -617,6 +617,7 @@ class SuiteInfo(DirectoryInfo):
         header = "The following modules have a new version"
         did_header = False
         have_no_news = False
+        have_errors = False
         for module in sorted(samemodules):
             show_contents = True
             newmodulever = self.versions.get(module, (None,))[-1]
@@ -643,7 +644,8 @@ class SuiteInfo(DirectoryInfo):
             new_tarinfo = TarInfo(new_file)
             new_errors = new_tarinfo.check()
             if new_errors:
-                print >>obj, ""
+                have_errors=True
+                print >>obj, " (E)"
                 continue
 
             prev_tarinfo = TarInfo(prev_file) if prev_file else None
@@ -662,6 +664,8 @@ class SuiteInfo(DirectoryInfo):
         if did_header:
             if have_no_news:
                 print >>obj, "(*) No summarized news available"
+            if have_errors:
+                print >>obj, "(E) No summarized news available due to tarball validation error"
             print >>obj, ""
 
         moduleprint(sameversions, "The following modules weren't upgraded in this release")
@@ -1358,15 +1362,27 @@ def cmd_simple_news(options, parser):
         if not os.path.exists(os.path.join(oldversion.FTPROOT, oldversion.relpath)):
             continue
 
-        if os.path.exists(os.path.join(newversion.FTPROOT, newversion.relpath, 'NEWS')):
-            print 'ERROR: NEWS file already exists for %s %s' % (suite, options.newversion)
+        news = os.path.join(newversion.FTPROOT, newversion.relpath, 'NEWS')
+        if os.path.exists(news):
+            print 'ERROR: %s already exists for %s %s' % (news, suite, options.newversion)
             do_diff = False
 
-        diffs = [newversion, oldversion]
+        diffs.append((newversion, oldversion))
 
     if do_diff:
+        print "Generating news file(s):"
         for newversion, oldversion in diffs:
-            newversion.diff(oldversion)
+            f = open(os.path.join(newversion.FTPROOT, newversion.relpath, 'NEWS'), 'w')
+            if BasicInfo.GROUPID is not None:
+                os.fchown(f.fileno(), -1, BasicInfo.GROUPID)
+            sys.stdout.write(" - %s " % f.name)
+            newversion.diff(oldversion, obj=f)
+            if f.tell() == 0:
+                os.remove(f.name)
+                print "uninteresting, not saved"
+            else:
+                print "saved"
+            f.close()
 
 def cmd_release_suites(options, parser):
     installer = InstallSuites(options.datafile, options.newversion)
