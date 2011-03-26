@@ -755,8 +755,8 @@ class ModuleInfo(DirectoryInfo):
     def versions(self):
         return self._versions[self.module]
 
-    def determine_file(self, version, format, fuzzy=True):
-        return DirectoryInfo.determine_file(self, self.module, version, format, fuzzy)
+    def determine_file(self, version, format, fuzzy=True, relative=False):
+        return DirectoryInfo.determine_file(self, self.module, version, format, fuzzy, relative)
 
     def info_detailed(self, version, format, fuzzy=False):
         return DirectoryInfo.info_detailed(self, self.module, version, format, fuzzy=False)
@@ -1151,11 +1151,16 @@ class InstallSuites(BasicInfo):
     def __init__(self, file, gnomever):
         self.file = file
 
+        self.suites = {}
+        self.moduleinfo = {}
+        self.version = gnomever
+
         self.dirname, self.basename = os.path.split(file)
 
     def validate(self):
+        print "Preparing installation of %s:" % self.basename
         is_valid = True
-        suites = set()
+        suitedata = {}
         moduleversions = {}
         modulesuites = {}
         with open(self.file, 'r') as f:
@@ -1169,7 +1174,14 @@ class InstallSuites(BasicInfo):
                     continue
 
                 suite, module, version, subdir = data
-                suites.add(suite)
+                if suite not in suitedata:
+                    suitedata[suite] = {}
+                if module not in suitedata[suite]:
+                    suitedata[suite][module] = []
+
+                suitedata[suite][module].append((version, subdir))
+
+                # For validation purposes:
                 if module not in moduleversions:
                     moduleversions[module] = []
                 moduleversions[module].append(version)
@@ -1179,16 +1191,22 @@ class InstallSuites(BasicInfo):
                 modulesuites[module].add(suite)
 
         # Validate the suite
-        for suite in suites:
+        for suite in suitedata:
             if suite not in SUITES:
                 print 'ERROR: Invalid suite: %s' % suite
                 is_valid = False
 
+            majmin = re_majmin.sub(r'\1', self.version)
+            abspath = os.path.join(self.FTPROOT, suite, majmin, self.version)
+            if os.path.exists(abspath):
+                print "ERROR: Suite already exists: %s " % abspath
+                is_valid = False
+
         # Validate if the given module versions can be found
         for module, versions in moduleversions.iteritems():
-            moduleinfo = ModuleInfo(module)
+            self.moduleinfo[module] = ModuleInfo(module)
             for version in versions:
-                if version not in moduleinfo.versions:
+                if version not in self.moduleinfo[module].versions:
                     print 'ERROR: Module %s doesn\'t have version %s' % (module, version)
                     is_valid = False
             # Module could have multiple versions, but that's pretty strange
@@ -1201,14 +1219,66 @@ class InstallSuites(BasicInfo):
                 print 'ERROR: Module %s appears in multiple suites: %s' % (module, ", ".join(suites))
                 is_valid = False
 
+        if is_valid:
+            self.suites = suitedata
+
         return is_valid
 
     def install(self, unattended=False):
-        print "Preparing installation of %s:" % self.basename
         # Validate the file
         if not self.validate():
             return False
 
+        print "Installating new suites:"
+        suites = self.suites
+
+        for suite in sorted(suites):
+            sha256 = {}
+            sys.stdout.write(" - Linking %s tarballs: " % suite)
+            majmin = re_majmin.sub(r'\1', self.version)
+            relpath = os.path.join(suite, majmin, self.version, 'sources')
+
+            for module in sorted(suites[suite]):
+                data = suites[suite][module]
+                data.sort(lambda a, b: version_cmp(a[0], b[0]) or cmp(a[1], b[1]))
+                for version, subdir in data:
+                    relpath2 = relpath if subdir == '' else os.path.join(relpath, subdir)
+                    abspath = os.path.join(self.FTPROOT, relpath2)
+                    if not os.path.exists(abspath):
+                        makedirs_chown(abspath, 042775, -1, self.GROUPID or -1) # drwxrwsr-x
+
+                    for format in self.FORMATS:
+                        relfile = self.moduleinfo[module].determine_file(version, format, fuzzy=False, relative=True)
+
+                        if relfile is None:
+                            continue
+
+                        ext = os.path.splitext(relfile)[1].lstrip('.')
+                        basename = os.path.basename(relfile)
+                        if ext not in sha256:
+                            sha256[ext] = []
+
+                        if subdir == '':
+                            sha256[ext].append(basename)
+                        else:
+                            sha256[ext].append(os.path.join(subdir, basename))
+
+                        relfile = os.path.sep.join((['..'] * len(relpath2.split(os.path.sep))) + [relfile])
+
+
+                        sys.stdout.write(".")
+                        os.symlink(relfile, os.path.join(abspath, basename))
+            print ""
+
+            if os.path.exists(os.path.join(self.FTPROOT, relpath)) and sha256:
+                sys.stdout.write(" - Generating sha256sums: ")
+                for ext, files in sha256.iteritems():
+                    sys.stdout.write("%s " % ext)
+                    cmd = ['sha256sum', '--']
+                    cmd.extend(files)
+                    with open(os.path.join(self.FTPROOT, relpath, 'SHA256SUMS-for-%s' % ext), 'w') as f:
+                        subprocess.call(cmd, stdout=f, cwd=os.path.join(self.FTPROOT, relpath))
+                print ""
 
 l = None
 def get_module_info(module):
