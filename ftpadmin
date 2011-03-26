@@ -445,7 +445,7 @@ class DirectoryInfo(BasicInfo):
     def __init__(self, relpath, limit_module=None):
         self.relpath = relpath
         self.module = limit_module
-        self.jsonfile = os.path.join(self.FTPROOT, relpath, 'info.json')
+        self.jsonfile = os.path.join(self.FTPROOT, relpath, 'cache.json')
 
         self.read_json()
 
