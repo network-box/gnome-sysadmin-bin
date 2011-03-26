@@ -135,7 +135,6 @@ class RdfHandler(xml.sax.handler.ContentHandler):
             obj = self.__object
             if isinstance(obj, basestring):
                 obj = obj.strip()
-                obj = WHITESPACE_RE.sub(" ", obj)
         else:
             obj = resource
         self.__object = None
