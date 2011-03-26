@@ -37,7 +37,7 @@ sys.path.insert(0, script_dir)
 # Lives inside gitadmin-bin
 import semi_rdf
 
-DEBUG=True
+DEBUG=False
 # Protection, only ovitters should be using debug mode:
 if os.environ['USER'] != 'ovitters':
     DEBUG=False
