@@ -87,6 +87,7 @@ MAJMIN=$(echo $VERSION | sed "s#\([[:digit:]]\+\.[[:digit:]]\+\).*#\1#")
 LOCATION=$FTPROOT/sources/$MODULE/$MAJMIN
 JSON=$FTPROOT/sources/$MODULE/$MODULE.json
 JSON2=$FTPROOT/sources/$MODULE/info.json
+JSON3=$FTPROOT/sources/$MODULE/cache.json
 URL="$URLROOT/sources/$MODULE/$MAJMIN/$FILENAME"
 WHO="$(getent passwd $USER | cut -d : -f 5 | cut -d , -f 1 | sed 's, <.*,,')"
 if [ -z "$WHO" ]; then
@@ -320,7 +321,7 @@ echo "
 echo "done."
 
 # Delete ftpadmin cache files
-rm -f -- "$JSON" "$JSON2"
+rm -f -- "$JSON" "$JSON2" "$JSON3"
 
 #
 # Send ftp-release-list email
