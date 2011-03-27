@@ -562,6 +562,9 @@ class DirectoryInfo(BasicInfo):
         return (relpath, realpath, human_size(stat.st_size), stat)
 
     def write_json(self):
+        # Want to overwrite any existing file and change the owner
+        if os.path.exists(self.jsonfile):
+            os.remove(self.jsonfile)
         with open(self.jsonfile, 'w') as f:
             json.dump((self.JSONVERSION, self._info, self._versions, self._ignored), f)
             if self.GROUPID is not None:
@@ -1075,7 +1078,7 @@ Install %s? [Y/n]""" % self.module,
             self._call_cmd(cmd)
 
         sys.stdout.write(" - Triggering ftp.gnome.org update")
-        syncscript = ['/usr/local/bin/signal-ftp-sync']
+        cmd = ['/usr/local/bin/signal-ftp-sync']
         if self._call_cmd(cmd):
             print """
 Your tarball will appear in the following location on ftp.gnome.org:
