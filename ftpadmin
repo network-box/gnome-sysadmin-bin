@@ -833,7 +833,7 @@ Install %s? [Y/n]""" % self.module,
         # Don't allow an existing tarball to be overwritten
         if not DEBUG:
             # When debugging, only check for the exact tarball name
-            if self.version in self.fileinfo.versions:
+            if self.version in self.moduleinfo.versions:
                 print >>sys.stderr, """ERROR: %s already exists in the archive!""" % self.basename
                 return False
         else:
