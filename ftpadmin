@@ -420,6 +420,7 @@ class TarInfo(BasicInfo):
                     if break_for:
                         break
                 if lines > 2:
+                    f.flush()
                     diffs[fn] = f
                     if progress:
                         print ", done (diff, %s lines)" % lines
@@ -432,6 +433,7 @@ class TarInfo(BasicInfo):
                 # succesfully read previous tarball, didn't find a 'NEWS' / 'ChangeLog'
                 # assume file has been added in this release and no diff is needed
                 f.writelines(self.file[fn])
+                f.flush()
                 diffs[fn] = f
                 print ", done (new file)"
             else:
