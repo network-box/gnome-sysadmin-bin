@@ -1010,16 +1010,26 @@ Install %s? [Y/n]""" % self.module,
   Uploaded by: %s
 """ % (self.module, self.version, self.who)
 
+        headers = {
+            'Reply-To': 'desktop-devel-list@gnome.org',
+            'X-Module-Name': self.module,
+            'X-Module-Version': self.version,
+            'X-Maintainer-Upload': str(self.pw.pw_name in self.moduleinfo.maintainers)
+        }
         for format in self.FORMATS:
             info = self.moduleinfo.info_detailed(self.version, format)
-            if info is not None:
-                path, realpath, size, stat = info
-                dirname, basename = os.path.split(path)
-                print >>mail, "%s/%s" % (self.URLROOT, path)
-                if basename in sha256sum:
-                    print >>mail, " sha256sum: %s" % sha256sum[basename]
-                print >>mail, "      size: %s" % size
-                print >>mail, ""
+            if info is None:
+                continue
+
+            path, realpath, size, stat = info
+            dirname, basename = os.path.split(path)
+            print >>mail, "%s/%s" % (self.URLROOT, path)
+            if basename in sha256sum:
+                print >>mail, " sha256sum: %s" % sha256sum[basename]
+                headers['X-Module-SHA256-%s' % format] = sha256sum[basename]
+            headers['X-Module-URL-%s' % format] = "%s/%s" % (self.URLROOT, path)
+            print >>mail, "      size: %s" % size
+            print >>mail, ""
 
         modulename = None
         desc = self.moduleinfo.get_one_from_doap('description')
@@ -1074,9 +1084,7 @@ Install %s? [Y/n]""" % self.module,
         if not smtp_to:
             smtp_to = ['release-team@gnome.org']
         smtp_to.append('ftp-release-list@gnome.org')
-        retcode = self._send_email(mail.read(), subject, to, smtp_to,
-                                   {'Reply-To': 'desktop-devel-list@gnome.org'}
-        )
+        retcode = self._send_email(mail.read(), subject, to, smtp_to, headers)
         print ", done"
 
         sys.stdout.write(" - Triggering GNOME library update")
