@@ -20,6 +20,7 @@ import subprocess
 import argparse
 import errno
 import glob
+import string
 from email.mime.text import MIMEText
 import json
 try:
@@ -1041,10 +1042,21 @@ Install %s? [Y/n]""" % self.module,
                 path, realpath, size, stat = info
                 if show_contents and stat.st_size < 50000:
                     with open(realpath, 'r') as f:
+                        do_version = True
+                        stripchars = "".join((string.punctuation, string.whitespace))
                         line = f.readline()
-                        if not self.version in line:
-                            self._print_header(mail, formatname)
-                            print >>mail, ""
+                        while line != '' and (line.strip(stripchars) == '' \
+                                              or (do_version and self.version in line)):
+                            if self.version in line:
+                                do_version = False
+                            line = f.readline()
+
+                        if line == '':
+                            # No interesting line in this file, ignore it
+                            continue
+
+                        self._print_header(mail, formatname)
+                        print >>mail, ""
                         mail.write(line)
                         shutil.copyfileobj(f, mail)
                 else:
