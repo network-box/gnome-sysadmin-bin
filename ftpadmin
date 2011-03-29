@@ -1347,8 +1347,9 @@ https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin"""
 def cmd_show_info(options, parser):
     import datetime
 
-    modules = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
-    for module in modules:
+    if not options.module:
+        options.module = [os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)]
+    for module in options.module:
         moduleinfo = ModuleInfo(module, options.section)
         version = moduleinfo.versions[-1] if len(moduleinfo.versions) else ""
         changed = ""
@@ -1520,8 +1521,8 @@ def main():
     )
     #   show-info
     subparser = subparsers.add_parser('show-info', help='show module information')
-    subparser.add_argument("-s", "--section", choices=SECTIONS,
-                           help="Section to install the file to")
+    subparser.add_argument("-s", "--section", choices=SECTIONS)
+    subparser.add_argument('module', nargs='*', help='Module(s) to show info for')
     subparser.set_defaults(func=cmd_show_info, section=DEFAULT_SECTION)
     #   sudo
     subparser = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
