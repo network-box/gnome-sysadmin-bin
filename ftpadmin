@@ -359,7 +359,7 @@ class TarInfo(BasicInfo):
             test_eof_data = (tar_end_of_file_pos - tar_end_of_data_pos)
             MAX_EXTRA_DATA=10240
             if test_eof_data > MAX_EXTRA_DATA:
-                errors['EXTRA_DATA'] = 'Tarball has too much extra data (expected max %s, found %s)' % (human_size(MAX_EXTRA_DATA), human_size(test_eof_data))
+                errors['EXTRA_DATA'] = 'Too much uncompressed tarball data (expected max %s, found %s); use tar-ustar in AM_INIT_AUTOMAKE!' % (human_size(MAX_EXTRA_DATA), human_size(test_eof_data))
 
             if not isinstance(t.fileobj, self.FORMATS.get(self.format, "")):
                 errors['WRONG_EXT'] = 'Compression used is different than what extension suggests'
