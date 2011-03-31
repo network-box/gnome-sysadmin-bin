@@ -33,11 +33,15 @@ if not opts.module:
 def update_flag(module, body):
     build_flag = os.path.join(timestamp_dir, module + ".buildflag")
 
+    file_exists = os.path.exists(build_flag)
+
     flagfile = open(build_flag, 'w')
     # Write the time into file
     flagfile.write(time.strftime("Date: %F %T UTC\n", time.gmtime()))
     flagfile.write(body)
     flagfile.close()
+
+    return file_exists
 
 # We echo the body into the flag file for debugging purposes
 # (it contains the old and new revisions)
@@ -46,7 +50,9 @@ body = sys.stdin.read()
 if opts.branch:
     for branch in args:
         module = '%s!%s' % (opts.module, branch)
-        update_flag(module, body)
+        if not update_flag(module, body):
+            # New branch
+            update_flag(opts.module, body)
 else:
     update_flag(opts.module, body)
 
