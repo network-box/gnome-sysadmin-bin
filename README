@@ -6,9 +6,6 @@ These scripts all live in /home/admin/bin.
  * create-auth
      Sets up the keys based upon groups passed in
 
- * create-auth-<machinename>.sh
-     calls create-auth with the correct groups relevant to that machine
-
  * gen-token
      generates a unique token that can be sent to authenticate an SSH
      key change request
