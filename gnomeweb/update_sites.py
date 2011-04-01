@@ -24,7 +24,7 @@ from git import *
 timestamp_dir = "/usr/local/www/gnomeweb/timestamps"
 hookscripts_dir = "/usr/local/www/gnomeweb/hooks"
 checkout_url = "git://git.gnome.org/%(module)s"
-checkout_basedir = "/usr/local/www/gnomeweb/git-wd" # default base directory for checkouts
+checkout_basedir = "/var/cache/gnomeweb/git" # default base directory for checkouts
 log_dir = "/usr/local/www/gnomeweb/logs"
 re_branch_versioned = r'^gnome-([0-9]+)-([0-9]+)$'
 
