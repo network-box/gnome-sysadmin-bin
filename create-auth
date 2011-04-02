@@ -303,9 +303,9 @@ if __name__ == '__main__':
     if options.homedirs is not None:
         import pprint
         if options.homedirs == 'all':
-            homedir_list = ['ovitters']
-        else:
             homedir_list = None
+        else:
+            homedir_list = ['ovitters']
         homedirs = get_homedirs(homedir_list)
         pprint.pprint(homedirs)
         sys.exit(1)
