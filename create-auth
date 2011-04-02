@@ -111,8 +111,8 @@ def get_homedirs(limit_uids=None):
 def create_home_directories(uids_data):
     src = '/etc/skel'
     created_uids = set()
-    for uid, data in uids_data.iteritems():
-        dst = data['homeDirectory']
+    for uid, user in uids_data.iteritems():
+        dst = user['homeDirectory']
         if dst != '/home/users/%s' % uid or os.path.isdir(dst):
             continue
 
