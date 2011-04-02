@@ -206,7 +206,7 @@ def remove_directory (dir):
             remove_directory (path)
     os.rmdir (dir)
 
-def create_directory_structure (user_list):
+def create_directory_structure (user_data):
     base_directory_name = tempfile.mktemp ('-sshd')
     sshd_directory_name = base_directory_name + "/sshd"
     users_directory_name = sshd_directory_name + "/users"
@@ -217,7 +217,7 @@ def create_directory_structure (user_list):
         os.mkdir (users_directory_name, 0711)
 
         # make a users dir
-        for user in user_list:
+        for uid, user in user_data.iteritems():
             user_dir_name = users_directory_name + "/" + user['uid']
             authorized_keys_file = user_dir_name + "/authorized_keys"
             os.mkdir (user_dir_name, 0700)
@@ -312,17 +312,17 @@ if __name__ == '__main__':
         print_user_list('Created home directory for', created_users)
         sys.exit(1)
 
-    user_list = build_user_hash (group_list, restrict=options.restrict)
-    if not len(user_list):
+    user_data = build_user_hash (group_list, restrict=options.restrict)
+    if not len(user_data):
         print "ERROR: No users to create! Likely empty LDAP directory!!"
         sys.exit(1)
 
     if options.homedirs == 'basic':
-        created_users = create_home_directories(user_list)
+        created_users = create_home_directories(user_data)
         print_user_list('Created home directory for', created_users)
         sys.exit(1)
 
-    base_directory_name = create_directory_structure (user_list)
+    base_directory_name = create_directory_structure(user_data)
 
     initial_user_hash = get_md5sum_hash ()
     status = subprocess.call(['rsync', '-aq', '--delete', '%s/sshd/' % base_directory_name, '/etc/sshd/'])
