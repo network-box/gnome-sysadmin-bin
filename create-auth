@@ -120,7 +120,150 @@ def create_home_directories(uids_data):
         subprocess.call(['/bin/chown', '-R', '%s:%s' % (user['uidNumber'], user['gidNumber']), dst ])
         created_uids.add(uid)
 
+    if created_uids:
+        set_homedir_permissions(uids_data, created_uids)
+
     return created_uids
+
+PERMISSIONS = [
+    # Path, directory?, contents
+    # generic
+    ('.login', False, None),
+    ('.logout', False, None),
+    # bash specific
+    ('.bashrc', False, """# look in .bashrc_custom
+if [ -z "$BASH_EXECUTION_STRING" -a -z "$SSH_ORIGINAL_COMMAND" ]; then
+    if [ -f ~/.bashrc_custom ]; then
+        source ~/.bashrc_custom
+    fi
+else
+    if [ -z "$HOME_ORIG" ]; then
+        HOME_ORIG="$HOME"
+        HOME=/
+        export HOME
+        export HOME_ORIG
+    fi
+fi
+"""),
+    ('.bash_profile', False, """# look in .bash_profile_custom
+if [ -z "$BASH_EXECUTION_STRING" -a -z "$SSH_ORIGINAL_COMMAND" ]; then
+    if [ -f ~/.bash_profile_custom ]; then
+        source ~/.bash_profile_custom
+    fi
+else
+    if [ -z "$HOME_ORIG" ]; then
+        HOME_ORIG="$HOME"
+        HOME=/
+        export HOME
+        export HOME_ORIG
+    fi
+fi
+"""),
+    ('.bash_login', False, None),
+    ('.bash_logout', False, None),
+    # tcsh / csh specific
+    ('.cshrc', False, None),
+    ('.tcshrc', False, """
+if( ( ! $?SSH_ORIGINAL_COMMAND ) && ( ! $?command ) ) then
+    if ( -f ~/.tcsh_custom ) then
+        source ~/.tcsh_custom
+    endif
+else
+    set histfile=/dev/null
+    set dirsfile=/dev/null
+
+    if( ! $?HOME_ORIG ) then
+        setenv HOME_ORIG "$HOME"
+        setenv HOME "/"
+    endif
+endif
+"""),
+    # don't care about zsh
+    ('.zshenv', False, None),
+    ('.zprofile', False, None),
+    ('.zshrc', False, None),
+    ('.zlogin', False, None),
+    ('.zlogout', False, None),
+    # ssh
+    ('.ssh', True, None),
+    ('.ssh/rc', False, None),
+    ('.ssh/known_hosts', False, -1), # only ensure file exists, do not touch if it does
+
+]
+
+def splitter(l, n):
+    i = 0
+    chunk = l[:n]
+    while chunk:
+        yield chunk
+        i += n
+        chunk = l[i:i+n]
+
+def set_homedir_permissions(user_data, created_users):
+    if not created_users:
+        return False
+
+    delayed = []
+    for u in created_users:
+        if u not in user_data:
+            continue
+
+        user = user_data[u]
+        homedir = user['homeDirectory']
+        uid = int(user['uidNumber'])
+        gid = int(user['gidNumber'])
+        sysadmin = user.get('sysadmin', False)
+
+        if homedir == '/':
+            continue
+
+        for relpath, isdir, contents in PERMISSIONS:
+            abspath = os.path.join(homedir, relpath)
+            if isdir:
+                if not os.path.exists(abspath):
+                    os.mkdir(abspath)
+                os.lchown(abspath, uid, gid)
+                delayed.append(abspath)
+            else:
+                can_rename = contents is not None and isinstance(contents, basestring)
+                can_wipe = contents is None or isinstance(contents, basestring)
+                can_write = can_wipe
+                custom = '%s_custom' % abspath
+
+                if os.path.exists(abspath):
+                    if can_rename:
+                        if not os.path.exists(custom):
+                            os.rename(abspath, custom)
+                    elif can_wipe:
+                        os.remove(abspath)
+                else:
+                    if sysadmin and can_rename:
+                        # make sure the custom file exists
+                        f = open(custom, 'w')
+                        os.lchown(custom, uid, gid)
+                        f.close()
+
+                    if not can_wipe:
+                        can_write = True
+
+                if sysadmin and can_rename:
+                    delayed.append(custom)
+
+                # ensure file exists
+                if can_write:
+                    f = open(abspath, 'w')
+                    if isinstance(contents, basestring):
+                        f.write(contents)
+                    os.lchown(abspath, uid, gid)
+                    f.close()
+
+                # change flags
+                if can_wipe:
+                    delayed.append(abspath)
+
+    if delayed:
+        for paths in splitter(delayed, 50):
+            subprocess.call(['/usr/bin/chattr', '+i', '--'] + paths)
 
 def get_uids_from_wheel():
     try:
@@ -304,11 +447,16 @@ if __name__ == '__main__':
 
     (options, group_list) = parser.parse_args()
 
+    if options.homedirs is not None:
+        import stat
+
     if options.homedirs == 'all':
         user_list_homedirs = get_homedirs()
+        old_mask = os.umask(0077)
         created_users = create_home_directories(user_list_homedirs)
+        os.umask(old_mask)
         print_user_list('Created home directory for', created_users)
-        sys.exit(1)
+#        set_homedir_permissions(user_list_homedirs, user_list_homedirs.keys())
 
     user_data = build_user_hash (group_list, restrict=options.restrict)
     if not len(user_data):
@@ -316,9 +464,10 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if options.homedirs == 'basic':
+        old_mask = os.umask(0077)
         created_users = create_home_directories(user_data)
+        os.umask(old_mask)
         print_user_list('Created home directory for', created_users)
-        sys.exit(1)
 
     base_directory_name = create_directory_structure(user_data)
     try:
