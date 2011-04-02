@@ -1,3 +1,3 @@
 #!/bin/sh
-/home/admin/bin/create-auth gnomeweb
+/home/admin/bin/create-auth --create-homedirs gnomeweb
 

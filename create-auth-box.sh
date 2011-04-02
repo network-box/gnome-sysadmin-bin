@@ -1,2 +1,2 @@
 #!/bin/sh
-/home/admin/bin/create-auth bugzilla halloween
+/home/admin/bin/create-auth --create-homedirs bugzilla halloween
