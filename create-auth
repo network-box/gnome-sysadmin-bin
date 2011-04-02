@@ -116,9 +116,6 @@ def create_home_directories(uids_data):
         if dst != '/home/users/%s' % uid or os.path.isdir(dst):
             continue
 
-        print "would create homedir: %s %s" % (uid, dst)
-        continue
-
         shutil.copytree(src, dst, True)
         subprocess.call(['/bin/chown', '-R', '%s:%s' % (user['uidNumber'], user['gidNumber']), dst ])
         created_uids.add(uid)
