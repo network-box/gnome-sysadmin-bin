@@ -40,7 +40,7 @@ RESTRICTS = {
     'mango':
         'command="/home/admin/bin/run-mango-special-cmd",no-pty,no-port-forwarding ',
     'rrsync':
-        'command="/home/admin/bin/run-rrsync-or-special-cmd /ftp/scratch",no-user-rc,no-pty,no-port-forwarding '
+        'command="/home/admin/bin/run-rrsync-or-special-cmd /ftp/scratch",no-user-rc,no-pty,no-port-forwarding ',
     'gnomegit':
         'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding '
 }
