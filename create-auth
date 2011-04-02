@@ -98,6 +98,22 @@ def get_homedirs(limit_uids=None):
         uids[uid] = attrval
     return uids
 
+def create_home_directories(uids):
+    src = '/etc/skel'
+    created_uids = set()
+    for uid, dst in uids.iteritems():
+        if os.path.isdir(dst):
+            continue
+
+        print "would create homedir: %s %s" % (uid, dst)
+        continue
+
+        shutil.copytree(src, dst, True)
+        subprocess.call(['/bin/chown', '-R', '%s:%s' % (uid, uid), dst ])
+        created_uids.add(uid)
+
+    return created_uids
+
 def get_uids_from_wheel():
     try:
         wheelinfo = grp.getgrnam ('wheel')
@@ -300,20 +316,23 @@ if __name__ == '__main__':
 
     (options, group_list) = parser.parse_args()
 
-    if options.homedirs is not None:
-        import pprint
-        if options.homedirs == 'all':
-            homedir_list = None
-        else:
-            homedir_list = ['ovitters']
-        homedirs = get_homedirs(homedir_list)
-        pprint.pprint(homedirs)
+    if options.homedirs == 'all':
+        homedirs = get_homedirs()
+        created_users = create_home_directories(homedirs)
+        print_user_list('Created home directory for', created_users)
         sys.exit(1)
 
     user_list = build_user_hash (group_list, restrict=options.restrict)
     if not len(user_list):
         print "ERROR: No users to create! Likely empty LDAP directory!!"
         sys.exit(1)
+
+    if options.homedirs == 'basic':
+        homedirs = get_homedirs(user_list)
+        created_users = create_home_directories(homedirs)
+        print_user_list('Created home directory for', created_users)
+        sys.exit(1)
+
     base_directory_name = create_directory_structure (user_list)
 
     initial_user_hash = get_md5sum_hash ()
