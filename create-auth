@@ -294,7 +294,7 @@ if __name__ == '__main__':
 
     if options.homedirs is not None:
         import pprint.pprint
-        if options.homedirs == 'all'
+        if options.homedirs == 'all':
             homedir_list = ['ovitters']
         else:
             homedir_list = None
