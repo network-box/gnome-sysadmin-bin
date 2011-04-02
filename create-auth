@@ -48,10 +48,7 @@ LDAP_GROUP_BASE='ou=groups,dc=gnome,dc=org'
 LDAP_USER_BASE='ou=people,dc=gnome,dc=org'
 
 
-_cache_group = {}
-def get_uids_from_group(group):
-    if group in _cache_group:
-        return _cache_group[group]
+def _get_group_from_ldap(group):
 
     filter = ldap.filter.filter_format('(&(objectClass=posixGroup)(cn=%s))', (group, ))
     results = l.search_s(LDAP_GROUP_BASE, ldap.SCOPE_SUBTREE, filter, ('memberUid', ))
@@ -63,10 +60,9 @@ def get_uids_from_group(group):
 
         members.update(attr['memberUid'])
 
-    _cache_group[group] = members
     return members
 
-def _lookup_from_ldap(filter):
+def _get_user_data_from_ldap(filter):
     user_data = {}
     try:
         searchattrs = ('uid', 'homeDirectory', 'authorizedKey',
@@ -110,7 +106,7 @@ def get_homedirs(limit_uids=None):
 
     filter = '(&(!(homeDirectory=/))(authorizedKey=*)%s)' % filter
 
-    return _lookup_from_ldap(filter)
+    return _get_user_data_from_ldap(filter)
 
 def create_home_directories(uids_data):
     src = '/etc/skel'
@@ -136,17 +132,24 @@ def get_uids_from_wheel():
         wheelinfo = grp.getgrnam ('admin')
 
     people = wheelinfo[3]
-    return filter (lambda x: x != 'root', people)
+    return set(filter (lambda x: x != 'root', people))
 
-def get_uids_from_sysadmin():
-    # XXX 
+_cache_group = {}
+def get_uids_from_group(group):
+    if group in _cache_group:
+        return _cache_group[group]
+
     try:
-        people = grp.getgrnam ('sysadmin')[3]
+        people = set(grp.getgrnam (group)[3])
     except KeyError:
         # Server doesn't have an LDAP connection -- probably the label server
-        people = get_uids_from_group('sysadmin')
+        people = _get_group_from_ldap(group)
 
-    return filter (lambda x: x != 'root' and x != 'sysadmin', people)
+    people.discard('root')
+    people.discard('sysadmin')
+
+    _cache_group[group] = people
+    return _cache_group[group]
 
 def lookup_user_info(uids):
     format = '(uid=%s)' * len(uids)
@@ -155,15 +158,15 @@ def lookup_user_info(uids):
         filter = '(|%s)' % filter
     filter = '(&%s(authorizedKey=*))' % filter
 
-    return _lookup_from_ldap(filter)
+    return _get_user_data_from_ldap(filter)
 
 def build_user_hash(group_list, restrict=None):
     users = set()
     gnomevcs_users = set()
 
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
-    wheel = set(get_uids_from_wheel())
-    sysadmin = set(get_uids_from_sysadmin())
+    wheel = get_uids_from_wheel()
+    sysadmin = get_uids_from_group('sysadmin')
     print_user_list('Sysadmins not in wheel', sysadmin - wheel)
     print_user_list('Ex-sysadmins to be removed from wheel', wheel - sysadmin)
     users.update(wheel)
