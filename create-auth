@@ -89,12 +89,13 @@ def get_homedirs(limit_uids=None):
         if searchattr not in attr:
             continue
 
+        uid = attr['uid'][0]
         attrval = attr[searchattr][0]
         # be paranoid about the homedirectory location
         if attrval != '/home/users/%s' % uid:
             continue
 
-        uids[attr['uid'][0]] = attrval
+        uids[uid] = attrval
     return uids
 
 def get_uids_from_wheel():
