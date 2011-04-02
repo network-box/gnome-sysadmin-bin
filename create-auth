@@ -67,6 +67,7 @@ def get_uids_from_group(group):
     return members
 
 def _lookup_from_ldap(filter):
+    user_data = {}
     try:
         searchattrs = ('uid', 'homeDirectory', 'authorizedKey',
                        'uidNumber', 'gidNumber')
@@ -77,7 +78,7 @@ def _lookup_from_ldap(filter):
         sys.exit(1)
 
     if not len(persona_data):
-        return {}
+        return user_data
 
     for dn, person_info in persona_data:
         key_list = person_info['authorizedKey']
