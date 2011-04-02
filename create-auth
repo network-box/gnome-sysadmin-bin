@@ -26,10 +26,6 @@ def get_md5sum_hash():
             user_md5sums [file] = m.hexdigest ()
     return user_md5sums
 
-GNOMEGIT=0
-TRANSLATION_USER=0
-MANGO=0
-RRSYNC=0
 ## first you must open a connection to the server
 try:
     l = ldap.open("ldap-back")
@@ -38,6 +34,16 @@ except ldap.LDAPError, e:
     print e
     sys.exit(1)
 
+RESTRICTS = {
+    'gnomegit-i18n':
+        'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding,host="91.189.93.2" ',
+    'mango':
+        'command="/home/admin/bin/run-mango-special-cmd",no-pty,no-port-forwarding ',
+    'rrsync':
+        'command="/home/admin/bin/run-rrsync-or-special-cmd /ftp/scratch",no-user-rc,no-pty,no-port-forwarding '
+    'gnomegit':
+        'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding '
+}
 
 def get_uids_from_group(group):
     filter = ldap.filter.filter_format("(cn=%s)", (group, ))
@@ -107,14 +113,10 @@ def lookup_user_info(uids, user_data):
 
     return user_data
 
-def build_user_hash(group_list):
+def build_user_hash(group_list, restrict=None):
     users = set()
     user_data = {}
     gnomevcs_users = set()
-    global GNOMEGIT
-    global TRANSLATION_USER
-    global MANGO
-    global RRSYNC
 
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
     wheel = set(get_uids_from_wheel())
@@ -125,12 +127,12 @@ def build_user_hash(group_list):
     users.update(sysadmin)
     for group in group_list:
         users.update(get_uids_from_group(group))
-    if GNOMEGIT or MANGO:
+    if restrict in ('gnomegit', 'gnomegit-i18n', 'mango'):
         gnomevcs_users = set(get_uids_from_group ('gnomecvs') + get_uids_from_group ('gnomevcs')) - users
-    if RRSYNC: # XXX - bit ugly to pretend they're gnomevcs users
+        if restrict == 'gnomegit+i18n':
+            gnomevcs_users.update(['translations'])
+    elif restrict == 'mango':
         gnomevcs_users = set(get_uids_from_group ('ftpbasic')) - users
-    if TRANSLATION_USER:
-        gnomevcs_users.update(['translations'])
 
     # look up their keys (if we have them)
     lookup_user_info(users, user_data)
@@ -139,7 +141,13 @@ def build_user_hash(group_list):
         lookup_user_info(gnomevcs_users, user_data)
         for uid in gnomevcs_users:
             if uid in user_data:
-                user_data[uid]['vcsOnly'] = 1
+                if restrict == 'gnomegit-i18n':
+                    if uid == 'translations':
+                        user_data[uid]['restrict'] = 'gnomegit-i18n'
+                    else:
+                        user_data[uid]['restrict'] = 'gnomegit'
+                else:
+                    user_data[uid]['restrict'] = restrict
 
     return user_data.values()
 
@@ -158,11 +166,6 @@ def remove_directory (dir):
     os.rmdir (dir)
 
 def create_directory_structure (user_list):
-    global GNOMEGIT
-    global TRANSLATION_USER
-    global MANGO
-    global RRSYNC
-
     base_directory_name = tempfile.mktemp ('-sshd')
     sshd_directory_name = base_directory_name + "/sshd"
     users_directory_name = sshd_directory_name + "/users"
@@ -180,16 +183,9 @@ def create_directory_structure (user_list):
             os.chown (user_dir_name, int(user['uidNumber']), int (user['gidNumber']))
             file = open (authorized_keys_file, "w")
             for key in user['authorizedKey']:
-                if user['vcsOnly']:
-                    if TRANSLATION_USER and user['uid'] == "translations":
-                        # For damned-lies to commit translations directly to git
-                        file.write ('command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding,host="91.189.93.2" ')
-                    elif MANGO:
-                        file.write ("command=\"/home/admin/bin/run-mango-special-cmd\",no-pty,no-port-forwarding ")
-                    elif RRSYNC:
-                        file.write ("command=\"/home/admin/bin/run-rrsync-or-special-cmd /ftp/scratch\",no-user-rc,no-pty,no-port-forwarding ")
-                    else: # GNOMEGIT
-                        file.write ("command=\"/home/admin/bin/run-git-or-special-cmd\",no-pty,no-port-forwarding ")
+                restrict = user.get('restrict', None)
+                if restrict:
+                    file.write(RESTRICTS[restrict])
                 file.write (key)
                 file.write ("\n")
             file.close()
@@ -244,25 +240,25 @@ def print_comparison (initial_user_hash, post_user_hash):
     print_user_list ("Changed", (changed_users))
 
 if __name__ == '__main__':
-    group_list = sys.argv[1:]
-    if '--gnomegit' in group_list:
-        GNOMEGIT=1
-        group_list = filter (lambda x: x != '--gnomegit', group_list)
-    if '--rrsync' in group_list:
-        RRSYNC=1
-        group_list = filter (lambda x: x != '--rrsync', group_list)
-    if '--mango' in group_list:
-        MANGO=1
-        group_list = filter (lambda x: x != '--mango', group_list)
-    if '--translation-user' in group_list:
-        TRANSLATION_USER=1
-        group_list = filter (lambda x: x != '--translation-user', group_list)
+    from optparse import OptionParser
+    parser = OptionParser()
+    parser.add_option("--restrict",
+                      action="store", dest="restrict", default=None,
+                      choices=['gnomegit', 'mango', 'rrsync', 'gnomegit-i18n'],
+                      help="What type of restricted access to setup")
 
-    if (GNOMEGIT + MANGO + RRSYNC) > 1:
-        print "--gnomegit, --mango and --rsync are exclusive"
-        sys.exit(1)
+    parser.add_option("--gnomegit",
+                      action="store_const", dest="restrict", const="gnomegit")
+    parser.add_option("--rrsync",
+                      action="store_const", dest="restrict", const="rrsync")
+    parser.add_option("--mango",
+                      action="store_const", dest="restrict", const="mango")
+    parser.add_option("--translation-user",
+                      action="store_const", dest="restrict", const="gnomegit-i18n")
 
-    user_list = build_user_hash (group_list)
+    (options, group_list) = parser.parse_args()
+
+    user_list = build_user_hash (group_list, restrict=options.restrict)
     if not len(user_list):
         print "ERROR: No users to create! Likely empty LDAP directory!!"
         sys.exit(1)
