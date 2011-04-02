@@ -134,7 +134,7 @@ def build_user_hash(group_list, restrict=None):
         gnomevcs_users = (get_uids_from_group('gnomecvs') | get_uids_from_group('gnomevcs')) - users
         if restrict == 'gnomegit+i18n':
             gnomevcs_users.update(['translations'])
-    elif restrict == 'mango':
+    elif restrict == 'rrsync':
         gnomevcs_users = get_uids_from_group('ftpbasic') - users
 
     # look up their keys (if we have them)
