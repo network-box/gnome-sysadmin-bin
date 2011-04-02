@@ -31,7 +31,7 @@ try:
     l = ldap.open("ldap-back")
     l.simple_bind("cn=Manager,dc=gnome,dc=org")
 except ldap.LDAPError, e:
-    print >>sys.stderr, print e
+    print >>sys.stderr, e
     sys.exit(1)
 
 RESTRICTS = {
