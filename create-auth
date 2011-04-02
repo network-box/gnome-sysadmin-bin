@@ -124,7 +124,7 @@ def create_home_directories(uids_data):
         continue
 
         shutil.copytree(src, dst, True)
-        subprocess.call(['/bin/chown', '-R', '%s:%s' % (uid, uid), dst ])
+        subprocess.call(['/bin/chown', '-R', '%s:%s' % (user['uidNumber'], user['gidNumber']), dst ])
         created_uids.add(uid)
 
     return created_uids
