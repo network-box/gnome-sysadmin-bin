@@ -181,14 +181,22 @@ def build_user_hash(group_list, restrict=None):
     user_data = lookup_user_info(users | gnomevcs_users)
 
     for uid in gnomevcs_users:
-        if uid in user_data:
-            if restrict == 'gnomegit-i18n':
-                if uid == 'translations':
-                    user_data[uid]['restrict'] = 'gnomegit-i18n'
-                else:
-                    user_data[uid]['restrict'] = 'gnomegit'
+        if uid not in user_data:
+            continue
+
+        if restrict == 'gnomegit-i18n':
+            if uid == 'translations':
+                user_data[uid]['restrict'] = 'gnomegit-i18n'
             else:
-                user_data[uid]['restrict'] = restrict
+                user_data[uid]['restrict'] = 'gnomegit'
+        else:
+            user_data[uid]['restrict'] = restrict
+
+    for uid in wheel | sysadmin:
+        if uid not in user_data:
+            continue
+
+        user_data[uid]['sysadmin'] = True
 
     return user_data
 
