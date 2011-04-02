@@ -66,13 +66,41 @@ def get_uids_from_group(group):
     _cache_group[group] = members
     return members
 
+def _lookup_from_ldap(filter):
+    try:
+        searchattrs = ('uid', 'homeDirectory', 'authorizedKey',
+                       'uidNumber', 'gidNumber')
+        persona_data = l.search_s ("ou=people,dc=gnome,dc=org",
+                                   ldap.SCOPE_SUBTREE, filter, searchattrs)
+    except ldap.LDAPError, e:
+        print e
+        sys.exit(1)
+
+    if not len(persona_data):
+        return {}
+
+    for dn, person_info in persona_data:
+        key_list = person_info['authorizedKey']
+        key_list.sort ()
+
+        uid = person_info['uid'][0]
+
+        user_data[uid] = {
+            'uid': uid,
+            'authorizedKey': key_list,
+            'uidNumber': person_info['uidNumber'][0],
+            'gidNumber': person_info['gidNumber'][0],
+            'homeDirectory': person_info['homeDirectory'][0],
+        }
+
+    return user_data
+
 def get_homedirs(limit_uids=None):
     uids = {}
     if limit_uids is not None and not limit_uids:
         # uids have been restricted and there are no uids to create a homedir for
         return uids
 
-    searchattr = 'homeDirectory'
     if limit_uids:
         format = '(uid=%s)' * len(limit_uids)
         filter = '(|%s)' % ldap.filter.filter_format(format, list(limit_uids))
@@ -81,28 +109,14 @@ def get_homedirs(limit_uids=None):
 
     filter = '(&(!(homeDirectory=/))(authorizedKey=*)%s)' % filter
 
+    return _lookup_from_ldap(filter)
 
-    results = l.search_s(LDAP_USER_BASE, ldap.SCOPE_SUBTREE, filter, ('uid', searchattr))
-    for entry in results:
-        id = entry[0]
-        attr = entry[1]
-        if searchattr not in attr:
-            continue
-
-        uid = attr['uid'][0]
-        attrval = attr[searchattr][0]
-        # be paranoid about the homedirectory location
-        if attrval != '/home/users/%s' % uid:
-            continue
-
-        uids[uid] = attrval
-    return uids
-
-def create_home_directories(uids):
+def create_home_directories(uids_data):
     src = '/etc/skel'
     created_uids = set()
-    for uid, dst in uids.iteritems():
-        if os.path.isdir(dst):
+    for uid, data in uids.iteritems():
+        dst = data['homeDirectory']
+        if dst != '/home/users/%s' % uid or os.path.isdir(dst):
             continue
 
         print "would create homedir: %s %s" % (uid, dst)
@@ -133,40 +147,17 @@ def get_uids_from_sysadmin():
 
     return filter (lambda x: x != 'root' and x != 'sysadmin', people)
 
-def lookup_user_info(uids, user_data):
+def lookup_user_info(uids):
     format = '(uid=%s)' * len(uids)
     filter = ldap.filter.filter_format(format, list(uids))
     if len(uids) > 0:
         filter = '(|%s)' % filter
     filter = '(&%s(authorizedKey=*))' % filter
-    try:
-        persona_data = l.search_s ("ou=people,dc=gnome,dc=org",
-                                   ldap.SCOPE_SUBTREE, filter, None)
-    except ldap.LDAPError, e:
-        print e
-        sys.exit(1)
 
-    if not len(persona_data):
-        return None
-
-    for dn, person_info in persona_data:
-        key_list = person_info['authorizedKey']
-        key_list.sort ()
-
-        uid = person_info['uid'][0]
-        user_data[uid] = {
-            'uid': uid,
-            'authorizedKey': key_list,
-            'uidNumber': person_info['uidNumber'][0],
-            'gidNumber': person_info['gidNumber'][0],
-            'vcsOnly': 0
-        }
-
-    return user_data
+    return _lookup_from_ldap(filter)
 
 def build_user_hash(group_list, restrict=None):
     users = set()
-    user_data = {}
     gnomevcs_users = set()
 
     # get a list of all the users.  Keep them in a hashtable to avoid duplicates
@@ -186,19 +177,17 @@ def build_user_hash(group_list, restrict=None):
         gnomevcs_users = get_uids_from_group('ftpbasic') - users
 
     # look up their keys (if we have them)
-    lookup_user_info(users, user_data)
+    user_data = lookup_user_info(users | gnomevcs_users)
 
-    if len(gnomevcs_users):
-        lookup_user_info(gnomevcs_users, user_data)
-        for uid in gnomevcs_users:
-            if uid in user_data:
-                if restrict == 'gnomegit-i18n':
-                    if uid == 'translations':
-                        user_data[uid]['restrict'] = 'gnomegit-i18n'
-                    else:
-                        user_data[uid]['restrict'] = 'gnomegit'
+    for uid in gnomevcs_users:
+        if uid in user_data:
+            if restrict == 'gnomegit-i18n':
+                if uid == 'translations':
+                    user_data[uid]['restrict'] = 'gnomegit-i18n'
                 else:
-                    user_data[uid]['restrict'] = restrict
+                    user_data[uid]['restrict'] = 'gnomegit'
+            else:
+                user_data[uid]['restrict'] = restrict
 
     return user_data.values()
 
@@ -317,8 +306,8 @@ if __name__ == '__main__':
     (options, group_list) = parser.parse_args()
 
     if options.homedirs == 'all':
-        homedirs = get_homedirs()
-        created_users = create_home_directories(homedirs)
+        user_list_homedirs = get_homedirs()
+        created_users = create_home_directories(user_list_homedirs)
         print_user_list('Created home directory for', created_users)
         sys.exit(1)
 
@@ -328,8 +317,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if options.homedirs == 'basic':
-        homedirs = get_homedirs(user_list)
-        created_users = create_home_directories(homedirs)
+        created_users = create_home_directories(user_list)
         print_user_list('Created home directory for', created_users)
         sys.exit(1)
 
