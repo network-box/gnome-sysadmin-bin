@@ -45,7 +45,7 @@ RESTRICTS = {
         'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding '
 }
 LDAP_GROUP_BASE='ou=groups,dc=gnome,dc=org'
-
+LDAP_USER_BASE='ou=people,dc=gnome,dc=org'
 
 
 _cache_group = {}
@@ -65,6 +65,32 @@ def get_uids_from_group(group):
 
     _cache_group[group] = members
     return members
+
+def get_homedirs(limit_uids=None):
+    uids = {}
+    if limit_uids is not None and not limit_uids:
+        # uids have been restricted and there are no uids to create a homedir for
+        return uids
+
+    searchattr = 'homeDirectory'
+    if limit_uids:
+        format = '(uid=%s)' * len(limit_uids)
+        filter = '(|%s)' % ldap.filter.filter_format(format, list(limit_uids))
+    else:
+        filter = ""
+
+    filter = '(&(!(homeDirectory=/))(authorizedKey=*)%s)' % filter
+
+
+    results = l.search_s(LDAP_USER_BASE, ldap.SCOPE_SUBTREE, filter, ('uid', searchattr))
+    for entry in results:
+        id = entry[0]
+        attr = entry[1]
+        if searchattr not in attr:
+            continue
+
+        uids[attr['uid'][0]] = attr[searchattr][0]
+    return uids
 
 def get_uids_from_wheel():
     try:
@@ -259,7 +285,22 @@ if __name__ == '__main__':
     parser.add_option("--translation-user",
                       action="store_const", dest="restrict", const="gnomegit-i18n")
 
+    parser.add_option("--create-all-homedirs", dest="homedirs", const="all")
+    parser.add_option("--create-homedirs", dest="homedirs", const="basic")
+
+    parser.set_defaults(homedirs=None)
+
     (options, group_list) = parser.parse_args()
+
+    if options.homedirs is not None:
+        import pprint.pprint
+        if options.homedirs == 'all'
+            homedir_list = ['ovitters']
+        else:
+            homedir_list = None
+        homedirs = get_homedirs(homedir_list)
+        pprint.pprint(homedirs)
+        sys.exit(1)
 
     user_list = build_user_hash (group_list, restrict=options.restrict)
     if not len(user_list):
