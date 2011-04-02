@@ -31,7 +31,7 @@ try:
     l = ldap.open("ldap-back")
     l.simple_bind("cn=Manager,dc=gnome,dc=org")
 except ldap.LDAPError, e:
-    print e
+    print >>sys.stderr, print e
     sys.exit(1)
 
 RESTRICTS = {
@@ -74,7 +74,7 @@ def _lookup_from_ldap(filter):
         persona_data = l.search_s ("ou=people,dc=gnome,dc=org",
                                    ldap.SCOPE_SUBTREE, filter, searchattrs)
     except ldap.LDAPError, e:
-        print e
+        print >>sys.stderr, e
         sys.exit(1)
 
     if not len(persona_data):
@@ -192,20 +192,6 @@ def build_user_hash(group_list, restrict=None):
 
     return user_data
 
-# we don't expect any errors with this so we let any that occur go up
-# to the top so that cron mails them out.
-def remove_directory (dir):
-    assert os.path.isdir (dir)
-    file_list = os.listdir (dir)
-
-    for file in file_list:
-        path = os.path.join(dir, file)
-        if os.path.isfile (path):
-            os.remove (path)
-        elif os.path.isdir (path):
-            remove_directory (path)
-    os.rmdir (dir)
-
 def create_directory_structure (user_data):
     base_directory_name = tempfile.mktemp ('-sshd')
     sshd_directory_name = base_directory_name + "/sshd"
@@ -242,8 +228,9 @@ def create_directory_structure (user_data):
             shutil.copy2('/root/.ssh/authorized_keys', authorized_keys_file)
 
     except Exception, e:
-        remove_directory (base_directory_name)
+        shutil.rmtree(base_directory_name)
         raise
+
     return base_directory_name
 
 
@@ -314,7 +301,7 @@ if __name__ == '__main__':
 
     user_data = build_user_hash (group_list, restrict=options.restrict)
     if not len(user_data):
-        print "ERROR: No users to create! Likely empty LDAP directory!!"
+        print >>sys.stderr, "ERROR: No users to create! Likely empty LDAP directory!!"
         sys.exit(1)
 
     if options.homedirs == 'basic':
@@ -323,16 +310,15 @@ if __name__ == '__main__':
         sys.exit(1)
 
     base_directory_name = create_directory_structure(user_data)
+    try:
+        initial_user_hash = get_md5sum_hash ()
+        status = subprocess.call(['rsync', '-aq', '--delete', '%s/sshd/' % base_directory_name, '/etc/sshd/'])
+        if status != 0:
+            print >>sys.stderr, "Error in rsync of files:"
+            sys.exit (status)
 
-    initial_user_hash = get_md5sum_hash ()
-    status = subprocess.call(['rsync', '-aq', '--delete', '%s/sshd/' % base_directory_name, '/etc/sshd/'])
-    if status != 0:
-        print ("Error in rsync of files:")
-        try:
-            remove_directory (base_directory_name)
-        except IOError, e:
-            print "Unable to remove directory %s\n%s" % (base_directory_name, str(e))
-        sys.exit (status)
-    post_user_hash = get_md5sum_hash ()
-    remove_directory (base_directory_name)
+        post_user_hash = get_md5sum_hash ()
+    finally:
+        remove_directory (base_directory_name)
+
     print_comparison (initial_user_hash, post_user_hash)
