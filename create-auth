@@ -190,7 +190,7 @@ def build_user_hash(group_list, restrict=None):
             else:
                 user_data[uid]['restrict'] = restrict
 
-    return user_data.values()
+    return user_data
 
 # we don't expect any errors with this so we let any that occur go up
 # to the top so that cron mails them out.
