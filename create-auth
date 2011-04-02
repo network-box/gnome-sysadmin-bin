@@ -319,6 +319,6 @@ if __name__ == '__main__':
 
         post_user_hash = get_md5sum_hash ()
     finally:
-        remove_directory (base_directory_name)
+        shutil.rmtree(base_directory_name)
 
     print_comparison (initial_user_hash, post_user_hash)
