@@ -7,9 +7,7 @@
 # not world-readable
 umask 0002
 
-if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
-    # $SSH_ORIGINAL_COMMAND has quoting; split it apart into arguments
-    eval "set $SSH_ORIGINAL_COMMAND"
+rungitcommand () {
     COMMAND=$1
     shift
 
@@ -31,18 +29,16 @@ if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
 	    exec /home/admin/gitadmin-bin/receive-pack-import "$@"
 	    ;;
 
-# This existed for retrieving mango passwords from svn.gnome.org; if we keep the
-# system and repurpose socket for something else we could move the files to
-# git.gnome.org, but it's a bit of a wonky system.
-#	mango)
-#	    cat "/var/local/mango/`whoami`" 2> /dev/null
-#	    echo > "/var/local/mango/`whoami`" 2> /dev/null
-#	    exit
-#	    ;;
 	*)
 	    exec /usr/bin/git-shell -c "$SSH_ORIGINAL_COMMAND"
 	    ;;
     esac
+}
+
+if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
+    # $SSH_ORIGINAL_COMMAND has quoting; split it apart into arguments
+    # by not quoting the variable
+    rungitcommand $SSH_ORIGINAL_COMMAND
 fi
 
 echo 'SSH authentication succeeded. Interactive login is not allowed.'
