@@ -132,15 +132,18 @@ def get_uids_from_wheel():
     return set(filter (lambda x: x != 'root', people))
 
 _cache_group = {}
-def get_uids_from_group(group):
+def get_uids_from_group(group, force_ldap=False):
     if group in _cache_group:
         return _cache_group[group]
 
-    try:
-        people = set(grp.getgrnam (group)[3])
-    except KeyError:
-        # Server doesn't have an LDAP connection -- probably the label server
+    if force_ldap:
         people = _get_group_from_ldap(group)
+    else:
+        try:
+            people = set(grp.getgrnam (group)[3])
+        except KeyError:
+            # Server doesn't have an LDAP connection -- probably the label server
+            people = _get_group_from_ldap(group)
 
     people.discard('root')
     people.discard('sysadmin')
@@ -169,13 +172,13 @@ def build_user_hash(group_list, restrict=None):
     users.update(wheel)
     users.update(sysadmin)
     for group in group_list:
-        users.update(get_uids_from_group(group))
+        users.update(get_uids_from_group(group, force_ldap=True))
     if restrict in ('gnomegit', 'gnomegit-i18n', 'mango'):
-        gnomevcs_users = (get_uids_from_group('gnomecvs') | get_uids_from_group('gnomevcs')) - users
+        gnomevcs_users = (get_uids_from_group('gnomecvs', force_ldap=True) | get_uids_from_group('gnomevcs', force_ldap=True)) - users
         if restrict == 'gnomegit+i18n':
             gnomevcs_users.update(['translations'])
     elif restrict == 'rrsync':
-        gnomevcs_users = get_uids_from_group('ftpbasic') - users
+        gnomevcs_users = get_uids_from_group('ftpbasic', force_ldap=True) - users
 
     # look up their keys (if we have them)
     user_data = lookup_user_info(users | gnomevcs_users)
