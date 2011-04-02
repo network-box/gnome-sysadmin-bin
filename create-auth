@@ -44,24 +44,27 @@ RESTRICTS = {
     'gnomegit':
         'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding '
 }
+LDAP_GROUP_BASE='ou=groups,dc=gnome,dc=org'
 
+
+
+_cache_group = {}
 def get_uids_from_group(group):
-    filter = ldap.filter.filter_format("(cn=%s)", (group, ))
-    try:
-        ldap_result_id = l.search ("ou=groups,dc=gnome,dc=org",
-                                   ldap.SCOPE_SUBTREE, filter, None)
-        while 1:
-            result_type, group_data = l.result(ldap_result_id, 0)
-            if (group_data == []):
-                break
-            else:
-                group_info = group_data[0][1]
-                return group_info.get('memberUid', [])
-    except ldap.LDAPError, e:
-        print e
-        sys.exit(1)
+    if group in _cache_group:
+        return _cache_group[group]
 
-    return []
+    filter = ldap.filter.filter_format('(&(objectClass=posixGroup)(cn=%s))', (group, ))
+    results = l.search_s(LDAP_GROUP_BASE, ldap.SCOPE_SUBTREE, filter, ('memberUid', ))
+
+    members = set()
+    for entry in results:
+        id = entry[0]
+        attr = entry[1]
+
+        members.update(attr['memberUid'])
+
+    _cache_group[group] = members
+    return members
 
 def get_uids_from_wheel():
     try:
@@ -128,11 +131,11 @@ def build_user_hash(group_list, restrict=None):
     for group in group_list:
         users.update(get_uids_from_group(group))
     if restrict in ('gnomegit', 'gnomegit-i18n', 'mango'):
-        gnomevcs_users = set(get_uids_from_group ('gnomecvs') + get_uids_from_group ('gnomevcs')) - users
+        gnomevcs_users = (get_uids_from_group('gnomecvs') + get_uids_from_group('gnomevcs')) - users
         if restrict == 'gnomegit+i18n':
             gnomevcs_users.update(['translations'])
     elif restrict == 'mango':
-        gnomevcs_users = set(get_uids_from_group ('ftpbasic')) - users
+        gnomevcs_users = get_uids_from_group('ftpbasic') - users
 
     # look up their keys (if we have them)
     lookup_user_info(users, user_data)
