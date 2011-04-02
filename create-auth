@@ -285,8 +285,10 @@ if __name__ == '__main__':
     parser.add_option("--translation-user",
                       action="store_const", dest="restrict", const="gnomegit-i18n")
 
-    parser.add_option("--create-all-homedirs", dest="homedirs", const="all")
-    parser.add_option("--create-homedirs", dest="homedirs", const="basic")
+    parser.add_option("--create-all-homedirs",
+                      action="store_const", dest="homedirs", const="all")
+    parser.add_option("--create-homedirs",
+                      action="store_const", dest="homedirs", const="basic")
 
     parser.set_defaults(homedirs=None)
 
