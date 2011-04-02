@@ -295,7 +295,7 @@ if __name__ == '__main__':
     (options, group_list) = parser.parse_args()
 
     if options.homedirs is not None:
-        import pprint.pprint
+        import pprint
         if options.homedirs == 'all':
             homedir_list = ['ovitters']
         else:
