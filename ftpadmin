@@ -964,6 +964,13 @@ Install %s? [Y/n]""" % self.module,
         self.moduleinfo.refresh()
         print ", done"
 
+        sys.stdout.write(" - Removing original tarball")
+        if self.GROUPID is not None and os.stat(self.file).st_gid != self.GROUPID:
+            os.remove(self.file)
+            print ", done"
+        else:
+            print ", ignored (owned by protected group)"
+
         self.inform()
         return True
 
@@ -1502,7 +1509,7 @@ def main():
     BasicInfo.GROUPID = groupid
 
     description = """Install new tarball(s) to GNOME FTP master and make it available on the mirrors."""
-    epilog="""Report bugs to gnome-sysadmin@gnome.org"""
+    epilog="""Report bugs to https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin"""
     parser = argparse.ArgumentParser(description=description,epilog=epilog)
 
     # SUBPARSERS
