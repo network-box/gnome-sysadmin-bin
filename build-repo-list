@@ -91,8 +91,8 @@ def iter_repos (paths, repo_func, include_pending=True):
             repo_func(repo)
 
 def output_cgit(repo):
-    print 'repo.section=%s' % repo.section
     print 'repo.url=%s' % repo.shortname
+    print 'repo.section=%s' % repo.section
     print 'repo.name=%s' % repo.shortname
     print 'repo.desc=%s' % repo.desc
     print 'repo.path=%s' % repo.path
