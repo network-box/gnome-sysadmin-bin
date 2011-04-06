@@ -29,6 +29,14 @@ rungitcommand () {
 	    exec /home/admin/gitadmin-bin/receive-pack-import "$@"
 	    ;;
 
+	test1)
+	    exec /bin/echo "$@"
+	    ;;
+
+	test2)
+	    exec /bin/echo $@
+	    ;;
+
 	*)
 	    exec /usr/bin/git-shell -c "$SSH_ORIGINAL_COMMAND"
 	    ;;
