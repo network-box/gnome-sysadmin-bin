@@ -1,53 +1,37 @@
-#!/bin/bash
+#!/usr/bin/python
+
+import os
+import shlex
 
 # vim: set ts=4 sw=4:
 
 # In case .bashrc was executed, umask might have been changed from
 # the default, which could result in files being created private
 # not world-readable
-umask 0002
+os.umask(0002)
 
-rungitcommand () {
-    COMMAND=$1
-    shift
+def rungitcommand(args):
+    cmds = {
+        'create-repository': '/home/admin/gitadmin-bin/create-repository',
+        'finish-import': '/home/admin/gitadmin-bin/finish-import',
+        # These allow 'git push --exec=force/import'
+        'force': '/home/admin/gitadmin-bin/receive-pack-force',
+        'import': '/home/admin/gitadmin-bin/receive-pack-import',
+    }
 
-    case "$COMMAND" in
-	create-repository)
-	    exec /home/admin/gitadmin-bin/create-repository "$@"
-	    ;;
+    if args[0] in cmds:
+        cmd = [cmds[args[0]]]
+        cmd.extend(args[1:])
+    else:
+        cmd = ['/usr/bin/git-shell', '-c', os.environ['SSH_ORIGINAL_COMMAND']]
 
-	finish-import)
-	    exec /home/admin/gitadmin-bin/finish-import "$@"
-	    ;;
+    os.execv(cmd[0], cmd)
 
-	# These allow 'git push --exec=force/import'
-	force)
-	    exec /home/admin/gitadmin-bin/receive-pack-force "$@"
-	    ;;
 
-	import)
-	    exec /home/admin/gitadmin-bin/receive-pack-import "$@"
-	    ;;
-
-	test1)
-	    exec /bin/echo "$@"
-	    ;;
-
-	test2)
-	    exec /bin/echo $@
-	    ;;
-
-	*)
-	    exec /usr/bin/git-shell -c "$SSH_ORIGINAL_COMMAND"
-	    ;;
-    esac
-}
-
-if [ "$SSH_ORIGINAL_COMMAND" != "" ]; then
-    # $SSH_ORIGINAL_COMMAND has quoting; split it apart into arguments
-    # by not quoting the variable
-    rungitcommand $SSH_ORIGINAL_COMMAND
-fi
-
-echo 'SSH authentication succeeded. Interactive login is not allowed.'
-exit 1
+if __name__ == "__main__":
+    if 'SSH_ORIGINAL_COMMAND' in os.environ:
+        rungitcommand(shlex.split(os.environ['SSH_ORIGINAL_COMMAND']))
+    else:
+        import sys
+        print >>sys.stderr, 'SSH authentication succeeded. Interactive login is not allowed.'
+        sys.exit(1)
