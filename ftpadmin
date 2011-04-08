@@ -333,7 +333,7 @@ class TarInfo(BasicInfo):
                 if file_count == 1:
                     if info.isdir():
                         uniq_dir = "%s/" % info.name
-                    else
+                    else:
                         uniq_dir = os.path.basename(info.name.replace("/",os.sep)) if "/" in info.name else None
                 elif uniq_dir is not None and not info.name.startswith(uniq_dir):
                     uniq_dir = None
