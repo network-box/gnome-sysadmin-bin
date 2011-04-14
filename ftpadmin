@@ -1103,7 +1103,7 @@ Install %s? [Y/n]""" % self.module,
         retcode = self._send_email("forced", subject, to, [to])
         print ", done"
 
-        products = self.moduleinfo.get_bz_product_from_doap()
+        products = list(self.moduleinfo.get_bz_product_from_doap())
         if not products:
             products = [self.module]
         for product in products:
