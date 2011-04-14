@@ -1015,31 +1015,12 @@ Install %s? [Y/n]""" % self.module,
         else:
             print "WARN: Couldn't determine sha256sum file?!?"
 
-        print >>mail, """       Module: %s
-      Version: %s
-  Uploaded by: %s
-""" % (self.module, self.version, self.who)
-
         headers = {
             'Reply-To': 'desktop-devel-list@gnome.org',
             'X-Module-Name': self.module,
             'X-Module-Version': self.version,
             'X-Maintainer-Upload': str(self.pw.pw_name in self.moduleinfo.maintainers)
         }
-        for format in self.FORMATS:
-            info = self.moduleinfo.info_detailed(self.version, format)
-            if info is None:
-                continue
-
-            path, realpath, size, stat = info
-            dirname, basename = os.path.split(path)
-            print >>mail, "%s/%s" % (self.URLROOT, path)
-            if basename in sha256sum:
-                print >>mail, " sha256sum: %s" % sha256sum[basename]
-                headers['X-Module-SHA256-%s' % format] = sha256sum[basename]
-            headers['X-Module-URL-%s' % format] = "%s/%s" % (self.URLROOT, path)
-            print >>mail, "      size: %s" % size
-            print >>mail, ""
 
         modulename = None
         desc = self.moduleinfo.get_one_from_doap('description')
@@ -1085,6 +1066,20 @@ Install %s? [Y/n]""" % self.module,
                 print >>mail, ""
                 # Only show the contents of the first found file, URLs for the rest
                 show_contents = False
+
+        self._print_header(mail, 'Download')
+        print >>mail, ""
+        infos = [(format, self.moduleinfo.info_detailed(self.version, format)) for format in self.FORMATS]
+        infos = [(format,) + info for format, info in infos if info is not None]
+        max_format_len = max((len(info[0]) for info in infos))
+        for format, path, realpath, size, stat in infos:
+            dirname, basename = os.path.split(path)
+            print >>mail, "%s/%s %s(%s)" % (self.URLROOT, path, ' ' * (max_format_len - len(format)),  size)
+            if basename in sha256sum:
+                print >>mail, "  sha256sum: %s" % sha256sum[basename]
+                headers['X-Module-SHA256-%s' % format] = sha256sum[basename]
+            headers['X-Module-URL-%s' % format] = "%s/%s" % (self.URLROOT, path)
+            print >>mail, ""
 
 
         mail.seek(0)
