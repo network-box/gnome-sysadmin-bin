@@ -1033,8 +1033,6 @@ Install %s? [Y/n]""" % self.module,
                 if "\n" in paragraph: paragraph = re_whitespace.sub(" ", paragraph)
                 print >>mail, textwrap.fill(paragraph)
                 print >>mail, ""
-            if "\n\n" in desc:
-                print >>mail, ""
 
         show_contents = True
         for tarballname, format, formatname in self.DIFF_FILES:
@@ -1067,6 +1065,7 @@ Install %s? [Y/n]""" % self.module,
                 # Only show the contents of the first found file, URLs for the rest
                 show_contents = False
 
+        print >>mail, ""
         self._print_header(mail, 'Download')
         print >>mail, ""
         infos = [(format, self.moduleinfo.info_detailed(self.version, format)) for format in self.FORMATS]
