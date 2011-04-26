@@ -1366,7 +1366,7 @@ def cmd_notify(options, parser):
                                                 or version_cmp(x.version, y.version)))
 
     for module in modules:
-        module.notify()
+        module.inform()
         print ""
 
 def cmd_show_info(options, parser):
