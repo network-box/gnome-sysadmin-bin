@@ -1545,7 +1545,7 @@ def main():
         func=cmd_install, clobber=False, unattended=False, section=DEFAULT_SECTION
     )
     #   notify
-    subparser = subparsers.add_parser('notify', help='notify new release' % BasicInfo.URLROOT)
+    subparser = subparsers.add_parser('notify', help='notify new release')
     subparser.add_argument('tarball', nargs='+', help='Tarball(s) to notify')
     subparser.add_argument("-s", "--section", choices=SECTIONS)
     subparser.set_defaults(func=cmd_notify, section=DEFAULT_SECTION)
