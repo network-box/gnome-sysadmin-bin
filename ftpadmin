@@ -1348,6 +1348,27 @@ def cmd_install(options, parser):
     print """Please report any problems to:
 https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin"""
 
+def cmd_notify(options, parser):
+    tarballs = [file for file in options.tarball if os.path.exists(file)]
+
+    if not len(tarballs):
+        parser.print_help()
+        sys.exit(2)
+
+    sys.stdout.write("Gathering information and sorting on version: ")
+    modules = []
+    for tarball in tarballs:
+        modules.append(InstallModule(tarball))
+        sys.stdout.write(".")
+    print ", done"
+    modules.sort(cmp=lambda x,y:
+                     x.module and y.module and (cmp(x.module, y.module) 
+                                                or version_cmp(x.version, y.version)))
+
+    for module in modules:
+        module.notify()
+        print ""
+
 def cmd_show_info(options, parser):
     import datetime
 
@@ -1523,6 +1544,11 @@ def main():
     subparser.set_defaults(
         func=cmd_install, clobber=False, unattended=False, section=DEFAULT_SECTION
     )
+    #   notify
+    subparser = subparsers.add_parser('notify', help='notify new release' % BasicInfo.URLROOT)
+    subparser.add_argument('tarball', nargs='+', help='Tarball(s) to notify')
+    subparser.add_argument("-s", "--section", choices=SECTIONS)
+    subparser.set_defaults(func=cmd_notify, section=DEFAULT_SECTION)
     #   show-info
     subparser = subparsers.add_parser('show-info', help='show module information')
     subparser.add_argument("-s", "--section", choices=SECTIONS)
