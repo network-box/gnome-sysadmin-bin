@@ -1029,7 +1029,7 @@ Install %s? [Y/n]""" % self.module,
             modulename = self.moduleinfo.get_one_from_doap('name', self.module)
             self._print_header(mail, "About %s" % (modulename or self.module))
             print >>mail, ""
-            for paragraph in desc.split("\n\n"):
+            for paragraph in desc.encode('utf-8').split("\n\n"):
                 if "\n" in paragraph: paragraph = re_whitespace.sub(" ", paragraph)
                 print >>mail, textwrap.fill(paragraph)
                 print >>mail, ""
