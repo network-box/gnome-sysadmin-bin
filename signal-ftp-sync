@@ -7,7 +7,7 @@ if [ "`whoami`" != gnomeftp ] ; then
 fi
 
 signal () {
-    echo -n " $1"
+    echo -n ", $1"
     ssh -i /home/admin/secret/gnomeftp/id_rsa -o"BatchMode yes" -o"ForwardAgent no" -o"ForwardX11 no" -o"user $2" -f "$1" sleep 1
 }
 
