@@ -101,3 +101,6 @@ if __name__ == '__main__':
 
     l.unbind_s()
 
+#if __name__ == '__main__':
+#    subprocess.call(['/sbin/service', 'sssd', 'restart'])
+#    subprocess.call(['/sbin/service', 'sshd', 'restart'])
