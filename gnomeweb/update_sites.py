@@ -149,7 +149,7 @@ def update_module_real(moduleroot, url, branch='master', clone_only=False, verbo
             # Path does not exist.. so check it out of GIT
             if verbose:
                 print "Running 'git clone' to create " + moduleroot
-            git.clone(url, moduleroot)
+            git.clone('--mirror', url, moduleroot)
             os.chdir(moduleroot)
             if branch != 'master':
                 if verbose:
