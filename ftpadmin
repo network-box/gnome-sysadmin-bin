@@ -799,12 +799,23 @@ class InstallModule(BasicInfo):
             self.destination = os.path.join(self.FTPROOT, self.section, self.fileinfo.module, self.majmin)
             if DEBUG:
                 self.destination = os.path.join(self.FTPROOT_DEBUG, self.section, self.fileinfo.module, self.majmin)
-
-            self.moduleinfo = ModuleInfo(self.fileinfo.module, section=self.section)
-            self.prevversion = get_latest_version(self.moduleinfo.versions, self.version)
         else:
-            self.moduleinfo = None
+            self._moduleinfo = None
             self.module = None
+
+    @property
+    def moduleinfo(self):
+        if not hasattr(self, '_moduleinfo'):
+            self._moduleinfo = ModuleInfo(self.fileinfo.module, section=self.section)
+
+        return self._moduleinfo
+
+    @property
+    def prevversion(self):
+        if not hasattr(self, '_prevversion'):
+            self._prevversion = get_latest_version(self.moduleinfo.versions, self.version)
+
+        return self._prevversion
 
     def confirm_install(self):
 
