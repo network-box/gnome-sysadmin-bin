@@ -774,7 +774,7 @@ class ModuleInfo(DirectoryInfo):
 
 class InstallModule(BasicInfo):
 
-    INSTALL_FORMATS = ('tar.gz', 'tar.bz2')
+    INSTALL_FORMATS = ('tar.bz2', 'tar.xz')
 
     def __init__(self, file, section=DEFAULT_SECTION):
         self.file = file
