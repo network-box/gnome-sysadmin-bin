@@ -964,11 +964,13 @@ Install %s? [Y/n]""" % self.module,
             print ", done"
 
             sys.stdout.write(' - Updating LATEST-IS')
-            latest = '%s-%s.%s' % (self.module, self.version, 'tar.gz')
-            if os.path.exists(os.path.join(self.destination, latest)):
-                for fn in glob.glob(os.path.join(self.destination, 'LATEST-IS-*')):
-                    os.remove(fn)
-                os.symlink(latest, os.path.join(self.destination, 'LATEST-IS-%s' % self.version))
+            for extension in self.INSTALL_FORMATS + ('tar.gz',):
+                latest = '%s-%s.%s' % (self.module, self.version, extension)
+                if os.path.exists(os.path.join(self.destination, latest)):
+                    for fn in glob.glob(os.path.join(self.destination, 'LATEST-IS-*')):
+                        os.remove(fn)
+                    os.symlink(latest, os.path.join(self.destination, 'LATEST-IS-%s' % self.version))
+                    break
             print ", done"
         finally:
             # cleanup temporary directory
