@@ -774,6 +774,7 @@ class ModuleInfo(DirectoryInfo):
 
 class InstallModule(BasicInfo):
 
+    # Preferred format should appear last
     INSTALL_FORMATS = ('tar.bz2', 'tar.xz')
 
     def __init__(self, file, section=DEFAULT_SECTION):
@@ -964,7 +965,7 @@ Install %s? [Y/n]""" % self.module,
             print ", done"
 
             sys.stdout.write(' - Updating LATEST-IS')
-            for extension in self.INSTALL_FORMATS + ('tar.gz',):
+            for extension in reversed(self.INSTALL_FORMATS + ('tar.gz',)):
                 latest = '%s-%s.%s' % (self.module, self.version, extension)
                 if os.path.exists(os.path.join(self.destination, latest)):
                     for fn in glob.glob(os.path.join(self.destination, 'LATEST-IS-*')):
