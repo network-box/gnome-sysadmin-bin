@@ -128,6 +128,9 @@ From: %(from_address)s
 Subject: %(subject)s
 Keywords: %(projectshort)s
 X-Git-Refname: %(refname)s
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 """) % {
             'recipients': recipients,
             'cc': ','.join(cc),
