@@ -114,9 +114,9 @@ class RefChange(object):
     def generate_header(self, out, subject, include_revs=True, oldrev=None, newrev=None, cc=None):
         user = os.environ['USER']
         if user_fullname:
-            from_address = u"%s <%s@src.gnome.org>" % (user_fullname, user)
+            from_address = "%s <%s@src.gnome.org>" % (user_fullname, user)
         else:
-            from_address = u"%s@src.gnome.org" % (user)
+            from_address = "%s@src.gnome.org" % (user)
 
         if cc is None:
             cc = self.cc
