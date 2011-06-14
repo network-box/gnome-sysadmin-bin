@@ -131,7 +131,7 @@ X-Git-Refname: %(refname)s
 """) % {
             'recipients': recipients,
             'cc': ','.join(cc),
-            'from_address': Header.Header(from_address, 'utf-8'),
+            'from_address': from_address,
             'subject': subject,
             'projectshort': projectshort,
             'refname': self.refname
