@@ -114,9 +114,9 @@ class RefChange(object):
     def generate_header(self, out, subject, include_revs=True, oldrev=None, newrev=None, cc=None):
         user = os.environ['USER']
         if user_fullname:
-            from_address = "%s <%s@src.gnome.org>" % (user_fullname, user)
+            from_address = u"%s <%s@src.gnome.org>" % (user_fullname, user)
         else:
-            from_address = "%s@src.gnome.org" % (user)
+            from_address = u"%s@src.gnome.org" % (user)
 
         if cc is None:
             cc = self.cc
@@ -131,7 +131,7 @@ X-Git-Refname: %(refname)s
 """) % {
             'recipients': recipients,
             'cc': ','.join(cc),
-            'from_address': from_address,
+            'from_address': Header.Header(from_address, 'utf-8'),
             'subject': subject,
             'projectshort': projectshort,
             'refname': self.refname
