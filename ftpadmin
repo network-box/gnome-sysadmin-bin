@@ -332,11 +332,12 @@ class TarInfo(BasicInfo):
                     self.file[os.path.basename(info.name)] = t.extractfile(info).readlines()
 
                 if file_count == 1:
-                    if info.isdir():
+                    if '/' in info.name.lstrip('/'):
+                        uniq_dir = "%s/" % info.name.lstrip('/').partition('/')[0]
+                    elif info.isdir():
                         uniq_dir = "%s/" % info.name
-                    else:
-                        uniq_dir = "%s/" % os.path.dirname(info.name.replace("/",os.sep)) if "/" in info.name else None
-                elif uniq_dir is not None and not info.name.startswith(uniq_dir):
+                elif uniq_dir is not None and not info.name.startswith(uniq_dir) and \
+                     not ( info.isdir() and uniq_dir == '%s/' % info.name ):
                     uniq_dir = None
                 if progress:
                     dots_to_show = t.offset / self.BLOCKSIZE
