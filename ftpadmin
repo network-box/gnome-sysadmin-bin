@@ -23,6 +23,7 @@ import glob
 import string
 from email.mime.text import MIMEText
 from email.header import Header
+from email.utils import formataddr
 import json
 try:
     from cStringIO import StringIO
@@ -1172,7 +1173,7 @@ See http://live.gnome.org/MaintainersCorner#doap"""
         """Send an email"""
         msg = MIMEText(contents, _charset='utf-8')
         msg['Subject'] = subject
-        msg['From'] = Header(u'"%s" <install-module@master.gnome.org>' % self.who)
+        msg['From'] = formataddr((Header(self.who.decode('utf-8')).encode(), 'install-module@master.gnome.org'))
         msg['To'] = to
         if headers is not None:
             for k, v in headers.iteritems():
