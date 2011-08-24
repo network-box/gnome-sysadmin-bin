@@ -55,11 +55,8 @@ check_maintainers() {
 	    fi
 	fi
     else
-        # See if there is a old-style MAINTAINERS file
-	if ! git cat-file blob $newrev:MAINTAINERS 2>/dev/null | /bin/grep -q "^Userid:" ; then
-            echo "A valid $projectshort.doap file is required. See http://live.gnome.org/MaintainersCorner#maintainers" >&2
-            return 1
-	fi
+        echo "A valid $projectshort.doap file is required. See http://live.gnome.org/MaintainersCorner#maintainers" >&2
+        return 1
     fi
 }
 

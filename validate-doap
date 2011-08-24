@@ -3,6 +3,7 @@
 from cStringIO import StringIO
 import os
 import sys
+import pwd
 from xml.sax import SAXParseException
 
 script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
@@ -92,6 +93,11 @@ for node in nodes:
             if uid is not None:
                 if not is_literal(uid):
                     die("Invalid gnome:userid property (should be a string literal)")
+                try:
+                    # XXX - only checks if userid exists; doesn't check if it has any Git access
+                    pwd.getpwnam(uid)
+                except KeyError:
+                    die("Invalid gnome:userid property (%s is not a valid GNOME userid)" % uid)
                 have_maintainer = True
             mbox = maintainer.find_property((FOAF, "mbox"))
             if mbox is not None:
