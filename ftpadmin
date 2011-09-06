@@ -40,7 +40,7 @@ sys.path.insert(0, script_dir)
 # Lives inside gitadmin-bin
 import semi_rdf
 
-DEBUG=False
+DEBUG=True
 # Protection, only ovitters should be using debug mode:
 if os.environ['USER'] != 'ovitters':
     DEBUG=False
@@ -1403,6 +1403,32 @@ def cmd_show_info(options, parser):
 
         print "\t".join((module, version, changed, ", ".join(moduleinfo.maintainers)))
 
+def cmd_check_latest_is(options, parser):
+
+    if not options.module:
+        options.module = sorted([os.path.basename(path) for path in glob.glob(os.path.join(BasicInfo.FTPROOT, options.section, '*')) if os.path.isdir(path)])
+    for module in options.module:
+        moduleinfo = ModuleInfo(module, options.section)
+        latest_dirs = set()
+        for dir, files in moduleinfo.ignored.iteritems():
+            for name in files:
+                if name.startswith('LATEST-IS-'):
+                    latest_dirs.add(dir)
+                    break
+        majmins = {}
+        for version in moduleinfo.versions:
+            majmin = re_majmin.sub(r'\1', version)
+            if majmin not in majmins:
+                majmins[majmin] = []
+            majmins[majmin].append(version)
+        for majmin in sorted(majmins.keys(), version_cmp):
+            max_version = get_latest_version(majmins[majmin])
+            latest_is = 'LATEST-IS-%s' % max_version
+            has_other_latest = "WRONG" if majmin in latest_dirs else ""
+            if majmin not in moduleinfo.ignored or latest_is not in moduleinfo.ignored[majmin]:
+                print "\t".join((module, majmin, latest_is, has_other_latest))
+
+
 def cmd_sudo(options, parser):
     print >>sys.stderr, "ERROR: Not yet implemented!"
     print ""
@@ -1571,6 +1597,11 @@ def main():
     subparser.add_argument("-s", "--section", choices=SECTIONS)
     subparser.add_argument('module', nargs='*', help='Module(s) to show info for')
     subparser.set_defaults(func=cmd_show_info, section=DEFAULT_SECTION)
+    # check-latest-is
+    subparser = subparsers.add_parser('check-latest-is', help='check and correct LATEST-IS files')
+    subparser.add_argument("-s", "--section", choices=SECTIONS)
+    subparser.add_argument('module', nargs='*', help='Module(s) to show info for')
+    subparser.set_defaults(func=cmd_check_latest_is, section=DEFAULT_SECTION)
     #   sudo
     subparser = subparsers.add_parser('sudo', help='install tarballs uploaded using rsync')
     subparser.set_defaults(func=cmd_sudo)
