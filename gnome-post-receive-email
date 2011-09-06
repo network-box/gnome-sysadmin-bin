@@ -135,7 +135,7 @@ Content-Transfer-Encoding: 8bit
             'recipients': recipients,
             'cc': ','.join(cc),
             'from_address': from_address,
-            'subject': subject,
+            'subject': Header.Header(subject.decode('utf-8')),
             'projectshort': projectshort,
             'refname': self.refname
        }
