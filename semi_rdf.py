@@ -24,6 +24,9 @@ import sys
 import xml.sax
 from xml.sax.saxutils import escape, quoteattr
 
+DOAP = "http://usefulinc.com/ns/doap#"
+FOAF = "http://xmlns.com/foaf/0.1/"
+GNOME = "http://api.gnome.org/doap-extensions#"
 RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 XML = "http://www.w3.org/XML/1998/namespace"
 
@@ -222,6 +225,9 @@ def _dump_node(f, node, lang, namespaces, depth=0):
 
 def dump_rdf(nodes, f):
     namespaces = {
+        DOAP: 'doap',
+        FOAF: 'foaf',
+        GNOME: 'gnome',
         RDF: 'rdf',
         XML: 'xml'
     };
