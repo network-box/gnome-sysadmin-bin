@@ -57,11 +57,13 @@ for n in mlist_names:
         continue
 
     mlist.Lock()
-    for attr_name, attr_val in change:
-        print "Resetting", attr_name, "for mailing list:", n
-        setattr(mlist, attr_name, attr_val)
-    mlist.Save()
-    mlist.Unlock()
+    try:
+        for attr_name, attr_val in change:
+            print "Resetting", attr_name, "for mailing list:", n
+            setattr(mlist, attr_name, attr_val)
+        mlist.Save()
+    finally:
+        mlist.Unlock()
 
 f = open(PATH_MLIST_NAMES, 'w')
 f.write("\n".join(moderated_lists))
