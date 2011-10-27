@@ -20,19 +20,46 @@ mlist_names = Utils.list_names()
 mlist_names.sort()
 moderated_lists = []
 
+CHECKS=[
+        # attribute, setting, optional check
+        #  - fix moderator password
+        ('mod_password', MOD_PASSWORD, lamba m: m.moderator == MODERATORTEAM),
+        #  - auto discard held email after a while
+        ('max_days_to_hold', 90),
+        #  - don't forward discarded emails to moderator
+        ('forward_auto_discards', False),
+]
+
+
 for n in mlist_names:
     mlist = MailList.MailList(n, lock=0)
-    if mlist.moderator != MODERATORTEAM:
+
+    if mlist.moderator == MODERATORTEAM:
+        moderated_lists.append(mlist.internal_name())
+
+    change = []
+
+    for ck in CHECKS:
+        attr_name, attr_val = ck[:2]
+
+        # Attribute different than expected?
+        if getattr(mlist, attr_name) != attr_val:
+            continue
+
+        # Do we have a specific lamba check and does it validate?
+        if len(ck) > 2 and not ck[3](mlist):
+            continue
+
+        # Remember to change the attr (done while mailing list is locked)
+        change.append((attr_name, attr_val))
+
+    if not len(change):
         continue
 
-    moderated_lists.append(mlist.internal_name())
-
-    if mlist.mod_password == MOD_PASSWORD:
-        continue
-
-    print "Resetting moderator password for mailing list:", n
     mlist.Lock()
-    mlist.mod_password = MOD_PASSWORD
+    for attr_name, attr_val in change.iteritems():
+        print "Resetting", attr_name, "for mailing list:", n
+        setattr(mlist, attr_name, attr_val)
     mlist.Save()
     mlist.Unlock()
 
