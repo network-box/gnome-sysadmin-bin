@@ -57,7 +57,7 @@ for n in mlist_names:
         continue
 
     mlist.Lock()
-    for attr_name, attr_val in change.iteritems():
+    for attr_name, attr_val in change:
         print "Resetting", attr_name, "for mailing list:", n
         setattr(mlist, attr_name, attr_val)
     mlist.Save()
