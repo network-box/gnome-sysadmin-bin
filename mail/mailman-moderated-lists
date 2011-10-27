@@ -23,7 +23,7 @@ moderated_lists = []
 CHECKS=[
         # attribute, setting, optional check
         #  - fix moderator password
-        ('mod_password', MOD_PASSWORD, lamba m: m.moderator == MODERATORTEAM),
+        ('mod_password', MOD_PASSWORD, lambda m: m.moderator == MODERATORTEAM),
         #  - auto discard held email after a while
         ('max_days_to_hold', 90),
         #  - don't forward discarded emails to moderator
