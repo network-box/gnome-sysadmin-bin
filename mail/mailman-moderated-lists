@@ -47,7 +47,7 @@ for n in mlist_names:
             continue
 
         # Do we have a specific lamba check and does it validate?
-        if len(ck) > 2 and not ck[3](mlist):
+        if len(ck) > 2 and not ck[2](mlist):
             continue
 
         # Remember to change the attr (done while mailing list is locked)
