@@ -43,7 +43,7 @@ for n in mlist_names:
         attr_name, attr_val = ck[:2]
 
         # Attribute different than expected?
-        if getattr(mlist, attr_name) != attr_val:
+        if getattr(mlist, attr_name) == attr_val:
             continue
 
         # Do we have a specific lamba check and does it validate?
