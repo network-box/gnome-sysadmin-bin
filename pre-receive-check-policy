@@ -2,7 +2,7 @@
 
 # This script checks gnome.org policy about how people are supposed to
 # use git; the intent of the policy is to keep people from shooting
-# themselve in the foot.
+# themselves in the foot.
 #
 # Eventually, we'd like to have an ability to override policy; one way
 # it could work is that if you did 'git push --exec=force' and you
@@ -199,8 +199,11 @@ check_ref_update() {
 		    # not being able to update a tag. Disallowing lightweight
 		    # tags will cut down on accidentally pushing tags called 'list'
 		    # or whatever. During import we allow the user to clean up
-		    # accidentally pushed tags.
-		    if ! in_import && ! forced ; then
+		    # accidentally pushed tags. An exception to above rule is
+		    # deleting tag named HEAD. There are some projects which
+		    # created such tag before rejecting its creation was added
+		    # to policy.
+		    if ! in_import && ! forced && [ 'x'"$tagname" != 'xHEAD' ] ; then
 			cat <<- EOF >&2
 				---
 				You are trying to delete the tag '$tagname'.
@@ -246,7 +249,7 @@ check_ref_update() {
 
 				  $refname
 
-				to $server. This isn't a branch or tag.
+				to $server. This is not a branch or tag.
 				---
 				EOF
 	    exit 1
