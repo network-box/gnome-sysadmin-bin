@@ -778,7 +778,7 @@ class ModuleInfo(DirectoryInfo):
 class InstallModule(BasicInfo):
 
     # Preferred format should appear last
-    INSTALL_FORMATS = ('tar.bz2', 'tar.xz')
+    INSTALL_FORMATS = ('tar.xz',)
 
     def __init__(self, file, section=DEFAULT_SECTION):
         self.file = file
