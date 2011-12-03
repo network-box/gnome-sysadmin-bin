@@ -496,7 +496,6 @@ foundation members.""")
                     'sn': modname,
                     'description': vcs_descs.get(modname, '%s module' % modname),
                     'maintainerUid': list(vcs_modules[modname]),
-                    'tarballName': list(vcs_tarballs[modname])
                 }
 
                 classes = ['gnomeModule', 'inetOrgPerson']
@@ -504,6 +503,8 @@ foundation members.""")
                 if modname.startswith('l10n-') and modname in vcs_descs:
                     classes.append('localizationModule')
                     entry['localizationTeam'] = ' '
+                else:
+                    entry['tarballName'] = list(vcs_tarballs[modname])
 
                 entry['objectClass'] = classes
 
@@ -516,12 +517,16 @@ foundation members.""")
                   or (modname in vcs_tarballs and vcs_tarballs[modname].symmetric_difference(ldap_tarballs[modname]))):
                 oldattrs = {
                     'maintainerUid': list(ldap_modules[modname]),
-                    'tarballName': list(ldap_tarballs[modname])
                 }
                 newattrs = {
                     'maintainerUid': list(vcs_modules[modname]),
                     'tarballName': list(vcs_tarballs[modname])
                 }
+                if not (modname.startswith('l10n-') and modname in vcs_descs):
+                    oldattrs['tarballName'] = list(ldap_tarballs[modname])
+                    newattrs['tarballName'] = list(vcs_tarballs[modname])
+
+
                 ldif_entry = ldap.modlist.modifyModlist(oldattrs, newattrs)
                 if verbose:
                     print "C:", dn, ldif_entry
