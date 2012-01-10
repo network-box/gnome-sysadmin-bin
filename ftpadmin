@@ -1084,10 +1084,11 @@ Install %s? [Y/n]""" % self.module,
 
         print >>mail, ""
         self._print_header(mail, 'Download')
-        print >>mail, ""
         infos = [(format, self.moduleinfo.info_detailed(self.version, format)) for format in self.FORMATS]
         infos = [(format,) + info for format, info in infos if info is not None]
         max_format_len = max((len(info[0]) for info in infos))
+        if len(infos) > 1:
+            print >>mail, ""
         for format, path, realpath, size, stat in infos:
             dirname, basename = os.path.split(path)
             print >>mail, "%s/%s %s(%s)" % (self.URLROOT, path, ' ' * (max_format_len - len(format)),  size)
