@@ -10,7 +10,6 @@ mysql -N -r -h button-back --user=anonvoting --password=password -e "$QUERY" fou
 
 if [ -s "${WORKDIR}/new_foundation_members" ]; then
     cd $WORKDIR
-    /usr/lib/mailman/bin/add_members -a n -r new_foundation_members foundation-list
     /usr/lib/mailman/bin/add_members -a n -r new_foundation_members foundation-announce
     rm -rf $WORKDIR/new_foundation_members
 else
