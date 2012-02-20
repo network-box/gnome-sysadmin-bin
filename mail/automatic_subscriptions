@@ -4,7 +4,7 @@
 # Author: Andrea Veri <av@gnome.org>
 
 WORKDIR="/var/cache"
-QUERY='SELECT email from foundationmembers WHERE TO_DAYS(first_added)=To_DAYS(NOW())-3;'
+QUERY='SELECT email from foundationmembers WHERE TO_DAYS(first_added)=To_DAYS(NOW());'
 
 mysql -N -r -h button-back --user=anonvoting --password=password -e "$QUERY" foundation > $WORKDIR/new_foundation_members
 
