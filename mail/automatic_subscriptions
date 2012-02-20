@@ -8,13 +8,13 @@ QUERY='SELECT email from foundationmembers WHERE TO_DAYS(first_added)=To_DAYS(NO
 
 mysql -N -r -h button-back --user=anonvoting --password=password -e "$QUERY" foundation > $WORKDIR/new_foundation_members
 
-if [ -f "${WORKDIR}/new_foundation_members" ]; then
+if [ -s "${WORKDIR}/new_foundation_members" ]; then
     cd $WORKDIR
     /usr/lib/mailman/bin/add_members -a n -r new_foundation_members foundation-list
     /usr/lib/mailman/bin/add_members -a n -r new_foundation_members foundation-announce
     rm -rf $WORKDIR/new_foundation_members
 else
-    echo "The file you were searching for isn't there. Failing. \n"
+    echo "No new members to subscribe at the moment. Exiting. \n"
     exit 1
 fi
 
