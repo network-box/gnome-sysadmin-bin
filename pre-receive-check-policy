@@ -67,6 +67,26 @@ check_commit() {
 	    exit 1
 	fi
     fi
+
+    body="$(git log $commit -1 --pretty=format:%b)"
+    if expr "$body" : ".*FIXME: need commit message" > /dev/null 2>&1; then
+	if ! in_import && ! forced ; then
+	    cat <<- EOF >&2
+				---
+				The commit:
+
+				EOF
+	    git log $commit -1 >&2
+	    cat <<- EOF >&2
+
+				Was created by git-bz from a plain diff. Please edit the commit message
+				to properly describe the commit using 'git commit --amend' or
+				(for an older commit) 'git rebase -i'. Then try 'git push' again.
+				EOF
+	    exit 1
+        fi
+    fi
+
 }
 
 check_ref_update() {
