@@ -1,10 +1,9 @@
 # This script will periodically check the foundation_db and automatically
-# subscribe new Foundation members to the relevant mailing lists. (foundation-list 
-# and foundation-announce)
+# subscribe new Foundation members to the relevant mailing lists. (foundation-announce)
 # Author: Andrea Veri <av@gnome.org>
 
 WORKDIR="/var/cache"
-QUERY='SELECT email from foundationmembers WHERE TO_DAYS(first_added)=To_DAYS(NOW());'
+QUERY='SELECT email from foundationmembers WHERE TO_DAYS(last_renewed_on)=To_DAYS(NOW()); SELECT email from foundationmembers WHERE TO_DAYS(first_added)=To_DAYS(NOW())'
 
 mysql -N -r -h button-back --user=anonvoting --password=password -e "$QUERY" foundation > $WORKDIR/new_foundation_members
 
