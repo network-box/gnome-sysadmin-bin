@@ -218,7 +218,8 @@ class BranchChange(RefChange):
             elif branch in all_changes and not branch in processed_changes:
                 # For branches that were updated in this push but we haven't processed
                 # yet, exclude commits before their old revisions
-                detailed_commit_args.append("^" + all_changes[branch].oldrev)
+                if all_changes[branch].change_type != CREATE:
+                    detailed_commit_args.append("^" + all_changes[branch].oldrev)
             else:
                 # Exclude commits that are ancestors of all other branches
                 detailed_commit_args.append("^" + branch)
