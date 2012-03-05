@@ -102,7 +102,7 @@ $alt_local_message_target = "";
 
 ### The code itself
 
-use vars qw ($commit $tree @parent $author $committer);
+use vars qw ($commit $tree @parents $parent $author $committer);
 use vars qw ($user $branch $rev @files $logmsg $message $module);
 my $line;
 
@@ -142,7 +142,7 @@ while (defined ($line = <COMMIT>)) {
   if ($key eq 'tree') {
     $tree = $value;
   } elsif ($key eq 'parent') {
-    push(@parent, $value);
+    push(@parents, $value);
   } elsif ($key eq 'author') {
     $author = $value;
   } elsif ($key eq 'committer') {
@@ -151,6 +151,11 @@ while (defined ($line = <COMMIT>)) {
 }
 close COMMIT;
 
+if (@parents) {
+    $parent = $parents[0];
+} else {
+    $parent = '--root';
+}
 
 open DIFF, "git-diff-tree -r $parent[0] $tree|" or die "git-diff-tree $parent[0] $tree: $!";
 while (defined ($line = <DIFF>)) {
