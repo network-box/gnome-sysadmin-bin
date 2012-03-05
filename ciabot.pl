@@ -157,7 +157,7 @@ if (@parents) {
     $parent = '--root';
 }
 
-open DIFF, "git-diff-tree -r $parent[0] $tree|" or die "git-diff-tree $parent[0] $tree: $!";
+open DIFF, "git-diff-tree -r $parent $tree|" or die "git-diff-tree $parent $tree: $!";
 while (defined ($line = <DIFF>)) {
   chomp $line;
   my @f;
