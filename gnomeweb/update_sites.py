@@ -149,12 +149,12 @@ def update_module_real(moduleroot, url, branch='master', clone_only=False, verbo
             # Path does not exist.. so check it out of GIT
             if verbose:
                 print "Running 'git clone' to create " + moduleroot
-            git.clone('--mirror', url, moduleroot)
+            git.clone(url, moduleroot)
             os.chdir(moduleroot)
             if branch != 'master':
                 if verbose:
-                    print "Running git checkout -b", branch, "origin/" + branch
-                git.checkout('-b', branch, 'origin/' + branch)
+                    print "Running git checkout ", branch
+                git.checkout(branch)
         elif clone_only:
             pass
         else:
@@ -214,7 +214,7 @@ def update_module(module, checkfile, moduleroot, url, owner, branch='master', ve
         if branch != 'master' and not os.path.exists(os.path.join(moduleroot, ".git")):
             try:
                 os.chdir(url)
-                git.branch(branch, 'origin/%s' %branch)
+                git.branch(branch, 'origin/%s' % branch)
             except CalledProcessError, e:
                 # local branch probably exists already
                 pass
