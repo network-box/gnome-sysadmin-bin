@@ -153,8 +153,8 @@ def update_module_real(moduleroot, url, branch='master', clone_only=False, verbo
             os.chdir(moduleroot)
             if branch != 'master':
                 if verbose:
-                    print "Running git checkout ", branch
-                git.checkout(branch)
+                    print "Running git checkout -b", branch, "origin/" + branch
+                git.checkout('-b', branch, 'origin/' + branch)
         elif clone_only:
             pass
         else:
