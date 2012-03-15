@@ -13,7 +13,6 @@ if [ -s "${WORKDIR}/new_foundation_members" ]; then
     /usr/lib/mailman/bin/add_members -a n -r new_foundation_members foundation-announce
     rm -rf $WORKDIR/new_foundation_members
 else
-    echo "No new members to subscribe at the moment. Exiting. \n"
     exit 1
 fi
 
