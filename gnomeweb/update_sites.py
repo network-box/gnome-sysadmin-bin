@@ -164,7 +164,7 @@ def update_module_real(moduleroot, url, branch='master', clone_only=False, verbo
             os.chdir(moduleroot)
             if verbose:
                 print "Running 'git fetch' to update " + moduleroot
-            git.fetch("origin")
+            git.fetch('--all', "origin")
             if verbose:
                 print "Resetting to latest content"
             git.reset('origin/' + branch, hard=True)
