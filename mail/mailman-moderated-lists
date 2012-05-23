@@ -28,6 +28,8 @@ CHECKS=[
         ('max_days_to_hold', 90),
         #  - don't forward discarded emails to moderator
         ('forward_auto_discards', False),
+        # - ensure https
+        ('web_page_url', 'https://mail.gnome.org/mailman/', lambda m: m.web_page_url == 'http://mail.gnome.org/mailman/')
 ]
 
 
