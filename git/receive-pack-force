@@ -1,0 +1,17 @@
+#!/bin/bash
+
+in_gitadmin=false
+for g in `groups` ; do
+    if [ $g = 'gitadmin' -o $g = 'sysadmin' ] ; then
+	in_gitadmin=true
+    fi
+done
+
+if ! $in_gitadmin ; then
+    echo 1>&2 "You must be in the gitadmin group to force a push"
+    echo 1>&2 "For assistance, file a bug at https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=Git"
+    exit 1
+fi
+
+export GNOME_GIT_FORCE=1
+exec git-receive-pack "$@"

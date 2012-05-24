@@ -1,0 +1,75 @@
+#!/bin/bash
+#
+# Standard GNOME pre-receive hook.
+#
+# The "pre-receive" hook is invoked just before receive-pack starts to
+# update refs on the remote repository. Its exit status determines the 
+# success or failure of the update.
+
+BINDIR=/home/admin/gitadmin-bin
+
+# If the committing user has a homedir with a .gitconfig in it, it we
+# don't want that to affect our operation. (Should this just be handled
+# in run-git-or-special-cmd?)
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+GIT_CONFIG="${GIT_DIR}/config"
+export GIT_CONFIG
+
+# Use the directory name with .git stripped as a short identifier
+absdir=$(cd $GIT_DIR && pwd)
+basedir=$(dirname $absdir)
+projectshort=$(basename ${absdir%.git})
+
+if [ $basedir = '/git/archive' ]; then
+    cat <<EOF 1>&2
+---
+$projectshort has been archived. No pushed can be made against this module.
+
+If this module should not have been archived, file a bug for assistance at:
+https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=Git
+---
+EOF
+    exit 1
+fi
+
+
+
+# Make sure that the user used --exec=import for importing repositories,
+# and not otherwise. This forces people to be aware of the 'pending'
+# state.
+if [ -e "$GIT_DIR/pending" -a -z "$GNOME_GIT_IMPORT" ] ; then
+    cat <<EOF 1>&2
+---
+$projectshort is still in the process of being imported. To import
+into $projectshort use 'git push --exec=import'. If you are done
+importing, do:
+
+   ssh $USER@git.gnome.org finish-import $projectshort
+
+---
+EOF
+    exit 1
+fi
+
+if [ \! -e "$GIT_DIR/pending" -a -n "$GNOME_GIT_IMPORT" ] ; then
+    cat <<EOF 1>&2
+---
+$projectshort is no longer in the process of being imported. You
+can push to $projectshort normally. If you accidentally ran
+finish-import too early, please file a bug for assistance at:
+https://bugzilla.gnome.org/enter_bug.cgi?product=sysadmin&component=Git
+----
+EOF
+    exit 1
+fi
+
+while read oldrev newrev refname; do
+    # Unlike the gnome-post-receive script, where we play fancy games
+    # with 'tee', we invoke the different pre-receive hooks separately
+    # for each ref that is updated. This keeps things simple and
+    # reliable and none of the scripts need all the refs at once.
+
+    $BINDIR/pre-receive-check-policy $oldrev $newrev $refname || exit 1
+    $BINDIR/pre-receive-check-maintainers $oldrev $newrev $refname || exit 1
+    $BINDIR/pre-receive-check-po $oldrev $newrev $refname || exit 1
+done

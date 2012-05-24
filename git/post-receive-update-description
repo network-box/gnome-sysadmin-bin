@@ -1,0 +1,105 @@
+#!/bin/bash
+
+umask 0002
+
+BINDIR=/home/admin/gitadmin-bin
+
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+
+# Use the directory name with .git stripped as a short identifier
+absdir=$(cd $GIT_DIR && pwd)
+projectshort=$(basename ${absdir%.git})
+
+update_info_from_doap() {
+    rev=$1
+    path=$2
+    mode=$3
+
+    if [ "$path" != "$projectshort.doap" ] ; then
+        return
+    fi
+
+    git cat-file blob "$newrev:$path" | $BINDIR/extract-doap-info $GIT_DIR
+    $BINDIR/update-cgit
+}
+
+update_info_from_maintainers() {
+    rev=$1
+    path=$2
+    mode=$3
+
+    if [ "$path" != "MAINTAINERS" ] ; then
+        return
+    fi
+
+    git cat-file blob "$newrev:$path" | $BINDIR/doap-from-maintainers > $GIT_DIR/gnome_doap
+    $BINDIR/update-cgit
+}
+
+update_info() {
+    oldrev=$1
+    newrev=$2
+    refname=$3
+
+    branchname=${refname#refs/heads/}
+    if [ "$branchname" = "$refname" ] ; then
+        # not a branch update
+	return 0
+    fi
+
+    if [ "$branchname" != "master" ] ; then
+	# Only pay attention to the master branch
+	return 0
+    fi
+
+    if expr $newrev : "^0\+$" > /dev/null 2>&1; then
+        # Branch deletion; (shouldn't really happen for the master branch)
+	return 0
+    fi
+
+    # If there is no .doap file, we fall back to the MAINTAINERS
+    # file for compability
+    if git cat-file -e $newrev:$projectshort.doap 2>/dev/null ; then
+	update=update_info_from_doap
+    else
+	update=update_info_from_maintainers
+    fi
+
+    if expr $oldrev : "^0\+$" > /dev/null 2>&1; then
+	# Branch creation
+	git ls-tree $newrev | (
+	    while read mode objtype sha path ; do
+		if [ $objtype = blob ] ; then
+		    $update $newrev $path $mode
+		fi
+	    done
+	)
+    else
+	# Branch update
+	git diff-tree $oldrev $newrev | (
+	    while read srcmode destmode srcsha destsha status srcpath destpath ; do
+		if [ $status = 'D' ] ; then
+		    continue # deleted
+		fi
+
+		# destpath only present for copies/renames
+		if [ x"$destpath" = x ] ; then
+		    destpath=$srcpath
+		fi
+
+		# Strip colon from the source mode
+		srcmode=${srcmode#:}
+
+		$update $newrev $destpath $destmode
+	    done
+	)
+    fi
+}
+
+if [ $# = 3 ] ; then
+    update_info $@ || exit 1
+else
+    while read oldrev newrev refname; do
+	update_info $oldrev $newrev $refname || exit 1
+    done
+fi

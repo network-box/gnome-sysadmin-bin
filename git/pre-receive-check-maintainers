@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# This checks to see if the module has maintainer information. Maintainer
+# information can be provided one of two ways:
+#
+#  - A <modulename>.doap file
+#  - A MAINTAINERS file (deprecated)
+
+BINDIR=/home/admin/gitadmin-bin
+
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+
+# Use the directory name with .git stripped as a short identifier
+absdir=$(cd $GIT_DIR && pwd)
+projectshort=$(basename ${absdir%.git})
+
+check_maintainers() {
+    oldrev=$1
+    newrev=$2
+    refname=$3
+
+    branchname=${refname#refs/heads/}
+    if [ "$branchname" = "$refname" ] ; then
+        # not a branch update
+	return 0
+    fi
+
+    if [ "$branchname" != "master" ] ; then
+	# maintainer info only required on the master branch
+	return 0
+    fi
+
+    if expr $oldrev : "^0\+$" > /dev/null 2>&1; then
+        # Don't require maintainer info for initial imports; keeps things simple
+	return 0
+    fi
+
+    if expr $newrev : "^0\+$" > /dev/null 2>&1; then
+        # Branch deletion; (shouldn't really happen for the master branch)
+	return 0
+    fi
+
+    if ! git diff-tree --name-only -r $oldrev $newrev | grep -q -v '\(LINGUAS\|ChangeLog\|.po\)$' ; then
+	# Looks like something a translator would do, exempt it from the check
+	return 0
+    fi
+
+    if git cat-file -e $newrev:$projectshort.doap 2>/dev/null ; then
+	# There's a DOAP file. For performance reasons and to allow having fairly
+	# strict validation without being annoying, we only validate the DOAP file
+        # if it changed
+	if git diff-tree --name-only -r $oldrev $newrev | grep -q $projectshort.doap ; then
+	    if ! git cat-file blob $newrev:$projectshort.doap | $BINDIR/validate-doap $projectshort ; then
+		return 1
+	    fi
+	fi
+    else
+        echo "A valid $projectshort.doap file is required. See http://live.gnome.org/MaintainersCorner#maintainers" >&2
+        return 1
+    fi
+}
+
+if [ $# = 3 ] ; then
+    check_maintainers $@ || exit 1
+else
+    while read oldrev newrev refname; do
+	check_maintainers $oldrev $newrev $refname || exit 1
+    done
+fi

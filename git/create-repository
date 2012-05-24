@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Script to create a new repository
+
+# NOTE: This script is run via sudo to the gitadmin user. Using sudo constrains
+#  the environment, but it's important to do validation on the argument and
+#  be careful how we use it.
+
+# If no run from a login shell, we might end up with the default umask of 0022
+# but we want group-writable directories.
+umask 0002
+
+BINDIR=/home/admin/gitadmin-bin
+
+if [ `whoami` != gitadmin ] ; then
+    cd / && exec sudo -u gitadmin $BINDIR/create-repository "$@"
+fi
+
+. $BINDIR/functions
+
+if [ $# != 1 ] ; then
+   echo "Too many arguments" 1>&2
+   echo "Usage: create-repository <repository-name>" 1>&2
+   exit 1
+fi
+
+validate_repository_name "$1"
+name="$1"
+
+if [ -e /git/$name.git ] ; then
+   echo "'$name' already exists" 1>&2
+   exit 1
+fi
+
+if [ -e /git/archive/$name.git ] ; then
+   echo "'$name' already exists as an archived project" 1>&2
+   exit 1
+fi
+
+export GIT_DIR=/git/$name.git
+git init --shared --bare
+chgrp -R gnomecvs $GIT_DIR
+$BINDIR/gnomify-repos $GIT_DIR
+
+# Mark as a "pending" repository
+touch $GIT_DIR/pending
+
+$BINDIR/update-cgit
+
+user=$SUDO_USER
+if [ -z "$user" ] ; then
+    user=$USER
+fi
+
+cat <<EOF
+You can now import an existing Git repository using:
+
+  git push --exec=import ssh://$user@git.gnome.org/git/$name refs/heads/* refs/tags/*
+
+When you are finished importing and everything looks good, run:
+
+  ssh $user@git.gnome.org finish-import $name
+EOF

@@ -1,0 +1,112 @@
+#!/usr/bin/python
+
+from cStringIO import StringIO
+import os
+import sys
+import pwd
+from xml.sax import SAXParseException
+
+script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
+script_dir = os.path.dirname(script_path)
+sys.path.insert(0, script_dir)
+
+import semi_rdf
+
+DOAP = "http://usefulinc.com/ns/doap#"
+FOAF = "http://xmlns.com/foaf/0.1/"
+GNOME = "http://api.gnome.org/doap-extensions#"
+
+groups = {
+    (GNOME + 'admin'): 'admin',
+    (GNOME + 'bindings'): 'platform',
+    (GNOME + 'deprecated'): 'deprecated',
+    (GNOME + 'desktop'): 'desktop',
+    (GNOME + 'development'): 'development',
+    (GNOME + 'infrastructure'): 'infrastructure',
+    (GNOME + 'platform'): 'platform',
+    (GNOME + 'productivity'): 'productivity'
+    }
+
+def die(message):
+    print >>sys.stderr, "---"
+    print >>sys.stderr, "ERROR: %s.doap is not valid:" % modulename
+    print >>sys.stderr, "  ", message
+    print >>sys.stderr
+    print >>sys.stderr, "Please see:"
+    print >>sys.stderr, "   http://live.gnome.org/MaintainersCorner#maintainers"
+    print >>sys.stderr, "---"
+    sys.exit(1)
+
+def is_literal(value):
+    return isinstance(value, basestring) and not isinstance(value, semi_rdf.UrlResource)
+
+def is_resource(value):
+    # Should really accept a node with rdf:about, but the rest of our
+    # code can't handle that, so we just require rdf:resource
+    return isinstance(value, semi_rdf.UrlResource)
+
+if len(sys.argv) < 2:
+    print >>sys.stderr, "Usage: validate-doap <modulename>"
+    sys.exit(1)
+
+modulename = sys.argv[1]
+
+try:
+    nodes = semi_rdf.read_rdf(sys.stdin)
+except semi_rdf.ParseError, e:
+    die("Invalid RSS syntax")
+except SAXParseException, e:
+    die("XML parse error (line %d): %s" % (e.getLineNumber(), e.getMessage()))
+
+seen_project = False
+for node in nodes:
+    if node.name != (DOAP, "Project"):
+        continue
+
+    if seen_project:
+        die("Multiple doap:Project nodes")
+
+    shortdesc = node.find_property((DOAP, "shortdesc"))
+    if not shortdesc:
+        die("Missing required doap:shortdesc property")
+    if not is_literal(shortdesc):
+        die("Invalid doap:shortdesc property (should be a string literal)")
+
+    group = node.find_property((DOAP, "category"))
+    if group:
+        if not is_resource(group):
+            die("Invalid doap:category property (should be an URL)")
+
+        if not group in groups:
+            die("doap:category property should be one of the standard GNOME categories")
+
+    have_maintainer = False
+    for (n, l, v) in node.properties:
+        if n == (DOAP, "maintainer"):
+            maintainer = v
+            name = maintainer.find_property((FOAF, "name"))
+            if name is None:
+                die("doap:maintainer property value should have a foaf:name property")
+            if not is_literal(name):
+                die("Invalid foaf:name property (should be a string literal)")
+            uid = maintainer.find_property((GNOME, "userid"))
+            if uid is not None:
+                if not is_literal(uid):
+                    die("Invalid gnome:userid property (should be a string literal)")
+                try:
+                    # XXX - only checks if userid exists; doesn't check if it has any Git access
+                    pwd.getpwnam(uid)
+                except KeyError:
+                    die("Invalid gnome:userid property (%s is not a valid GNOME userid)" % uid)
+                have_maintainer = True
+            mbox = maintainer.find_property((FOAF, "mbox"))
+            if mbox is not None:
+                if not is_resource(mbox):
+                    die("Invalid foaf:mbox property (should be an URL)")
+                if not mbox.startswith("mailto:"):
+                    die("Invalid foaf:mbox property should be a mailto: URL")
+
+    if not have_maintainer:
+        die("Must have at least one doap:maintainer property with a gnome:userid property")
+
+    seen_project = True

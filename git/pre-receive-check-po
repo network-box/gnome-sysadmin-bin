@@ -1,0 +1,141 @@
+#!/bin/bash
+
+check_po() {
+    rev=$1
+    path=$2
+    mode=$3
+
+    case "$path" in
+	*.po)
+	    ;;
+	*)
+	    return
+	    ;;
+    esac
+
+    basename=`basename $path`
+
+    # Perform extensive tests. This could be disabled if GNOME .po
+    # files used newer features than those available on git.gnome.org.
+    dash_c="-c"
+
+    # Parse the file and check for errors
+    result=`git cat-file blob "$rev:$path" | msgfmt $dash_c -o /dev/null - 2>&1`
+    if [ $? -gt 0 ]; then
+	cat <<EOF >&2
+---
+The following translation (.po) file appears to be invalid.$branch_message
+
+$path
+
+The results of the validation follow. Please correct the errors on the line numbers mentioned and try to push again.
+
+$result
+
+To check this locally before attempting to push again, you can use the following command:
+
+msgfmt $dash_c $basename
+
+After making fixes, modify your commit to include them, by doing:
+
+git add $basename
+git commit --amend
+
+If you have any further problems or questions, please contact the GNOME Translation Project mailing list <gnome-i18n@gnome.org>. Thank you.
+---
+EOF
+	exit 1
+    fi
+
+     # Check for the absence of an executable flag
+    if expr "$mode" : ".*\([1357]..\|[1357].\|[1357]\)$" > /dev/null 2>& 1; then
+	cat <<EOF >&2
+---
+The following translation file appears to have its executable flag set.$branch_message
+
+$path
+
+Translation files should not be executable. Please remove the flag and try to push again. The following commands may help:
+
+chmod a-x $basename
+git add $basename
+git commit --amend
+
+If you have any further problems or questions, please contact the GNOME Translation Project mailing list <gnome-i18n@gnome.org>. Thank you.
+---
+EOF
+	exit 1
+    fi
+}
+
+check_pos() {
+    oldrev=$1
+    newrev=$2
+    refname=$3
+
+    branchname=${refname#refs/heads/}
+    if [ "$branchname" = "$refname" ] ; then
+        # not a branch update
+	return
+    fi
+
+    branch_message=
+    if [ "x$branchname" != "master" ] ; then
+	branch_message=" (When updating branch '$branchname'.)"
+    fi
+
+    if expr $newrev : "^0\+$" > /dev/null 2>&1; then
+        # Branch deletion, nothing to check
+	return 0
+    fi
+
+    if expr $oldrev : "^0\+$" > /dev/null 2>&1; then
+	# Branch creation
+	git ls-tree -r $newrev | (
+	    while read mode objtype sha path ; do
+		if [ $objtype = blob ] ; then
+		    check_po $newrev $path $mode
+		fi
+	    done
+	)
+    else
+	# Branch update
+	git diff-tree -r $oldrev $newrev | (
+	    while read srcmode destmode srcsha destsha status srcpath destpath ; do
+		if [ $status = 'D' ] ; then
+		    continue # deleted
+		fi
+
+		# destpath only present for copies/renames
+		if [ x"$destpath" = x ] ; then
+		    destpath=$srcpath
+		fi
+
+		# Strip colon from the source mode
+		srcmode=${srcmode#:}
+
+		check_po $newrev $destpath $destmode
+	    done
+	)
+    fi
+
+}
+
+# Use a newer version of the gettext tools than the ones shipped with RHEL 5
+PATH=/usr/libexec/gettext17:$PATH
+
+GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+
+# Don't check .po's during import; we don't want to enforce correct
+# .po files for some ancient historical branch
+if [ -e $GIT_DIR/pending ] ; then
+    exit 0
+fi
+
+if [ $# = 3 ] ; then
+    check_pos $@ || exit 1
+else
+    while read oldrev newrev refname; do
+	check_pos $oldrev $newrev $refname || exit 1
+    done
+fi
