@@ -12,11 +12,11 @@ os.umask(0002)
 
 def rungitcommand(args):
     cmds = {
-        'create-repository': '/home/admin/gitadmin-bin/create-repository',
-        'finish-import': '/home/admin/gitadmin-bin/finish-import',
+        'create-repository': '/home/admin/bin/git/create-repository',
+        'finish-import': '/home/admin/bin/git/finish-import',
         # These allow 'git push --exec=force/import'
-        'force': '/home/admin/gitadmin-bin/receive-pack-force',
-        'import': '/home/admin/gitadmin-bin/receive-pack-import',
+        'force': '/home/admin/bin/git/receive-pack-force',
+        'import': '/home/admin/bin/git/receive-pack-import',
     }
 
     if args[0] in cmds:

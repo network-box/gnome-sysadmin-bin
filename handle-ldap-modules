@@ -4,7 +4,7 @@ import sys
 import os
 import os.path
 script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
-script_dir = os.path.dirname(script_path) + '/../gitadmin-bin'
+script_dir = os.path.dirname(script_path) + '/git'
 sys.path.insert(0, script_dir)
 
 import glob
