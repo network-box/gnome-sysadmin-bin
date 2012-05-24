@@ -17,7 +17,7 @@ import fcntl
 import re
 from optparse import OptionParser
 
-sys.path.insert(0, "/home/admin/gitadmin-bin")
+sys.path.insert(0, "/home/admin/bin/git")
 
 from git import *
 
