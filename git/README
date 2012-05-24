@@ -1,7 +1,1 @@
-This directory contains scripts that run on git.gnome.org. It is
-automatically checked out into /home/admin/gitadmin-bin on every
-push to ssh://git.gnome.org/git/gitadmin-bin.
-
-It is only writable by the gitadmin group. (Once the git migration
-is finished the gitadmin group will be removed and the permissions
-switched to the standard sysadmin group.)
+This directory contains scripts that run on git.gnome.org.

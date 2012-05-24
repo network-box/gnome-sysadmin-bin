@@ -10,7 +10,7 @@
 # but we want group-writable directories.
 umask 0002
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 if [ `whoami` != gitadmin ] ; then
     cd / && exec sudo -u gitadmin $BINDIR/create-repository "$@"

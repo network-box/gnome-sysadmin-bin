@@ -6,7 +6,7 @@
 #  the environment, but it's important to be a bit careful about what we do
 #  in here.
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 if [ `whoami` != gitadmin ] ; then
     cd / && exec sudo -u gitadmin $BINDIR/update-cgit "$@"

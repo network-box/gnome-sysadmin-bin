@@ -13,7 +13,7 @@
 # hook.emailprefix  - should always be empty
 # hooks.mailinglist - should always be commits-list@gnome.org
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 # If the committing user has a homedir with a .gitconfig in it, it we
 # don't want that to affect our operation. (Should this just be handled

@@ -6,7 +6,7 @@
 # update refs on the remote repository. Its exit status determines the 
 # success or failure of the update.
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 # If the committing user has a homedir with a .gitconfig in it, it we
 # don't want that to affect our operation. (Should this just be handled

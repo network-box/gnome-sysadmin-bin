@@ -12,8 +12,8 @@ gnomify_repo() {
     git config http.getanyfile false
     git config http.receivepack false
 
-    ln -sf /home/admin/gitadmin-bin/gnome-pre-receive $GIT_DIR/hooks/pre-receive
-    ln -sf /home/admin/gitadmin-bin/gnome-post-receive $GIT_DIR/hooks/post-receive
+    ln -sf /home/admin/bin/git/gnome-pre-receive $GIT_DIR/hooks/pre-receive
+    ln -sf /home/admin/bin/git/gnome-post-receive $GIT_DIR/hooks/post-receive
 }
 
 if [ $# '>' 0 ] ; then

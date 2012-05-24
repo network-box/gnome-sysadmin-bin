@@ -2,7 +2,7 @@
 
 # Script to clear the "pending" flag on a newly imported module
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 . $BINDIR/functions
 

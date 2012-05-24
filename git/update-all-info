@@ -3,7 +3,7 @@
 # This script should be run with the output written to /git/cgit.repositories, which
 # is included from /etc/cgitrc
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 function process_repos() {
     paths=$1

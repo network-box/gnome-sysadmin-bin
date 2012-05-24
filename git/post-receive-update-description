@@ -2,7 +2,7 @@
 
 umask 0002
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 

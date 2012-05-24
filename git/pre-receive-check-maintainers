@@ -6,7 +6,7 @@
 #  - A <modulename>.doap file
 #  - A MAINTAINERS file (deprecated)
 
-BINDIR=/home/admin/gitadmin-bin
+BINDIR=/home/admin/bin/git
 
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 
