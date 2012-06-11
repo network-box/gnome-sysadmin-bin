@@ -105,11 +105,11 @@ class RefChange(object):
 
     # Return the subject for the main email, without the leading [projectname]
     def get_subject(self):
-        raise NotImplemenetedError()
+        raise NotImplementedError()
 
     # Write the body of the main email to the given file object
     def generate_body(self, out):
-        raise NotImplemenetedError()
+        raise NotImplementedError()
 
     def generate_header(self, out, subject, include_revs=True, oldrev=None, newrev=None, cc=None):
         user = os.environ['USER']
