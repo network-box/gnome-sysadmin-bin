@@ -112,6 +112,11 @@ check_ref_update() {
 	    # Branch update
 	    branchname=${refname#refs/heads/}
 
+	    is_wip=false
+	    case $branchname in
+		wip/*) is_wip=true ;;
+	    esac
+
 	    range=
 	    case $change_type in
 		create)
@@ -133,7 +138,7 @@ check_ref_update() {
 		    ;;
 		update)
 		    range="$oldrev..$newrev"
-		    if [ "`git merge-base $oldrev $newrev`" != $oldrev ] && ! forced ; then
+		    if [ "`git merge-base $oldrev $newrev`" != $oldrev ] && ! $is_wip && ! forced ; then
 		        # Non-fast-forward update. Right now we have
 		        # receive.denyNonFastforwards in the git configs for
 		        # our repositories anyways, but catching it here would

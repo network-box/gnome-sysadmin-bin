@@ -39,6 +39,8 @@ fi
 
 export GIT_DIR=/git/$name.git
 git init --shared --bare
+# We enforce this in pre-receive-check-policy, except for wip/* branches
+git config receive.denyNonFastForwards false
 chgrp -R gnomecvs $GIT_DIR
 $BINDIR/gnomify-repos $GIT_DIR
 
