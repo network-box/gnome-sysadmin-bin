@@ -103,7 +103,7 @@ def update_modules(configfile, configdir, verbose):
             if not lock:
                 continue
 
-            if not update_module_real(moduleroot, url, clone_only=True, verbose=verbose):
+            if not update_module_real(moduleroot, url, clone_only=False, verbose=verbose):
                 continue
 
             os.chdir(moduleroot)
