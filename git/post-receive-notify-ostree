@@ -44,11 +44,11 @@ def main():
     # substitution to pass through - and +. (Probably should just fix
     # fishpoll - fishpoll isn't even erroring out in a clear fashion,
     # but this is easier for the moment.)
-    module_name = re.replace('__', '___5f', module_name)
-    module_name = re.replace('+', '__2b', module_name)
-    module_name = re.replace('-', '__2d', module_name)
+    module_name = re.sub('__', '___5f', module_name)
+    module_name = re.sub('\+', '__2b', module_name)
+    module_name = re.sub('-', '__2d', module_name)
 
-    if (re.match('^[A-Za-z0-9_.]$', module_name)):
+    if (!re.match('^[A-Za-z0-9_.]$', module_name)):
         print >>sys.stderr, "Module name has unexpected characters, can't notify ostree.gnome.org"
         return
 
