@@ -25,6 +25,7 @@
 # ostree.gnome.org
 
 import os
+import re
 from subprocess import Popen
 import sys
 
@@ -37,6 +38,19 @@ from git import *
 
 def main():
     module_name = get_module_name()
+
+    # fishpoke only allows a limited set of characters in subjects, which
+    # isn't sufficient to encode our module names. We do a simple encoding
+    # substitution to pass through - and +. (Probably should just fix
+    # fishpoll - fishpoll isn't even erroring out in a clear fashion,
+    # but this is easier for the moment.)
+    module_name = re.replace('__', '___5f', module_name)
+    module_name = re.replace('+', '__2b', module_name)
+    module_name = re.replace('-', '__2d', module_name)
+
+    if (re.match('^[A-Za-z0-9_.]$', module_name)):
+        print >>sys.stderr, "Module name has unexpected characters, can't notify ostree.gnome.org"
+        return
 
     process = Popen(["/usr/bin/fishpoke", "ostree-back", "modules_changed", module_name],
                       stdout=None, stderr=None, stdin=None)
