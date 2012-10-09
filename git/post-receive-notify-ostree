@@ -24,6 +24,7 @@
 # This script is simply sends a poke to a fishpoll target on
 # ostree.gnome.org
 
+import os
 from subprocess import Popen
 import sys
 
