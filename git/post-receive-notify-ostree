@@ -38,7 +38,7 @@ from git import *
 def main():
     module_name = get_module_name()
 
-    process = Popen(["/usr/bin/fishpoke", "ostree-back", "modules-changed", module_name],
+    process = Popen(["/usr/bin/fishpoke", "ostree-back", "modules_changed", module_name],
                       stdout=None, stderr=None, stdin=None)
     process.wait()
 
