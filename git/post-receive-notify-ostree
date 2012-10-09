@@ -1,0 +1,44 @@
+#!/usr/bin/python
+#
+# post-receive-notify-updates
+#
+# Copyright (C) 2008  Owen Taylor
+# Copyright (C) 2009  Red Hat, Inc
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, If not, see
+# http://www.gnu.org/licenses/.
+#
+# About
+# =====
+# This script is simply sends a poke to a fishpoll target on
+# ostree.gnome.org
+
+from subprocess import Popen
+import sys
+
+script_path = os.path.realpath(os.path.abspath(sys.argv[0]))
+script_dir = os.path.dirname(script_path)
+
+sys.path.insert(0, script_dir)
+
+from git import *
+
+if __name__ == '__main__':
+    module_name = get_module_name()
+
+    process = Popen(["/usr/bin/fishpoke", "ostree-back", "modules-changed", module_name],
+                      stdout=None, stderr=None, stdin=None)
+    process.wait()
+
+    main()
