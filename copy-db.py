@@ -164,7 +164,8 @@ for db in dbs:
             sys.stderr.write("ERROR: '%s' is not writable\n" % backup_dir)
             sys.exit(1)
 
-        outfile = open(outfilename_tmp, "w")
+        outfile_fd = os.open(outfilename_tmp, os.O_WRONLY | os.O_CREAT, int('0600', 8))
+        outfile = os.fdopen(outfile_fd, 'w')
         dump = subprocess.Popen(['mysqldump',
                                  '--single-transaction',
                                  '--default-character-set=utf8',
