@@ -92,7 +92,7 @@ if __name__ == "__main__":
     dbpass = f.readline ().strip ()
     f.close ()
 
-    connection = MySQLdb.connect ('button-back', 'rtstats', dbpass, 'rt3')
+    connection = MySQLdb.connect ('drawable-back', 'rtstats', dbpass, 'rt3')
     cursor = connection.cursor ()
 
     for queue in QUEUES.keys():
