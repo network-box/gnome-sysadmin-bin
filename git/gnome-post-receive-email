@@ -362,12 +362,9 @@ class BranchCreation(BranchChange):
         BranchChange.__init__(self, *args)
 
         # Inform required parties in case of official branch creation
-        if re.match(r'gnome-[0-9]+-[0-9]+$', self.short_refname):
+        if re.match(r'nb[0-9]\.[0-9]$', self.short_refname):
             self.cc.update((
-                'release-team@gnome.org',
-                'gnome-doc-list@gnome.org',
-                'gnome-i18n@gnome.org',
-                '%s@src.gnome.org' % os.environ['USER']
+                'releng@network-box.com',
             ))
 
     def get_subject(self):
