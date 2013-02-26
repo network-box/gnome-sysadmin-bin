@@ -327,7 +327,7 @@ def build_user_hash(group_list, restrict=None):
         gnomevcs_users = get_uids_from_group('ftpbasic', force_ldap=True) - users
 
     # look up their keys (if we have them)
-    user_data = lookup_user_info(users | gnomevcs_users | nagios_user)
+    user_data = lookup_user_info(users | gnomevcs_users)
 
     for uid in gnomevcs_users:
         if uid not in user_data:
