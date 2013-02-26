@@ -44,7 +44,7 @@ RESTRICTS = {
     'gnomegit':
         'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding ',
     'nagios':
-        'command="sudo /sbin/service httpd restart",no-pty,no-port-forwarding ',
+        'command="/etc/nagios/eventhandlers/restart-httpd",no-pty,no-port-forwarding ',
 }
 LDAP_GROUP_BASE='ou=groups,dc=gnome,dc=org'
 LDAP_USER_BASE='ou=people,dc=gnome,dc=org'
