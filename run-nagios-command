@@ -1,0 +1,22 @@
+#!/usr/bin/python
+
+import os
+import shlex
+
+# In case .bashrc was executed, umask might have been changed from
+# the default, which could result in files being created private
+# not world-readable
+os.umask(0002)
+
+def run_nagios_command(args):
+   cmd = ['/etc/nagios/eventhandlers/restart-httpd']
+   cmd.extend(args[1:])
+   os.execv(cmd[0], cmd)
+
+if __name__ == "__main__":
+    if 'SSH_ORIGINAL_COMMAND' in os.environ:
+        run_nagios_command(shlex.split(os.environ['SSH_ORIGINAL_COMMAND']))
+    else:
+        import sys
+        print >>sys.stderr, 'SSH authentication succeeded. Interactive login is not allowed.'
+        sys.exit(1)
