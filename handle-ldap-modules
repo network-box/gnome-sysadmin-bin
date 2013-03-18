@@ -94,7 +94,7 @@ def gen_passwd(length=8, chars=string.letters + string.digits):
 
 def hash_ssha(password):
     salt = ''.join([chr(randrange(0,255)) for i in range(4)])
-    ctx = hashlib.sha(password  + salt)
+    ctx = hashlib.sha1(password  + salt)
     hash = "{SSHA}" + b64encode(ctx.digest() + salt)
     return hash
 
