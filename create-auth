@@ -28,7 +28,7 @@ def get_md5sum_hash():
 
 ## first you must open a connection to the server
 try:
-    l = ldap.open("ldap-back")
+    l = ldap.open("ldap.gnome.org")
     l.simple_bind("cn=Manager,dc=gnome,dc=org")
 except ldap.LDAPError, e:
     print >>sys.stderr, e
