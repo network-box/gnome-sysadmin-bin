@@ -5,7 +5,7 @@ import ldap.modlist
 import ldap.filter
 import subprocess
 
-LDAP_URL='ldap://ldap-back/'
+LDAP_URL='ldap://ldap.gnome.org/'
 LDAP_BINDDN='cn=Manager,dc=gnome,dc=org'
 LDAP_GROUP_BASE='ou=groups,dc=gnome,dc=org'
 LDAP_USER_BASE='ou=people,dc=gnome,dc=org'
