@@ -1334,7 +1334,7 @@ def get_module_info(module):
     global l # evil
 
     if l is None:
-        l = ldap.open('ldap-back')
+        l = ldap.open('ldap.gnome.org')
         l.protocol_version = ldap.VERSION3
 
     filter = ldap.filter.filter_format("(|(cn=%s)(tarballName=%s))", (module, module))
