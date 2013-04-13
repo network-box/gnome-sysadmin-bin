@@ -1,0 +1,34 @@
+#!/bin/bash
+
+#####################################################################
+#  This script is licensed with the GNU General Public License 
+#  version 3. For more information visit:
+#
+#     http://www.gnu.org/licenses/gpl.html
+#
+#  Attribution is NOT required, but a mention of HealthWyze.org
+#  would be greatly appreciated.  Produced by Thomas Corriher.
+#####################################################################
+
+
+####### Change MAILMAN_BIN to match local setup
+
+MAILMAN_BIN='/usr/lib/mailman/bin'
+
+let ID=$(id -un)
+
+if [ "$ID" != "mailman" ]
+	then echo "Run this script only as mailman.  Aborting."; exit 1
+	else true
+fi
+
+#######    Remove '--nouserack' to send notifications to users
+#######    that they have been terminated.  The normal Mailman
+#######    unsubscribe message text is used.
+
+function KILL_BAN {
+	$MAILMAN_BIN/remove_members --fromall --nouserack "$1"
+	$MAILMAN_BIN/withlist -a -r helper_ban_mailman -- "$1"
+}
+
+for i in "$@"; do KILL_BAN "$i"; done
