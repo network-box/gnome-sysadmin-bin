@@ -3,7 +3,7 @@
 import sys
 sys.path.append('$MAILMAN_BIN')
 
-def add_banned(mlist, address):
+def helper_ban_mailman(mlist, address):
 	if not mlist.Locked():
 		mlist.Lock()
 	if address not in mlist.ban_list:
