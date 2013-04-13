@@ -15,7 +15,7 @@
 
 MAILMAN_BIN='/usr/lib/mailman/bin'
 
-let ID=$(id -un)
+ID=$(id -un)
 
 if [ "$ID" != "mailman" ]
 	then echo "Run this script only as mailman instead of $ID.  Aborting."; exit 1
