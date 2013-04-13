@@ -15,6 +15,7 @@
 
 MAILMAN_BIN='/usr/lib/mailman/bin'
 PYTHONPATH="/home/admin/bin"
+export PYTHONPATH
 
 ID=$(id -un)
 
