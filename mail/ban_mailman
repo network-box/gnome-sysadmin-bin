@@ -14,7 +14,7 @@
 ####### Change MAILMAN_BIN to match local setup
 
 MAILMAN_BIN='/usr/lib/mailman/bin'
-PYTHONPATH="/home/admin/bin"
+PYTHONPATH="/home/admin/bin/mail"
 export PYTHONPATH
 
 ID=$(id -un)
