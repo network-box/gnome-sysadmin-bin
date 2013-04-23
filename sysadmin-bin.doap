@@ -6,7 +6,7 @@
 
   <name xml:lang="en">sysadmin-bin</name>
   <shortdesc xml:lang="en">Scripts used by the GNOME sysadmin team</shortdesc>
-  <homepage rdf:resource="http://live.gnome.org/Infrastructure" />
+  <homepage rdf:resource="http://live.gnome.org/Sysadmin" />
   <mailing-list rdf:resource="http://mail.gnome.org/mailman/listinfo/gnome-infrastructure" />
   <category rdf:resource="http://api.gnome.org/doap-extensions#infrastructure" />
 
