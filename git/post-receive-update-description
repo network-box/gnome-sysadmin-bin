@@ -21,6 +21,8 @@ update_info_from_doap() {
 
     git cat-file blob "$newrev:$path" | $BINDIR/extract-doap-info $GIT_DIR
     $BINDIR/update-cgit
+    echo 'Rebuild the maintainers list for this module'
+    /usr/bin/fishpoke clipboard-back doap_rebuild
 }
 
 update_info_from_maintainers() {
@@ -34,8 +36,6 @@ update_info_from_maintainers() {
 
     git cat-file blob "$newrev:$path" | $BINDIR/doap-from-maintainers > $GIT_DIR/gnome_doap
     $BINDIR/update-cgit
-    echo 'Rebuild the maintainers list for this module'
-    /usr/bin/fishpoke clipboard-back doap_rebuild
 }
 
 update_info() {
