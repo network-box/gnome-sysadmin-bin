@@ -846,7 +846,7 @@ Install %s? [Y/n]""" % self.module,
         # install the module
         return True
 
-    def validate(self):
+    def validate(self, clobber=False):
         if self.module is None:
             print >>sys.stderr, 'ERROR: Unrecognized module/version/file format. Make sure to follow a sane naming scheme (MAJOR.MINOR.MICRO)'
             return False
@@ -857,7 +857,7 @@ Install %s? [Y/n]""" % self.module,
 
         # Don't allow an existing tarball to be overwritten
         if not DEBUG:
-            if self.version in self.moduleinfo.versions:
+            if not clobber and self.version in self.moduleinfo.versions:
                 print >>sys.stderr, """ERROR: %s already exists in the archive!""" % self.basename
                 return False
         else:
@@ -881,10 +881,10 @@ Install %s? [Y/n]""" % self.module,
         # True if there are no errors
         return len(errors) == 0
 
-    def install(self, unattended=False):
+    def install(self, unattended=False, clobber=False):
         print "Preparing installation of %s:" % self.basename
         # Validate the file
-        if not self.validate():
+        if not self.validate(clobber):
             return False
 
 
@@ -1360,7 +1360,7 @@ def cmd_install(options, parser):
                                                 or version_cmp(x.version, y.version)))
 
     for module in modules:
-        module.install(unattended=options.unattended)
+        module.install(unattended=options.unattended, clobber=options.clobber)
         print ""
 
     print """Please report any problems to:
