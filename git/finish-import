@@ -34,5 +34,7 @@ echo "Clearing pending flag on $GIT_DIR"
 rm $GIT_DIR/pending
 
 $BINDIR/update-cgit
+echo "Updating the list of maintainers"
+fishpoke clipboard-back doap_rebuild
 
 echo "$name is now ready for use"
