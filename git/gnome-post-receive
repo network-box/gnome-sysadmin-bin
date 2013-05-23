@@ -13,15 +13,6 @@
 # hook.emailprefix  - should always be empty
 # hooks.mailinglist - should always be commits-list@gnome.org
 
-# Kgb-Bot's hook, get the repository name and feed --repo-id with it, make sure that repo-id do
-# actually match the repository-name you are going to configure on kgb.conf and kgb-client.conf. More
-# details at https://live.gnome.org/Sysadmin/KGB-Bot
-
-REPOSITORY_ID=$(basename "$PWD")
-REPOSITORY_ID=${REPOSITORY_ID%.git}
-
-tee hooks/reflog | kgb-client --conf /home/admin/KGB/kgb-client.conf --repo-id $REPOSITORY_ID --repository git --git-reflog - > /dev/null 2>&1
-
 BINDIR=/home/admin/bin/git
 
 # If the committing user has a homedir with a .gitconfig in it, it we
@@ -35,4 +26,5 @@ tee >($BINDIR/log-push 1>&2) \
     >($BINDIR/post-receive-update-description 1>&2) \
     >($BINDIR/post-receive-notify-updates 1>&2) \
     >($BINDIR/post-receive-notify-ostree 1>&2) \
+    >($BINDIR/post-receive-notify-kgb 1>&2) \
     | $BINDIR/gnome-post-receive-email 1>&2
