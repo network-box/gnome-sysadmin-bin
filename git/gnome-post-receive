@@ -13,6 +13,11 @@
 # hook.emailprefix  - should always be empty
 # hooks.mailinglist - should always be commits-list@gnome.org
 
+# Kgb-Bot, it should be OK to add it on *every* repository, the hook will just create
+# a reflog file but nothing will be notified if no available entries for the specific repository
+# are added into both /home/admin/KGB/kgb-client.conf and /etc/kgb-bot/kgb-bot.conf.
+tee hooks/reflog | kgb-client --conf /home/admin/KGB/kgb-client.conf --repository git --git-reflog -
+
 BINDIR=/home/admin/bin/git
 
 # If the committing user has a homedir with a .gitconfig in it, it we
