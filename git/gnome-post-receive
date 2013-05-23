@@ -13,10 +13,14 @@
 # hook.emailprefix  - should always be empty
 # hooks.mailinglist - should always be commits-list@gnome.org
 
-# Kgb-Bot, it should be OK to add it on *every* repository, the hook will just create
-# a reflog file but nothing will be notified if no available entries for the specific repository
-# are added into both /home/admin/KGB/kgb-client.conf and /etc/kgb-bot/kgb-bot.conf.
-tee hooks/reflog | kgb-client --conf /home/admin/KGB/kgb-client.conf --repository git --git-reflog -
+# Kgb-Bot's hook, get the repository name and feed --repo-id with it, make sure that repo-id do
+# actually match the repository-name you are going to configure on kgb.conf and kgb-client.conf. More
+# details at https://live.gnome.org/Sysadmin/KGB-Bot
+
+REPOSITORY_ID=$(basename $(readlink -nf "$PWD"/..))
+REPOSITORY_ID=${REPOSITORY_ID%.git}
+
+tee hooks/reflog | kgb-client --conf /home/admin/KGB/kgb-client.conf --repo-id $REPOSITORY_ID--repository git --git-reflog -
 
 BINDIR=/home/admin/bin/git
 
