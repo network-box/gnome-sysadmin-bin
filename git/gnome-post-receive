@@ -20,7 +20,7 @@
 REPOSITORY_ID=$(basename $(readlink -nf "$PWD"/..))
 REPOSITORY_ID=${REPOSITORY_ID%.git}
 
-tee hooks/reflog | kgb-client --conf /home/admin/KGB/kgb-client.conf --repo-id $REPOSITORY_ID--repository git --git-reflog -
+tee hooks/reflog | kgb-client --conf /home/admin/KGB/kgb-client.conf --repo-id $REPOSITORY_ID --repository git --git-reflog -
 
 BINDIR=/home/admin/bin/git
 
