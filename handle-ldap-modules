@@ -180,13 +180,7 @@ How to approve account requests:
 YOUR MANGO PASSWORD
 To retrieve (reset) your mango password, do:
   ssh -l $uid mango.gnome.org mango
-Your username is same as your Git username.
-
-
-Note2: Your Mango password also allows you to use the jabber service
-(jabber.gnome.org, username is same as git/mango/etc). Please *enforce*
-SSL/TLS. Do NOT allow plain text auth! However, this is only intended for
-foundation members.""")
+Your username is same as your Git username.""")
 
     def __init__(self, passwd):
         self.LDAP_PASSWD = passwd
