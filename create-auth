@@ -65,6 +65,9 @@ def _get_group_from_ldap(group):
     return members
 
 def _get_user_data_from_ldap(filter):
+    if options.random_sleep:
+	    time.sleep(random.randint(0, 600))
+
     user_data = {}
     try:
         searchattrs = ('uid', 'homeDirectory', 'authorizedKey',
@@ -447,6 +450,9 @@ if __name__ == '__main__':
                       action="store_const", dest="homedirs", const="all")
     parser.add_option("--create-homedirs",
                       action="store_const", dest="homedirs", const="basic")
+
+    parser.add_option("--random-sleep",  action="store_true", 
+                      help="Sets a random sleep time before executing the script, useful to not overload ldap-back")
 
     parser.set_defaults(homedirs=None)
 
