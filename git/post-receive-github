@@ -105,8 +105,8 @@ def get_repo_settings (name):
     doap_url = "https://git.gnome.org/browse/%s/plain/%s.doap" % (name, name)
 
     rq = requests.get(doap_url)
-    if rq != 200:
-        raise Exception ("Could not get doap: %s\n%d\n%s" % (doap_url, rq.status_code, rq.text))	
+    if rq.status_code != 200:
+        raise Exception ("Could not get doap: %s" % doap_url)        
 
     prj = et.fromstring (rq.text)
 
