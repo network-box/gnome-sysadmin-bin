@@ -33,7 +33,7 @@ import sys
 import requests
 import subprocess
 import shlex
-import configparser
+import ConfigParser
 import xml.etree.ElementTree as et
 import smtplib
 from email.mime.text import MIMEText
@@ -47,14 +47,14 @@ name_maps = {"gtk+":       "gtk",
 
 class GitHub:
     def __init__ (self):
-        config = configparser.ConfigParser()
+        config = ConfigParser.ConfigParser()
         try:
             config.read(os.path.expanduser('/etc/gitmirrorrc'))
             self.user = config.get('Github', 'user')
             self.pw   = config.get('Github', 'password')
-        except configparser.NoSectionError:
+        except ConfigParser.NoSectionError:
             raise Exception ("~/.gitmirrorrc non existant or missing [Github] section with user and password keys")
-        except configparser.NoOptionError:
+        except ConfigParser.NoOptionError:
             raise Exception ("~/.gitmirrorrc misses user or/and password keys in the [Github] section")
 
     def check_if_repo_exists (self, name):
