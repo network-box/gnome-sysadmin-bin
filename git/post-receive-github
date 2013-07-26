@@ -158,6 +158,6 @@ if __name__ == "__main__":
         msg['To']      = "gnome-sysadmin@gnome.org"
         msg['X-GNOME-SERVICE'] = "github-mirror"
         server = smtplib.SMTP("localhost")
-        server.send_message (msg)
+        server.sendmail (msg['From'], msg['To'], msg.as_string())
         server.quit ()
         raise e
