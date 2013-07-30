@@ -1111,7 +1111,7 @@ Install %s? [Y/n]""" % self.module,
 
         sys.stdout.write(" - Triggering GNOME library update")
         subject = 'GNOME_GIT library-web'
-        to = "gnomeweb@www.gnome.org"
+        to = "gnomeweb@webapps.gnome.org"
         retcode = self._send_email("forced", subject, to, [to])
         print ", done"
 
