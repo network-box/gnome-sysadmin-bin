@@ -63,11 +63,19 @@ EOF
     exit 1
 fi
 
+my_uid=`id -u`
+translations_uid=`id -u translations`
+[ $? == 0 ] || exit 1
+
 while read oldrev newrev refname; do
     # Unlike the gnome-post-receive script, where we play fancy games
     # with 'tee', we invoke the different pre-receive hooks separately
     # for each ref that is updated. This keeps things simple and
     # reliable and none of the scripts need all the refs at once.
+
+    # First (and written in Python) since we're trying to make it hard
+    # to bypass if l10.gnome.org were compromised.
+    [ $my_uid != $translations_uid ] || $BINDIR/pre-receive-check-translations $oldrev $newrev $refname || exit 1
 
     $BINDIR/pre-receive-check-policy $oldrev $newrev $refname || exit 1
     $BINDIR/pre-receive-check-maintainers $oldrev $newrev $refname || exit 1
