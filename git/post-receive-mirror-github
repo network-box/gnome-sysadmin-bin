@@ -42,6 +42,7 @@ import json
 
 ORGANIZATION="GNOME"
 name_maps = {"gtk+":       "gtk",
+             "Gtk+":       "gtk",
              "libxml++":   "libxmlmm",
              "libsigc++2": "libsigcpp2"}
 
