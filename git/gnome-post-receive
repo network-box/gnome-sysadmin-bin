@@ -27,4 +27,5 @@ tee >($BINDIR/log-push 1>&2) \
     >($BINDIR/post-receive-notify-updates 1>&2) \
     >($BINDIR/post-receive-notify-ostree 1>&2) \
     >($BINDIR/post-receive-notify-kgb 1>&2) \
+    >($BINDIR/post-receive-github 1>&2) \
     | $BINDIR/gnome-post-receive-email 1>&2
