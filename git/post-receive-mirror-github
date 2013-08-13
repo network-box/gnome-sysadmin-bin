@@ -83,7 +83,7 @@ class GitHub:
 
         raise Exception("There was an error attempting to create the repo %s in github:\n\nStatus: %d\nText:\n%s" % (name, rq.status_code, rq.text))
 
-def normalize_name (self, name):
+    def normalize_name (self, name):
         if "+" in name and name in name_maps.keys():
             return name_maps[name]
         else:
