@@ -5,4 +5,4 @@
 REPOSITORY_ID=$(basename "$PWD")
 REPOSITORY_ID=${REPOSITORY_ID%.git}
 
-grep refs/heads/master | kgb-client --conf /home/admin/KGB/kgb-client-$REPOSITORY_ID.conf --repository git --git-reflog - > /dev/null 2>&1
+grep -r --exclude="wip/*" refs/heads/ | kgb-client --conf /home/admin/KGB/kgb-client-$REPOSITORY_ID.conf --repository git --git-reflog - > /dev/null 2>&1
