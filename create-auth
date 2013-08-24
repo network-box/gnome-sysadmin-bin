@@ -38,7 +38,7 @@ except ldap.LDAPError, e:
 
 RESTRICTS = {
     'gnomegit-i18n':
-        'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding,host="91.189.93.2" ',
+        'command="/home/admin/bin/run-git-or-special-cmd",no-pty,no-port-forwarding,from="91.189.93.2" ',
     'mango':
         'command="/home/admin/bin/run-mango-special-cmd",no-pty,no-port-forwarding ',
     'rrsync':
