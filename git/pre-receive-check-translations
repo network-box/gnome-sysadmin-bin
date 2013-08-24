@@ -21,7 +21,7 @@ def error(msg):
 
 def config_dirs(key, default):
     try:
-        raw = git.config("key", _quiet=True)
+        raw = git.config(key, _quiet=True)
     except CalledProcessError:
         raw = default
 
