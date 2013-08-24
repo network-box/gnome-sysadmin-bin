@@ -324,7 +324,7 @@ def build_user_hash(group_list, restrict=None):
         users.update(get_uids_from_group(group, force_ldap=True))
     if restrict in ('gnomegit', 'gnomegit-i18n', 'mango'):
         gnomevcs_users = (get_uids_from_group('gnomecvs', force_ldap=True) | get_uids_from_group('gnomevcs', force_ldap=True)) - users
-        if restrict == 'gnomegit+i18n':
+        if restrict == 'gnomegit-i18n':
             gnomevcs_users.update(['translations'])
     elif restrict == 'nagios':
 	gnomevcs_users = get_uids_from_group('nagios', force_ldap=True) - users
