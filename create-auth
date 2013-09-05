@@ -310,7 +310,7 @@ def lookup_user_info(uids):
 
     return _get_user_data_from_ldap(filter)
 
-def build_user_hash(group_list, restrict=None):
+def build_user_hash(group_list, options):
     users = set()
     gnomevcs_users = set()
 
@@ -322,13 +322,13 @@ def build_user_hash(group_list, restrict=None):
     users.update(sysadmin)
     for group in group_list:
         users.update(get_uids_from_group(group, force_ldap=True))
-    if restrict in ('gnomegit', 'gnomegit-i18n', 'mango'):
+    if options.restrict in ('gnomegit', 'mango'):
         gnomevcs_users = (get_uids_from_group('gnomecvs', force_ldap=True) | get_uids_from_group('gnomevcs', force_ldap=True)) - users
-        if restrict == 'gnomegit-i18n':
+        if options.translation_user:
             gnomevcs_users.update(['translations'])
-    elif restrict == 'nagios':
+    elif options.restrict == 'nagios':
 	gnomevcs_users = get_uids_from_group('nagios', force_ldap=True) - users
-    elif restrict == 'rrsync':
+    elif options.restrict == 'rrsync':
         gnomevcs_users = get_uids_from_group('ftpbasic', force_ldap=True) - users
 
     # look up their keys (if we have them)
@@ -338,11 +338,8 @@ def build_user_hash(group_list, restrict=None):
         if uid not in user_data:
             continue
 
-        if restrict == 'gnomegit-i18n':
-            if uid == 'translations':
-                user_data[uid]['restrict'] = 'gnomegit-i18n'
-            else:
-                user_data[uid]['restrict'] = 'gnomegit'
+        if options.restrict == 'gnomegit' and options.translation_user and and uid == 'translations':
+            user_data[uid]['restrict'] = 'gnomegit-i18n'
         else:
             user_data[uid]['restrict'] = restrict
 
@@ -434,7 +431,7 @@ if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option("--restrict",
                       action="store", dest="restrict", default=None,
-                      choices=['gnomegit', 'mango', 'rrsync', 'gnomegit-i18n', 'nagios'],
+                      choices=['gnomegit', 'mango', 'rrsync', 'nagios'],
                       help="What type of restricted access to setup")
 
     parser.add_option("--gnomegit",
@@ -445,8 +442,7 @@ if __name__ == '__main__':
                       action="store_const", dest="restrict", const="mango")
     parser.add_option("--nagios",
                       action="store_const", dest="restrict", const="nagios")
-    parser.add_option("--translation-user",
-                      action="store_const", dest="restrict", const="gnomegit-i18n")
+    parser.add_option("--translation-user", action="store_true")
 
     parser.add_option("--create-all-homedirs",
                       action="store_const", dest="homedirs", const="all")
@@ -463,6 +459,10 @@ if __name__ == '__main__':
     if options.homedirs is not None:
         import stat
 
+    if options.translation_user and restrict != 'gnomegit':
+        print >>sys.stderr, "ERROR: --translation-user only works for --gnome-git"
+        sys.exit(1)
+
     if options.homedirs == 'all':
         user_list_homedirs = get_homedirs()
         old_mask = os.umask(0077)
@@ -471,7 +471,7 @@ if __name__ == '__main__':
         print_user_list('Created home directory for', created_users)
 #        set_homedir_permissions(user_list_homedirs, user_list_homedirs.keys())
 
-    user_data = build_user_hash (group_list, restrict=options.restrict)
+    user_data = build_user_hash (group_list, options)
     if not len(user_data):
         print >>sys.stderr, "ERROR: No users to create! Likely empty LDAP directory!!"
         sys.exit(1)
