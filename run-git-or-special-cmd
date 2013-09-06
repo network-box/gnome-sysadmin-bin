@@ -27,10 +27,14 @@ is_sysadmin = sysadmin_gid in groups
 # os.path.normpath can't be used for security because it's
 # only textual and doesn't check symlinks.
 # /home/joe.smith/foo/../../../git isn't necessarily /git
-def normalize_path(path):
+def find_and_normalize_git_dir(path):
     curpath = os.getcwd()
     try:
-        os.chdir(path)
+        try:
+            os.chdir(path)
+        except OSError:
+            path += ".git"
+            os.chdir(path)
         return os.getcwd()
     except:
         return None
@@ -38,7 +42,7 @@ def normalize_path(path):
         os.chdir(curpath)
 
 def validate_git_dir(path):
-    path = normalize_path(path)
+    path = find_and_normalize_git_dir(path)
     if path is None:
         print >>sys.stderr, "git repository does not exist."
         sys.exit(1)
