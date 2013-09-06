@@ -4,6 +4,7 @@ import grp
 import os
 import pwd
 import shlex
+import sys
 
 # vim: set ts=4 sw=4:
 
@@ -55,6 +56,8 @@ def validate_git_dir(path):
     return path
 
 def rungitcommand(args):
+    print >>sys.stderr, 'args are', repr(args)
+
     git_cmds =[ 'receive-pack', 'upload-pack', 'upload-archive' ]
 
     special_cmds = {
@@ -81,6 +84,5 @@ if __name__ == "__main__":
     if 'SSH_ORIGINAL_COMMAND' in os.environ:
         rungitcommand(shlex.split(os.environ['SSH_ORIGINAL_COMMAND']))
     else:
-        import sys
         print >>sys.stderr, 'SSH authentication succeeded. Interactive login is not allowed.'
         sys.exit(1)
