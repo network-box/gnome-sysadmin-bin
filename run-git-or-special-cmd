@@ -56,9 +56,7 @@ def validate_git_dir(path):
     return path
 
 def rungitcommand(args):
-    print >>sys.stderr, 'args are', repr(args)
-
-    git_cmds =[ 'receive-pack', 'upload-pack', 'upload-archive' ]
+    git_cmds = [ 'git-receive-pack', 'git-upload-pack', 'git-upload-archive' ]
 
     special_cmds = {
         'create-repository': '/home/admin/bin/git/create-repository',
