@@ -41,6 +41,14 @@ def find_and_normalize_git_dir(path):
     finally:
         os.chdir(curpath)
 
+def check_hook(path, which):
+    try:
+        dest = os.readlink(path + '/hooks/' + which)
+    except OSError:
+        return False
+    return dest == '/home/admin/bin/git/gnome-' + which or dest == '/home/admin/gitadmin-bin/gno\
+me-' + which
+
 def validate_git_dir(path):
     path = find_and_normalize_git_dir(path)
     if path is None:
@@ -52,8 +60,7 @@ def validate_git_dir(path):
         sys.exit(1)
 
     if (not is_sysadmin and
-        (os.readlink(path + '/hooks/pre-receive') != '/home/admin/bin/git/gnome-pre-receive' or
-         os.readlink(path + '/hooks/post-receive') != '/home/admin/bin/git/gnome-post-receive')):
+        (!check_hook(path, 'pre-receive' or !check_hook(path, 'post-receive')))):
         print >>sys.stderr, "git repository doesn't have required gnome.org hooks."
         sys.exit(1)
 
