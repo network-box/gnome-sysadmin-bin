@@ -60,7 +60,7 @@ def validate_git_dir(path):
         sys.exit(1)
 
     if (not is_sysadmin and
-        (!check_hook(path, 'pre-receive' or !check_hook(path, 'post-receive')))):
+        (not check_hook(path, 'pre-receive' or not check_hook(path, 'post-receive')))):
         print >>sys.stderr, "git repository doesn't have required gnome.org hooks."
         sys.exit(1)
 
