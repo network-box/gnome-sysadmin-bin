@@ -459,7 +459,7 @@ if __name__ == '__main__':
     if options.homedirs is not None:
         import stat
 
-    if options.translation_user and restrict != 'gnomegit':
+    if options.translation_user and options.restrict != 'gnomegit':
         print >>sys.stderr, "ERROR: --translation-user only works for --gnome-git"
         sys.exit(1)
 
