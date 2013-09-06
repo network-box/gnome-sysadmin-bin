@@ -341,7 +341,7 @@ def build_user_hash(group_list, options):
         if options.restrict == 'gnomegit' and options.translation_user and uid == 'translations':
             user_data[uid]['restrict'] = 'gnomegit-i18n'
         else:
-            user_data[uid]['restrict'] = restrict
+            user_data[uid]['restrict'] = options.restrict
 
     for uid in wheel | sysadmin:
         if uid not in user_data:
