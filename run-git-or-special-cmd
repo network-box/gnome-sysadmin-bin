@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
+import grp
 import os
+import pwd
 import shlex
 
 # vim: set ts=4 sw=4:
@@ -10,8 +12,52 @@ import shlex
 # not world-readable
 os.umask(0002)
 
+# We want to restrict the translations user; hopefully using
+# getpwuid() for this will be reasonably robust. If getpwuid()
+# fails this will throw an exception rather than getting a
+# false negative.
+username = pwd.getpwuid(os.getuid()).pw_name
+is_translations = username == 'translations'
+
+groups = os.getgroups()
+sysadmin_gid = grp.getgrnam('sysadmin').gr_gid
+is_sysadmin = sysadmin_gid in groups
+
+# os.path.normpath can't be used for security because it's
+# only textual and doesn't check symlinks.
+# /home/joe.smith/foo/../../../git isn't necessarily /git
+def normalize_path(path):
+    curpath = os.getcwd()
+    try:
+        os.chdir(path)
+        return os.getcwd()
+    except:
+        return None
+    finally:
+        os.chdir(curpath)
+
+def validate_git_dir(path):
+    path = normalize_path(path)
+    if path is None:
+        print >>sys.stderr, "git repository does not exist."
+        sys.exit(1)
+
+    if not path.startswith('/git/'):
+        print >>sys.stderr, "git repository is not in /git."
+        sys.exit(1)
+
+    if (not is_sysadmin and
+        (os.readlink(path + '/hooks/pre-receive') != '/home/admin/bin/git/gnome-pre-receive' or
+         os.readlink(path + '/hooks/post-receive') != '/home/admin/bin/git/gnome-post-receive')):
+        print >>sys.stderr, "git repository doesn't have required gnome.org hooks."
+        sys.exit(1)
+
+    return path
+
 def rungitcommand(args):
-    cmds = {
+    git_cmds =[ 'receive-pack', 'upload-pack', 'upload-archive' ]
+
+    special_cmds = {
         'create-repository': '/home/admin/bin/git/create-repository',
         'finish-import': '/home/admin/bin/git/finish-import',
         # These allow 'git push --exec=force/import'
@@ -19,14 +65,17 @@ def rungitcommand(args):
         'import': '/home/admin/bin/git/receive-pack-import',
     }
 
-    if args[0] in cmds:
-        cmd = [cmds[args[0]]]
+    if args[0] in git_cmds:
+        validate_git_dir(args[1])
+        cmd = ['/usr/bin/git-shell', '-c', os.environ['SSH_ORIGINAL_COMMAND']]
+    elif args[0] in special_cmds and not is_translations:
+        cmd = [special_cmds[args[0]]]
         cmd.extend(args[1:])
     else:
-        cmd = ['/usr/bin/git-shell', '-c', os.environ['SSH_ORIGINAL_COMMAND']]
+        print >>sys.stderr, 'Unknown command.'
+        sys.exit(1)
 
     os.execv(cmd[0], cmd)
-
 
 if __name__ == "__main__":
     if 'SSH_ORIGINAL_COMMAND' in os.environ:
