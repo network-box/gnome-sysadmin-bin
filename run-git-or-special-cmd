@@ -27,18 +27,30 @@ is_sysadmin = sysadmin_gid in groups
 # os.path.normpath can't be used for security because it's
 # only textual and doesn't check symlinks.
 # /home/joe.smith/foo/../../../git isn't necessarily /git
-def normalize_path(path):
+def find_and_normalize_git_dir(path):
     curpath = os.getcwd()
     try:
-        os.chdir(path)
+        try:
+            os.chdir(path)
+        except OSError:
+            path += ".git"
+            os.chdir(path)
         return os.getcwd()
     except:
         return None
     finally:
         os.chdir(curpath)
 
-def validate_git_dir(path):
-    path = normalize_path(path)
+def check_hook(path, which):
+    try:
+        dest = os.readlink(path + '/hooks/' + which)
+    except OSError:
+        return False
+    return dest == '/home/admin/bin/git/gnome-' + which or dest == '/home/admin/gitadmin-bin/gno\
+me-' + which
+
+def validate_git_dir(path, readonly):
+    path = find_and_normalize_git_dir(path)
     if path is None:
         print >>sys.stderr, "git repository does not exist."
         sys.exit(1)
@@ -47,18 +59,16 @@ def validate_git_dir(path):
         print >>sys.stderr, "git repository is not in /git."
         sys.exit(1)
 
-    if (not is_sysadmin and
-        (os.readlink(path + '/hooks/pre-receive') != '/home/admin/bin/git/gnome-pre-receive' or
-         os.readlink(path + '/hooks/post-receive') != '/home/admin/bin/git/gnome-post-receive')):
+    if (not readonly and not is_sysadmin and
+        (not check_hook(path, 'pre-receive' or not check_hook(path, 'post-receive')))):
         print >>sys.stderr, "git repository doesn't have required gnome.org hooks."
         sys.exit(1)
 
     return path
 
 def rungitcommand(args):
-    print >>sys.stderr, 'args are', repr(args)
-
-    git_cmds =[ 'receive-pack', 'upload-pack', 'upload-archive' ]
+    read_git_cmds = [ 'git-upload-pack', 'git-upload-archive' ]
+    write_git_cmds = [ 'git-receive-pack' ]
 
     special_cmds = {
         'create-repository': '/home/admin/bin/git/create-repository',
@@ -68,8 +78,8 @@ def rungitcommand(args):
         'import': '/home/admin/bin/git/receive-pack-import',
     }
 
-    if args[0] in git_cmds:
-        validate_git_dir(args[1])
+    if args[0] in read_git_cmds or args[0] in write_git_cmds:
+        validate_git_dir(args[1], args[0] in read_git_cmds)
         cmd = ['/usr/bin/git-shell', '-c', os.environ['SSH_ORIGINAL_COMMAND']]
     elif args[0] in special_cmds and not is_translations:
         cmd = [special_cmds[args[0]]]
