@@ -24,6 +24,7 @@ def create_prosody_account():
     child.sendline ('%s' % random_password)
     child.expect ('Retype new password: ')
     child.sendline ('%s' % random_password)
+    child.expect(pexpect.EOF)
     child.close()
 
     if child.exitstatus == 1:
