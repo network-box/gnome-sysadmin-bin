@@ -35,7 +35,7 @@ for location in continents_list:
     result = cur.fetchall()
 
     if not result:
-        f.write('\n' + '\t' + "No available mirrors for this country / continent as of now." + '\n')
+        f.write('\n' + '\t' + "No available mirrors for this country / continent as of now.")
     else:
         for i in result:
             f.write('\n' + '\t' + (str(i[0])))
