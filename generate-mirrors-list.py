@@ -25,7 +25,7 @@ cur = db.cursor()
 continents_list = ['Europe', 'Asia', 'South America', 'United States and Canada', 'Australia', 'Other']
 time = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
 
-f = open ('/ftp/pub/GNOME/MIRRORS', 'w' )
+f = open ('/mnt/nfs_data/ftp/pub/GNOME/MIRRORS', 'w' )
 f.write('GNOME HTTP and FTP mirrors list' + '\n')
 
 for location in continents_list:
