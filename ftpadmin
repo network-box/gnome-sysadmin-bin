@@ -254,8 +254,8 @@ class BasicInfo(object):
 
     FTPROOT='/ftp/pub/GNOME'
     FTPROOT_DEBUG='/ftp/tmp'
-    URLROOT='http://download.gnome.org'
-    DOAPURL='http://git.gnome.org/doap/%s'
+    URLROOT='https://download.gnome.org'
+    DOAPURL='https://git.gnome.org/doap/%s'
     BLOCKSIZE=2*1024*1024 # (dot will be printed per block for progress indication)
 
     # Note: this defines the formats install-module can read
@@ -1143,7 +1143,7 @@ broken http clients, and to use http as it is less taxing on the server.""" % "/
 The ftp-release-list email uses information from the modules DOAP file. Make
 sure at least the following fields are filled in:
   name, shortdesc, description, download-page, bug-database
-See http://live.gnome.org/MaintainersCorner#doap"""
+See https://wiki.gnome.org/MaintainersCorner#doap"""
 
 
     def _call_cmd(self, cmd):
