@@ -22,7 +22,7 @@ QUEUES = {
 def write_stat_file(cursor, queue):
     qinfo = QUEUES[queue]
     qnr = qinfo['nr']
-    OUTPUT = '/usr/local/www/rt3stats/%s.html' % queue
+    OUTPUT = '/usr/local/www/rt4stats/%s.html' % queue
 
     cursor.execute ('SELECT COUNT(*) FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status="new"', qnr)
     newc = cursor.fetchone ()[0]
@@ -88,11 +88,11 @@ def write_stat_file(cursor, queue):
     output.close ()
 
 if __name__ == "__main__":
-    f = open ('/home/admin/secret/rt3stats')
+    f = open ('/home/admin/secret/rt4stats')
     dbpass = f.readline ().strip ()
     f.close ()
 
-    connection = MySQLdb.connect ('drawable-back', 'rtstats', dbpass, 'rt3')
+    connection = MySQLdb.connect ('drawable-back', 'rtstats', dbpass, 'rt4')
     cursor = connection.cursor ()
 
     for queue in QUEUES.keys():
