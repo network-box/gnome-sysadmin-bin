@@ -9,6 +9,7 @@ import subprocess
 import shutil
 import time
 import random
+import socket
 try:
     import hashlib as md5
 except:
@@ -27,6 +28,13 @@ def get_md5sum_hash():
             m = md5.md5(str)
             user_md5sums [file] = m.hexdigest ()
     return user_md5sums
+
+## Don't overload ldap.gnome.org too much, make use of our slave
+## for the gnomecvs and ftpbasic groups.
+if socket.gethostname == 'git.gnome.org' or 'master.gnome.org':
+    ldap_server = 'view.gnome.org'
+else:
+    ldap_server = 'ldap.gnome.org'
 
 ## first you must open a connection to the server
 try:
