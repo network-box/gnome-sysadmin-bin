@@ -38,7 +38,7 @@ else:
 
 ## first you must open a connection to the server
 try:
-    l = ldap.open("ldap.gnome.org")
+    l = ldap.open(ldap_server)
     l.simple_bind("cn=Manager,dc=gnome,dc=org")
 except ldap.LDAPError, e:
     print >>sys.stderr, e
