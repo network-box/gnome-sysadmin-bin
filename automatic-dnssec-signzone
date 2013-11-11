@@ -1,6 +1,6 @@
 #!/bin/bash
 
-signed_zones='gnome.org'
+signed_zones='gnome.org guadec.org'
 
 cd /tmp
 git clone /home/admin/dns.git
