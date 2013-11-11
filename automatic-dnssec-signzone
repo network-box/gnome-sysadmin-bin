@@ -5,5 +5,5 @@ signed_zones='gnome.org'
 cd /tmp
 git clone /home/admin/dns.git
 cd dns/master ; /usr/sbin/dnssec-signzone -K /srv/dnssec-keys/ -N INCREMENT $signed_zones
-git commit -a -m 'Automatic weekly signing run'
+git add . ; git commit -a -m 'Automatic weekly signing run'
 git push ; cd /tmp ; rm -rf dns
