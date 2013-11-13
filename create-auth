@@ -31,7 +31,10 @@ def get_md5sum_hash():
 
 ## Don't overload ldap.gnome.org too much, make use of our slave
 ## for the gnomecvs and ftpbasic groups.
-if socket.gethostname == 'git.gnome.org' or socket.gethostname == 'master.gnome.org':
+
+SLAVE_CONNECTED_MACHINES = ['git.gnome.org', 'master.gnome.org', 'clipboard.gnome.org, 'webapps2.gnome.org']
+
+if socket.gethostname in SLAVE_CONNECTED_MACHINES:
     ldap_server = 'view.gnome.org'
 else:
     ldap_server = 'ldap.gnome.org'
