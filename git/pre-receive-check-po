@@ -126,6 +126,14 @@ PATH=/usr/libexec/gettext17:$PATH
 
 GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 
+# Don't check for .po files when check_po is set to 
+# false on the repository's config file 
+check_po=$(git config hooks.checkpo || echo true)
+
+if [ "$checkpo" != "true" ] ; then  
+    exit 0
+fi
+
 # Don't check .po's during import; we don't want to enforce correct
 # .po files for some ancient historical branch
 if [ -e $GIT_DIR/pending ] ; then
