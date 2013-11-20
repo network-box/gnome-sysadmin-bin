@@ -128,7 +128,7 @@ GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
 
 # Don't check for .po files when check_po is set to 
 # false on the repository's config file 
-check_po=$(git config hooks.checkpo || echo true)
+check_po=$(git config hooks.checkpo 2>/dev/null || echo true)
 
 if [ "$checkpo" != "true" ] ; then  
     exit 0
