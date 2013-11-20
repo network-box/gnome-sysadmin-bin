@@ -4,7 +4,7 @@ signed_zones='gnome.org guadec.org gnomehispano.org gnomehispano.es guadec.es'
 
 cd /tmp
 git clone /home/admin/dns.git
-cd dns/master ; /usr/sbin/dnssec-signzone -K /srv/dnssec-keys/ -N INCREMENT $signed_zones
+cd dns/master ; for zone in $signed_zones ; do /usr/sbin/dnssec-signzone -K /srv/dnssec-keys/ -N INCREMENT $zone ; done
 mv *.signed ../built/ ; mv dsset* ../built/
 git add . ; git commit -a -m 'Automatic weekly signing run'
 git push ; cd /tmp ; rm -rf dns
