@@ -16,6 +16,26 @@ QUEUES = {
         'nr': 5,
         'title': 'Membership processing status',
         'desc': 'Status of the Foundation Membership queue'
+    },
+    'general': {
+        'nr': 1,
+        'title': 'General support queue processing status',
+        'desc': 'Status of the General RT queue'
+    },
+    'git': {
+        'nr': 10,
+        'title': 'Git related issues queue processing status',
+        'desc': 'Status of the Git RT queue'
+    },
+    'mailman': {
+        'nr': 4,
+        'title': 'Mailman related issues queue processing status',
+        'desc': 'Status of the Mailman RT queue'
+    },
+    'planet': {
+        'nr': 8,
+        'title': 'Planet related issues processing status',
+        'desc': 'Status of the Planet RT queue'
     }
 }
 
@@ -41,6 +61,16 @@ def write_stat_file(cursor, queue):
     for row in cursor.fetchall():
         tickets[row[0]] = {'Status': row[1]}
 
+    cursor.execute('SELECT id, Subject FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status IN ("new", "open", "stalled") ORDER BY id', qnr)
+    description = {}
+    for row in cursor.fetchall():
+        description[row[0]] = row[1]
+
+    cursor.execute('SELECT id, LastUpdated FROM Tickets WHERE Type="ticket" AND Queue=%s AND Status IN ("new", "open", "stalled") ORDER BY id', qnr)
+    lastupdated = {}
+    for row in cursor.fetchall():
+        lastupdated[row[0]] = row[1]
+
     cursor.execute("SELECT MAX(Transactions.id) AS TID, Tickets.id AS TID from Tickets INNER JOIN Transactions ON Tickets.id = Transactions.ObjectId WHERE Tickets.Queue=%s AND ObjectType = 'RT::Ticket' AND Transactions.Type = 'Comment' and Tickets.Status = 'stalled' GROUP BY Tickets.id", qnr)
     trans = dict(cursor.fetchall())
 
@@ -54,11 +84,8 @@ def write_stat_file(cursor, queue):
     for tid, header in headers.items():
         ticket = trans[int(tid)]
 
-        msg = email.message_from_string(header)
-        tickets[ticket]['CC'] = msg['RT-Send-CC'].replace('@', ' ').replace('.', u'·')
 
-
-    table = u'<table border=1><tr><th>Ticket</th><th>State</th><th>Waiting for</th></tr>%s</table>' % u''.join([u'<tr><td><a href="https://rt.gnome.org/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], tickets[ticket].get('CC', '')) for ticket in sorted(tickets)])
+    table = u'<table border=1><tr><th>Ticket</th><th>State</th><th>Description</th><th>Last updated on</th></tr>%s</table>' % u''.join([u'<tr><td><a href="https://rt.gnome.org/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], tickets[description], tickets[lastupdated]) for ticket in sorted(tickets)])
 
     output = codecs.open (OUTPUT, 'w', 'utf-8')
 
@@ -92,7 +119,7 @@ if __name__ == "__main__":
     dbpass = f.readline ().strip ()
     f.close ()
 
-    connection = MySQLdb.connect ('drawable-back', 'rtstats', dbpass, 'rt4')
+    connection = MySQLdb.connect ('drawable-back', 'rtstats', dbpass, 'rt4', use_unicode=True, charset='UTF8')
     cursor = connection.cursor ()
 
     for queue in QUEUES.keys():
