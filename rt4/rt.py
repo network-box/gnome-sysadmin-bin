@@ -85,7 +85,7 @@ def write_stat_file(cursor, queue):
         ticket = trans[int(tid)]
 
 
-    table = u'<table border=1><tr><th>Ticket</th><th>State</th><th>Description</th><th>Last updated on</th></tr>%s</table>' % u''.join([u'<tr><td><a href="https://rt.gnome.org/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], tickets[description], tickets[lastupdated]) for ticket in sorted(tickets)])
+    table = u'<table border=1><tr><th>Ticket</th><th>State</th><th>Description</th><th>Last updated on</th></tr>%s</table>' % u''.join([u'<tr><td><a href="https://rt.gnome.org/Ticket/Display.html?id=%s">%s</a></td><td>%s</td><td>%s</td><td>%s</td></tr>' % (ticket, ticket, tickets[ticket]['Status'], description[ticket], lastupdated[ticket]) for ticket in sorted(tickets)])
 
     output = codecs.open (OUTPUT, 'w', 'utf-8')
 
