@@ -36,6 +36,11 @@ QUEUES = {
         'nr': 8,
         'title': 'Planet related issues processing status',
         'desc': 'Status of the Planet RT queue'
+    },
+    'dns': {
+        'nr': 12,
+        'title': 'DNS related issues processing status',
+        'desc': 'Status of the DNS RT queue'
     }
 }
 
