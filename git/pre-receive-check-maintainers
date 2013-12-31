@@ -55,7 +55,7 @@ check_maintainers() {
 	    fi
 	fi
     else
-        echo "A valid $projectshort.doap file is required. See http://live.gnome.org/MaintainersCorner#maintainers" >&2
+        echo "A valid $projectshort.doap file is required. See https://wiki.gnome.org/MaintainersCorner#maintainers" >&2
         return 1
     fi
 }
