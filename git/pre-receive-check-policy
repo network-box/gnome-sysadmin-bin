@@ -35,7 +35,7 @@ check_commit() {
 			address '$email'. Please configure your
 			username and email address. See:
 
-			  http://live.gnome.org/Git/Help/AuthorEmail
+			  https://wiki.gnome.org/Git/Help/AuthorEmail
 
 			For instructions about how to do this and how to fix your
 			existing commits.
@@ -61,7 +61,7 @@ check_commit() {
 				option when you had local changes. Running 'git  pull --rebase' now
 				will fix the problem. Then please try, 'git push' again. Please see:
 
-				  http://live.gnome.org/Git/Help/ExtraMergeCommits
+				  https://wiki.gnome.org/Git/Help/ExtraMergeCommits
 				---
 				EOF
 	    exit 1
@@ -149,7 +149,7 @@ check_ref_update() {
 				You are trying to update the branch '$branchname' in a way that is not
 				a fast-forward update. Please see:
 
-				  http://live.gnome.org/Git/Help/NonFastForward
+				  https://wiki.gnome.org/Git/Help/NonFastForward
 				---
 				EOF
 			exit 1
@@ -190,7 +190,7 @@ check_ref_update() {
 					You are trying to push the lightweight tag '$tagname'. You should use
 					a signed tag instead. See:
 
-					  http://live.gnome.org/Git/Help/LightweightTags
+					  https://wiki.gnome.org/Git/Help/LightweightTags
 					---
 					EOF
 				exit 1
@@ -233,7 +233,7 @@ check_ref_update() {
 				---
 				You are trying to delete the tag '$tagname'.
 
-				  http://live.gnome.org/Git/Help/TagUpdates
+				  https://wiki.gnome.org/Git/Help/TagUpdates
 				---
 				EOF
 			exit 1
@@ -245,7 +245,7 @@ check_ref_update() {
 				---
 				You are trying to replace the tag '$tagname' with a new tag. Please see:
 
-				  http://live.gnome.org/Git/Help/TagUpdates
+				  https://wiki.gnome.org/Git/Help/TagUpdates
 				---
 				EOF
 			exit 1

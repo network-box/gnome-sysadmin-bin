@@ -33,7 +33,7 @@ def die(message):
     print >>sys.stderr, "  ", message
     print >>sys.stderr
     print >>sys.stderr, "Please see:"
-    print >>sys.stderr, "   http://live.gnome.org/MaintainersCorner#maintainers"
+    print >>sys.stderr, "   https://wiki.gnome.org/MaintainersCorner#maintainers"
     print >>sys.stderr, "---"
     sys.exit(1)
 

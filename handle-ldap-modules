@@ -160,7 +160,7 @@ planned, but can take a while before you see it.
 
 How to approve account requests:
 * l10n coordinators: Make sure you have read
-  http://live.gnome.org/TranslationProject/RequestingAnAccount
+  https://wiki.gnome.org/TranslationProject/RequestingAnAccount
 * You will get an email from Mango to your email address registered in
   LDAP. This could be different than your email address known at
   http://foundation.gnome.org/!

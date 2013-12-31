@@ -439,7 +439,7 @@ The branch '%(short_refname)s' was changed in a way that was not a fast-forward 
 NOTE: This may cause problems for people pulling from the branch. For more information,
 please see:
 
- http://live.gnome.org/Git/Help/NonFastForward
+ https://wiki.gnome.org/Git/Help/NonFastForward
 
 Commits removed from the branch:
 
@@ -615,7 +615,7 @@ pointed to:
 NOTE: People pulling from the repository will not get the new tag.
 For more information, please see:
 
- http://live.gnome.org/Git/Help/TagUpdates
+ https://wiki.gnome.org/Git/Help/TagUpdates
 
 New tag information:
 
@@ -672,7 +672,7 @@ It previously pointed to:
 NOTE: People pulling from the repository will not get the new tag.
 For more information, please see:
 
- http://live.gnome.org/Git/Help/TagUpdates
+ https://wiki.gnome.org/Git/Help/TagUpdates
 """) % {
             'short_refname': self.short_refname,
             'commit_oneline': commit_oneline(self.newrev),

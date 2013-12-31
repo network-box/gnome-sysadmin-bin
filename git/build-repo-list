@@ -51,7 +51,7 @@ class Repo:
         if os.path.isfile(desc_file):
             desc = open(desc_file).readline().strip()
             if desc == '' or desc == NO_DESCRIPTION:
-                desc = "Please create %s.doap (see http://live.gnome.org/Git/FAQ)" % shortname
+                desc = "Please create %s.doap (see https://wiki.gnome.org/Git/FAQ)" % shortname
         self.desc = pending + desc
 
         section_file = os.path.join(repopath, 'gnome_group')

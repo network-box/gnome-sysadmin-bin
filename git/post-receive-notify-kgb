@@ -1,6 +1,6 @@
 # Kgb-Bot's hook, get the repository name and feed --repo-id with it, make sure that repo-id do
 # actually match the repository-name you are going to configure on kgb.conf and kgb-client.conf. More
-# details at https://live.gnome.org/Sysadmin/KGB-Bot. KGB will only notify commits made to the master branch.
+# details at https://wiki.gnome.org/Sysadmin/CommitsBot. KGB will only notify commits made to the master branch.
 
 REPOSITORY_ID=$(basename "$PWD")
 REPOSITORY_ID=${REPOSITORY_ID%.git}
